@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Primax · FuelFlow Autónomo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Fondo animado -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <!-- Barra superior -->
+    <header class="topbar">
+      <div class="brand-mini">
+        <span class="brand-mini-logo">P</span>
+        <span class="brand-mini-text">PRIMAX <em data-i18n="brand_sub">FuelFlow Autónomo</em></span>
+      </div>
+      <div class="topbar-right">
+        <div id="voice-status" class="voice-status" title="Estado del asistente de voz">
+          <span class="dot"></span><span id="voice-status-text" data-i18n="voice_ready">Asistente listo</span>
+        </div>
+        <button id="btn-lang" class="icon-btn" data-i18n-title="btn_lang_title" data-i18n-aria="btn_lang_title" title="Cambiar idioma" aria-label="Cambiar idioma">🌐</button>
+        <button id="btn-voice-toggle" class="icon-btn" data-i18n-title="btn_voice_title" data-i18n-aria="btn_voice_title" title="Activar / silenciar voz" aria-label="Activar o silenciar voz">🔊</button>
+        <button id="btn-admin-open" class="icon-btn" data-i18n-title="btn_admin_title" data-i18n-aria="btn_admin_title" title="Panel de administración" aria-label="Abrir panel de administración">⚙️</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <!-- 1. INICIO -->
+      <section id="pantalla-inicio" class="screen active" aria-label="Pantalla de bienvenida">
+        <div class="hero">
+          <div class="logo-wrap">
+            <div class="logo">PRIMAX</div>
+            <div class="logo-sub" data-i18n="logo_sub">⛽ AUTOSERVICIO INTELIGENTE</div>
+          </div>
+          <p class="hero-msg" data-i18n="hero_msg">Bienvenido. Presione para comenzar.</p>
+          <div class="hero-features">
+            <div class="feat"><span>🎙️</span><p data-i18n="feat_voice">Asistente por voz</p></div>
+            <div class="feat"><span>💳</span><p data-i18n="feat_pay">Pago integrado</p></div>
+            <div class="feat"><span>📷</span><p data-i18n="feat_plate">Reconoce tu placa</p></div>
+            <div class="feat"><span>🛡️</span><p data-i18n="feat_secure">Compra segura</p></div>
+          </div>
+          <button id="btn-iniciar" class="btn btn-primary btn-giant" data-i18n="btn_iniciar">INICIAR ▶</button>
+          <p class="hint" data-i18n="hint_inicio">Toque INICIAR · El asistente le guiará por voz en cada paso</p>
+          <p class="kiosk-note" data-i18n="kiosk_note">Kiosco 01 · Estación Primax Sur · Operativo 24/7</p>
+        </div>
+      </section>
+
+      <!-- 2. COMBUSTIBLE -->
+      <section id="pantalla-combustible" class="screen" aria-label="Selección de combustible">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_1">PASO 1 / 5</span>
+          <h2 data-i18n="fuel_title">Seleccione su combustible</h2>
+          <p id="voz-texto-1" class="voice-line" data-i18n="voz_fuel">🎙️ "Por favor, seleccione su combustible."</p>
+        </div>
+        <div class="fuel-grid">
+          <button class="fuel-card" data-fuel="Gasohol 90" data-price="16.50">
+            <span class="drop">💧</span>
+            <strong>Gasohol 90</strong>
+            <span class="price">S/ 16.50 <small data-i18n="price_litro">/ litro</small></span>
+            <span class="tag" data-i18n="tag_eco">Económico</span>
+          </button>
+          <button class="fuel-card" data-fuel="Gasohol 95" data-price="18.20">
+            <span class="drop">💧</span>
+            <strong>Gasohol 95</strong>
+            <span class="price">S/ 18.20 <small data-i18n="price_litro">/ litro</small></span>
+            <span class="tag tag-hot" data-i18n="tag_rec">Recomendado</span>
+          </button>
+          <button class="fuel-card" data-fuel="Diésel" data-price="14.80">
+            <span class="drop">🛢️</span>
+            <strong>Diésel</strong>
+            <span class="price">S/ 14.80 <small data-i18n="price_litro">/ litro</small></span>
+            <span class="tag" data-i18n="tag_rend">Alto rendimiento</span>
+          </button>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-inicio" data-i18n="volver">← Volver</button>
+        </div>
+      </section>
+
+      <!-- 3. PAGO -->
+      <section id="pantalla-pago" class="screen" aria-label="Modalidad de pago">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_2">PASO 2 / 5</span>
+          <h2 data-i18n="pay_title">Elija su modalidad de pago</h2>
+          <p class="voice-line" data-i18n="voz_pago">🎙️ "Ingrese el monto que desea cargar."</p>
+          <p class="selected-fuel"><span data-i18n="lbl_combustible">Combustible:</span> <strong id="resumen-fuel-mini">—</strong></p>
+        </div>
+        <div class="pay-grid">
+          <button id="btn-prepago" class="pay-card">
+            <span class="pay-icon">💵</span>
+            <strong data-i18n="prepago">PREPAGO</strong>
+            <small data-i18n="prepago_desc">Ingresa un monto fijo</small>
+          </button>
+          <button id="btn-postpago" class="pay-card">
+            <span class="pay-icon">⛽</span>
+            <strong data-i18n="postpago">POSTPAGO</strong>
+            <small data-i18n="postpago_desc">Pague después de cargar</small>
+          </button>
+        </div>
+
+        <div id="prepago-panel" class="prepago-panel hidden">
+          <h3 data-i18n="monto_cargar">Monto a cargar (S/)</h3>
+          <div class="quick-amounts">
+            <button class="chip" data-monto="20">S/ 20</button>
+            <button class="chip" data-monto="30">S/ 30</button>
+            <button class="chip" data-monto="50">S/ 50</button>
+            <button class="chip" data-monto="100">S/ 100</button>
+            <button class="chip" data-monto="otro" data-i18n="chip_otro">Otro</button>
+          </div>
+          <div id="monto-display" class="monto-display">S/ 0.00</div>
+          <div class="keypad" aria-label="Teclado numérico">
+            <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+            <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+            <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+            <button data-key="C" class="key-fn">C</button><button data-key="0">0</button><button data-key="←" class="key-fn">⌫</button>
+          </div>
+          <p class="hint" data-i18n="hint_monto">Mínimo S/ 10 · Máximo S/ 500</p>
+          <p id="monto-error" class="error hidden"></p>
+          <button id="btn-confirmar-monto" class="btn btn-primary" data-i18n="btn_confirmar_monto">Confirmar monto →</button>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-combustible" data-i18n="volver">← Volver</button>
+          <button id="btn-postpago-continuar" class="btn btn-primary hidden" data-i18n="btn_postpago_cont">Continuar con postpago →</button>
+        </div>
+      </section>
+
+      <!-- 4. IDENTIFICACIÓN -->
+      <section id="pantalla-identificacion" class="screen" aria-label="Identificación del vehículo">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_3">PASO 3 / 5</span>
+          <h2 data-i18n="ident_title">Identificación del vehículo</h2>
+          <p class="voice-line" data-i18n="voz_placa">🎙️ "Por favor, ingrese la placa de su vehículo."</p>
+        </div>
+        <div class="form-card">
+          <div class="cam-sim">
+            <span class="cam-dot"></span> <span data-i18n="cam_text">CÁMARA ANPR · SIMULACIÓN</span>
+            <strong id="cam-plate">ABC-123</strong>
+            <button id="btn-simular-camara" class="btn btn-small" type="button" data-i18n="cam_btn">📷 Simular lectura</button>
+          </div>
+          <label for="input-placa" data-i18n="lbl_placa">Placa del vehículo</label>
+          <input id="input-placa" type="text" data-i18n-ph="ph_placa" placeholder="Ej: ABC-123" maxlength="7" autocomplete="off" />
+          <p id="placa-error" class="error hidden"></p>
+
+          <label class="check-row">
+            <input id="check-membresia" type="checkbox" />
+            <span data-i18n="membresia_lbl">¿Es usuario membresía Primax? <em>(5% de descuento)</em></span>
+          </label>
+
+          <div id="membresia-panel" class="hidden">
+            <label for="input-codigo" data-i18n="lbl_codigo">Código de cliente</label>
+            <input id="input-codigo" type="text" data-i18n-ph="ph_codigo" placeholder="Ej: PX-004821" autocomplete="off" />
+            <p id="codigo-error" class="error hidden"></p>
+            <div class="discount-badge" data-i18n="discount_badge">✓ Descuento del 5% aplicado al total</div>
+          </div>
+
+          <div class="summary-mini">
+            <div><span data-i18n="sum_fuel">Combustible:</span><strong id="mini-fuel">—</strong></div>
+            <div><span data-i18n="sum_modalidad">Modalidad:</span><strong id="mini-modalidad">—</strong></div>
+            <div><span data-i18n="sum_monto">Monto prepago:</span><strong id="mini-monto">—</strong></div>
+          </div>
+
+          <button id="btn-continuar-ident" class="btn btn-primary" data-i18n="btn_continuar">Continuar →</button>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-pago" data-i18n="volver">← Volver</button>
+        </div>
+      </section>
+
+      <!-- 5. PROCESAMIENTO -->
+      <section id="pantalla-procesamiento" class="screen screen-center" aria-label="Procesamiento de pago">
+        <div class="spinner"></div>
+        <h2 data-i18n="proc_title">Procesando pago...</h2>
+        <p class="hint" data-i18n="proc_hint">Conectando con la pasarela segura · No retire su tarjeta</p>
+        <div class="progress-line"><span></span></div>
+      </section>
+
+      <!-- 6. DESPACHO -->
+      <section id="pantalla-despacho" class="screen" aria-label="Despacho de combustible">
+        <div class="screen-head">
+          <span class="step step-live"><span class="pulse"></span> <span data-i18n="step_live">ABASTECIENDO</span></span>
+          <h2 id="despacho-titulo">Cargando Gasohol 95…</h2>
+          <p class="voice-line" data-i18n="voz_despacho">🎙️ El asistente anuncia cada 10 litros.</p>
+        </div>
+
+        <div class="despacho-grid">
+          <div class="tank-wrap">
+            <div class="tank">
+              <div class="waves" aria-hidden="true"><span></span><span></span></div>
+              <div id="fuel-level" class="fuel-level"></div>
+              <div class="particles" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+            <div id="despacho-pct" class="pct">0%</div>
+          </div>
+
+          <div class="counters">
+            <div class="counter"><small data-i18n="ct_litros">LITROS</small><strong id="litros-count">0.00 L</strong></div>
+            <div class="counter highlight"><small data-i18n="ct_soles">SOLES</small><strong id="soles-count">S/ 0.00</strong></div>
+            <div class="counter"><small data-i18n="ct_precio">PRECIO / L</small><strong id="precio-count">S/ 0.00</strong></div>
+            <div id="meta-prepago" class="counter hidden"><small data-i18n="ct_meta">META PREPAGO</small><strong id="meta-monto">S/ 0.00</strong></div>
+            <div class="bar"><span id="despacho-bar"></span></div>
+            <p id="despacho-info" class="hint">—</p>
+            <button id="btn-detener" class="btn btn-danger btn-giant" data-i18n="btn_detener">■ DETENER</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. RESUMEN -->
+      <section id="pantalla-resumen" class="screen" aria-label="Resumen final">
+        <div class="screen-head">
+          <span class="step step-ok" data-i18n="step_ok">✓ CARGA COMPLETADA</span>
+          <h2 data-i18n="resumen_title">Ticket digital</h2>
+        </div>
+        <div class="ticket">
+          <div class="ticket-head">
+            <strong>PRIMAX</strong><span data-i18n="ticket_sub">FuelFlow Autónomo · Kiosco 01</span>
+          </div>
+          <div class="ticket-rows">
+            <div><span data-i18n="row_placa">Placa</span><strong id="t-placa">—</strong></div>
+            <div><span data-i18n="row_fuel">Combustible</span><strong id="t-fuel">—</strong></div>
+            <div><span data-i18n="row_litros">Litros cargados</span><strong id="t-litros">—</strong></div>
+            <div><span data-i18n="row_precio">Precio por litro</span><strong id="t-precio">—</strong></div>
+            <div><span data-i18n="row_subtotal">Subtotal</span><strong id="t-subtotal">—</strong></div>
+            <div><span data-i18n="row_descuento">Descuento membresía (5%)</span><strong id="t-descuento">—</strong></div>
+            <div class="total"><span data-i18n="row_total">TOTAL A PAGAR</span><strong id="t-total">—</strong></div>
+            <div><span data-i18n="row_modalidad">Modalidad</span><strong id="t-modalidad">—</strong></div>
+            <div><span data-i18n="row_estado">Estado</span><strong id="t-estado">—</strong></div>
+          </div>
+          <div class="ticket-foot" data-i18n="ticket_foot">Gracias por preferir Primax · Que tenga un buen viaje 🛣️</div>
+        </div>
+        <div class="ticket-actions">
+          <button id="btn-pagar-ahora" class="btn btn-primary hidden" data-i18n="btn_pagar_ahora">PAGAR AHORA</button>
+          <button id="btn-comprobante" class="btn btn-secondary" data-i18n="btn_comprobante">🧾 Generar comprobante</button>
+          <button id="btn-finalizar" class="btn btn-ghost" data-i18n="btn_finalizar">Finalizar ↺</button>
+        </div>
+      </section>
+
+      <!-- 8. ADMIN -->
+      <section id="pantalla-admin" class="screen" aria-label="Panel de seguridad">
+        <div id="admin-login">
+          <div class="screen-head">
+            <span class="step" data-i18n="admin_step">🔒 ACCESO RESTRINGIDO</span>
+            <h2 data-i18n="admin_title">Panel de Seguridad / Admin</h2>
+          </div>
+          <div class="form-card narrow">
+            <label for="admin-user" data-i18n="lbl_usuario">Usuario</label>
+            <input id="admin-user" type="text" placeholder="admin" autocomplete="off" />
+            <label for="admin-pass" data-i18n="lbl_contrasena">Contraseña</label>
+            <input id="admin-pass" type="password" placeholder="••••••••" />
+            <p id="admin-error" class="error hidden"></p>
+            <button id="btn-admin-login" class="btn btn-primary" data-i18n="btn_ingresar">Ingresar</button>
+            <p class="hint" data-i18n="admin_hint">Demo: usuario <b>admin</b> · clave <b>primax123</b></p>
+          </div>
+        </div>
+
+        <div id="admin-dash" class="hidden">
+          <div class="screen-head row-between">
+            <div><span class="step" data-i18n="dash_step">🛡️ MONITOREO EN VIVO</span><h2 data-i18n="dash_title">Dashboard operativo</h2></div>
+            <button id="btn-admin-logout" class="btn btn-small" data-i18n="btn_logout">Cerrar sesión</button>
+          </div>
+          <div class="metrics">
+            <div class="metric"><small data-i18n="metric_ventas">Total ventas hoy</small><strong id="m-ventas">S/ 15,420.00</strong></div>
+            <div class="metric"><small data-i18n="metric_trans">Transacciones</small><strong id="m-trans">47</strong></div>
+            <div class="metric"><small data-i18n="metric_litros">Litros vendidos</small><strong id="m-litros">892 L</strong></div>
+          </div>
+          <div class="admin-grid">
+            <div class="panel">
+              <h3 data-i18n="tbl_title">Últimas transacciones</h3>
+              <div class="table-wrap">
+                <table id="tabla-trans">
+                  <thead><tr><th data-i18n="th_hora">Hora</th><th data-i18n="th_placa">Placa</th><th data-i18n="th_fuel">Combustible</th><th data-i18n="th_monto">Monto</th><th data-i18n="th_estado">Estado</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="panel panel-alert">
+              <h3 data-i18n="alerts_title">🚨 Alertas de seguridad</h3>
+              <ul id="lista-alertas"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-inicio" data-i18n="volver_inicio">← Volver al inicio</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span id="status-state" data-i18n="status_listo">● Sistema listo</span>
+      <span id="status-clock">--:--:--</span>
+      <span data-i18n="footer_surtidor">Surtidor 03 · Precios S/ incluyen impuestos</span>
+    </footer>
+  </div>
+
+  <!-- ============ ASISTENTE VIRTUAL (4 imágenes animadas) ============ -->
+  <div id="mascota" class="mascota" aria-label="Asistente virtual Primax">
+    <div class="mascota-frame">
+      <img id="m-ac" class="mascota-img" src="ojos_abiertos_boca%20_cerrada.jpeg" alt="" decoding="async" />
+      <img id="m-aa" class="mascota-img" src="ojos_abiertos_boca%20_abierta.jpeg" alt="" decoding="async" />
+      <img id="m-cc" class="mascota-img" src="ojos_cerrrados_boca%20_cerrada.jpeg" alt="" decoding="async" />
+      <img id="m-ca" class="mascota-img" src="ojos_cerrrados_boca%20_abierta.jpeg" alt="" decoding="async" />
+    </div>
+    <div class="mascota-tag" data-i18n="mascota_tag">Asistente Primax</div>
+  </div>
+
+  <!-- Modal personalizado (sin alert nativo) -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div id="modal-icon" class="modal-icon">ℹ️</div>
+      <h3 id="modal-title">Aviso</h3>
+      <p id="modal-msg">Mensaje</p>
+      <div class="modal-actions">
+        <button id="modal-ok" class="btn btn-primary" data-i18n="btn_entendido">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal comprobante -->
+  <div id="ticket-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+      <div class="modal-icon">🧾</div>
+      <h3 data-i18n="comp_title">Comprobante electrónico</h3>
+      <pre id="comprobante-text"></pre>
+      <div class="modal-actions">
+        <button id="btn-descargar-txt" class="btn btn-secondary" data-i18n="comp_descargar">⬇ Descargar .txt</button>
+        <button id="ticket-close" class="btn btn-primary" data-i18n="comp_cerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Selector de idioma (topbar 🌐) -->
+  <div id="lang-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-icon">🌐</div>
+      <h3 data-i18n="lang_title">Selecciona tu idioma</h3>
+      <p data-i18n="lang_sub">Select your language · Simiykita akllay</p>
+      <div class="lang-list">
+        <button class="btn btn-primary lang-opt" data-lang="es">🇵🇪 Español</button>
+        <button class="btn lang-opt" data-lang="en">🇺🇸 English</button>
+        <button class="btn lang-opt" data-lang="qu">🇵🇪 Runasimi (Quechua)</button>
+      </div>
+      <div class="modal-actions">
+        <button id="lang-close" class="btn btn-ghost" data-i18n="lang_close">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
