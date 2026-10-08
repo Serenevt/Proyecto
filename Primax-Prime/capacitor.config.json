@@ -1,1 +1,5 @@
-{"appId":"com.primax.prime","appName":"Primax Prime","webDir":"www"}
+{
+  "appId": "com.primax.prime",
+  "appName": "Primax Prime",
+  "webDir": "www"
+}

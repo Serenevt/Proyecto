@@ -2,5 +2,10 @@ node_modules/
 www/
 test-results/
 playwright-report/
-android/
 ios/
+.idea/
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
