@@ -1,0 +1,1 @@
+{"name":"primax-prime","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"node tools/serve.cjs","build":"node tools/build.cjs","test":"node --test tests/services.test.js","test:mobile":"node tools/mobile.cjs"},"devDependencies":{"@playwright/test":"1.64.0"}}
