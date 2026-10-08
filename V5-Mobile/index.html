@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Primax · FuelFlow Mobile</title>
+  <meta name="theme-color" content="#2326df" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Fondo animado -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <!-- Barra superior -->
+    <header class="topbar">
+      <div class="brand-mini">
+        <img class="brand-mini-logo-img" src="logo-primax-horizontal.jpg" alt="PRIMAX" decoding="async" />
+      <span class="brand-caption" data-i18n="fuel_flow">FuelFlow · Autoservicio</span>
+      </div>
+      <div class="topbar-right">
+
+        <button id="btn-lang" class="icon-btn" data-i18n-title="btn_lang_title" data-i18n-aria="btn_lang_title" title="Cambiar idioma" aria-label="Cambiar idioma">🌐</button>
+        <button id="btn-voice-toggle" class="icon-btn" data-i18n-title="btn_voice_title" data-i18n-aria="btn_voice_title" title="Activar / silenciar voz" aria-label="Activar o silenciar voz">🔊</button>
+        <button id="btn-admin-open" class="icon-btn" data-i18n-title="btn_admin_title" data-i18n-aria="btn_admin_title" title="Panel de administración" aria-label="Abrir panel de administración">⚙️</button>
+      </div>
+    </header>
+
+    <nav id="flow-progress" class="flow-progress hidden" data-i18n-aria="progress_label" aria-label="Progreso de compra">
+      <span id="progress-label"></span>
+      <div id="progress-track" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1" aria-labelledby="progress-label"><span id="progress-fill"></span></div>
+    </nav>
+    <p id="storage-notice" class="error hidden" role="status" data-i18n="storage_notice"></p>
+    <main class="stage">
+      <!-- 1. INICIO -->
+      <section id="pantalla-inicio" class="screen active" aria-label="Pantalla de bienvenida">
+        <div class="hero">
+          <div class="logo-wrap">
+            <div class="logo">PRIMAX</div>
+            <div class="logo-sub" data-i18n="logo_sub">⛽ AUTOSERVICIO INTELIGENTE</div>
+          </div>
+          <p class="hero-msg" data-i18n="hero_msg">Bienvenido. Presione para comenzar.</p>
+          <div class="hero-features">
+            <div class="feat"><span>🎙️</span><p data-i18n="feat_voice">Asistente por voz</p></div>
+            <div class="feat"><span>💳</span><p data-i18n="feat_pay">Pago integrado</p></div>
+            <div class="feat"><span>📷</span><p data-i18n="feat_plate">Reconoce tu placa</p></div>
+            <div class="feat"><span>🛡️</span><p data-i18n="feat_secure">Compra segura</p></div>
+          </div>
+          <button id="btn-iniciar" class="btn btn-primary btn-giant" data-i18n="btn_iniciar">INICIAR ▶</button>
+          <p class="hint" data-i18n="hint_inicio">Toque INICIAR · El asistente le guiará por voz en cada paso</p>
+          <p class="kiosk-note" data-i18n="kiosk_note">Kiosco 01 · Estación Primax Sur · Operativo 24/7</p>
+        </div>
+      </section>
+
+      <!-- 2. COMBUSTIBLE -->
+      <section id="pantalla-combustible" class="screen" aria-label="Selección de combustible">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_1">PASO 1 / 5</span>
+          <h2 data-i18n="fuel_title">Seleccione su combustible</h2>
+          <p id="voz-texto-1" class="voice-line" data-i18n="voz_fuel">🎙️ "Por favor, seleccione su combustible."</p>
+        </div>
+        <div class="fuel-grid">
+          <button class="fuel-card" data-fuel="Regular" data-price="16.50">
+            <span class="drop">💧</span>
+            <strong>Regular</strong>
+            <span class="price">S/ 16.50 <small data-i18n="price_litro">/ litro</small></span>
+            <span class="tag" data-i18n="tag_eco">Económico</span>
+          </button>
+          <button class="fuel-card" data-fuel="Premium" data-price="18.20">
+            <span class="drop">💧</span>
+            <strong>Premium</strong>
+            <span class="price">S/ 18.20 <small data-i18n="price_litro">/ litro</small></span>
+            <span class="tag tag-hot" data-i18n="tag_rec">Recomendado</span>
+          </button>
+          <button class="fuel-card" data-fuel="Diésel" data-price="14.80">
+            <span class="drop">🛢️</span>
+            <strong>Diésel</strong>
+            <span class="price">S/ 14.80 <small data-i18n="price_litro">/ litro</small></span>
+            <span class="tag" data-i18n="tag_rend">Alto rendimiento</span>
+          </button>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-inicio" data-i18n="volver">← Volver</button>
+        </div>
+      </section>
+
+      <!-- 3. PAGO -->
+      <section id="pantalla-pago" class="screen" aria-label="Modalidad de pago">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_2">PASO 2 / 5</span>
+          <h2 data-i18n="pay_title">Elija su modalidad de pago</h2>
+          <p class="voice-line" data-i18n="voz_pago">🎙️ "Ingrese el monto que desea cargar."</p>
+          <p class="selected-fuel"><span data-i18n="lbl_combustible">Combustible:</span> <strong id="resumen-fuel-mini">—</strong></p>
+        </div>
+        <div class="pay-grid">
+          <button id="btn-prepago" class="pay-card">
+            <span class="pay-icon">💵</span>
+            <strong data-i18n="prepago">PREPAGO</strong>
+            <small data-i18n="prepago_desc">Ingresa un monto fijo</small>
+          </button>
+          <button id="btn-postpago" class="pay-card">
+            <span class="pay-icon">⛽</span>
+            <strong data-i18n="postpago">POSTPAGO</strong>
+            <small data-i18n="postpago_desc">Pague después de cargar</small>
+          </button>
+        </div>
+
+        <div id="prepago-panel" class="prepago-panel hidden">
+          <h3 data-i18n="monto_cargar">Monto a cargar (S/)</h3>
+          <div class="quick-amounts">
+            <button class="chip" data-monto="20">S/ 20</button>
+            <button class="chip" data-monto="30">S/ 30</button>
+            <button class="chip" data-monto="50">S/ 50</button>
+            <button class="chip" data-monto="100">S/ 100</button>
+            <button class="chip" data-monto="otro" data-i18n="chip_otro">Otro</button>
+          </div>
+          <div id="monto-display" class="monto-display" role="status" aria-live="polite">S/ 0.00</div>
+          <div class="keypad" aria-label="Teclado numérico">
+            <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+            <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+            <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+            <button data-key="C" class="key-fn">C</button><button data-key="0">0</button><button data-key="←" class="key-fn">⌫</button>
+          </div>
+          <p class="hint" data-i18n="hint_monto">Mínimo S/ 10 · Máximo S/ 500</p>
+          <p id="monto-error" class="error hidden" role="alert"></p>
+
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-combustible" data-i18n="volver">← Volver</button>
+          <button id="btn-postpago-continuar" class="btn btn-primary hidden" data-i18n="btn_postpago_cont">Continuar con postpago →</button>
+        <button id="btn-confirmar-monto" class="btn btn-primary hidden" data-i18n="btn_confirmar_monto">Confirmar monto →</button>
+        </div>
+      </section>
+
+      <!-- 4. IDENTIFICACIÓN -->
+      <section id="pantalla-identificacion" class="screen" aria-label="Identificación del vehículo">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_3">PASO 3 / 5</span>
+          <h2 data-i18n="ident_title">Identificación del vehículo</h2>
+          <p class="voice-line" data-i18n="voz_placa">🎙️ "Por favor, ingrese la placa de su vehículo."</p>
+        </div>
+        <div class="form-card">
+          <div class="cam-sim">
+            <span class="cam-dot"></span> <span data-i18n="cam_text">CÁMARA ANPR · SIMULACIÓN</span>
+            <strong id="cam-plate">ABC-123</strong>
+            <button id="btn-simular-camara" class="btn btn-small" type="button" data-i18n="cam_btn">📷 Simular lectura</button>
+          </div>
+          <label for="input-placa" data-i18n="lbl_placa">Placa del vehículo</label>
+          <input autocapitalize="characters" spellcheck="false" id="input-placa" type="text" data-i18n-ph="ph_placa" placeholder="Ej: ABC-123" maxlength="7" autocomplete="off"  aria-describedby="placa-error" aria-invalid="false" />
+          <p id="placa-error" class="error hidden" role="alert"></p>
+
+          <label class="check-row">
+            <input id="check-membresia" type="checkbox" />
+            <span data-i18n="membresia_lbl">¿Es usuario membresía Primax? <em>(5% de descuento)</em></span>
+          </label>
+
+          <div id="membresia-panel" class="hidden">
+            <label for="input-codigo" data-i18n="lbl_codigo">Código de cliente</label>
+            <input autocapitalize="characters" spellcheck="false" id="input-codigo" type="text" data-i18n-ph="ph_codigo" placeholder="Ej: PX-004821" autocomplete="off"  aria-describedby="codigo-error" aria-invalid="false" />
+            <p id="codigo-error" class="error hidden" role="alert"></p>
+            <div class="discount-badge" data-i18n="discount_badge">✓ Descuento del 5% aplicado al total</div>
+          </div>
+
+          <div class="summary-mini">
+            <div><span data-i18n="sum_fuel">Combustible:</span><strong id="mini-fuel">—</strong></div>
+            <div><span data-i18n="sum_modalidad">Modalidad:</span><strong id="mini-modalidad">—</strong></div>
+            <div><span data-i18n="sum_monto">Monto prepago:</span><strong id="mini-monto">—</strong></div>
+          </div>
+
+
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-pago" data-i18n="volver">← Volver</button>
+        <button id="btn-continuar-ident" class="btn btn-primary" data-i18n="btn_continuar">Continuar →</button>
+        </div>
+      </section>
+
+      <!-- Tipo de comprobante (prepago) -->
+      <section id="pantalla-comprobante" class="screen" aria-label="Tipo de comprobante">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_3">PASO 3 / 5</span>
+          <h2 data-i18n="doc_title">¿Qué comprobante desea?</h2>
+          <p class="voice-line" data-i18n="voz_doc">🎙️ "Seleccione boleta o factura."</p>
+          <p class="selected-fuel"><span data-i18n="lbl_doc_tipo">Comprobante:</span> <strong id="resumen-doc-mini">—</strong></p>
+        </div>
+        <div class="pay-grid">
+          <button id="btn-boleta" class="pay-card" type="button">
+            <span class="pay-icon">🧾</span>
+            <strong data-i18n="doc_boleta">BOLETA</strong>
+            <small data-i18n="doc_boleta_desc">Persona natural · se pide DNI</small>
+          </button>
+          <button id="btn-factura" class="pay-card" type="button">
+            <span class="pay-icon">🏢</span>
+            <strong data-i18n="doc_factura">FACTURA</strong>
+            <small data-i18n="doc_factura_desc">Empresa · se pide RUC y razón social</small>
+          </button>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-pago" data-i18n="volver">← Volver</button>
+        </div>
+      </section>
+
+      <!-- 4c. DATOS DEL RECEPTOR + PLACA (solo prepago) -->
+      <section id="pantalla-datos" class="screen" aria-label="Datos del comprobante">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_4">PASO 4 / 5</span>
+          <h2 data-i18n="datos_title">Datos del comprobante</h2>
+          <p class="voice-line" data-i18n="voz_datos">🎙️ "Ingrese su documento y la placa del vehículo."</p>
+        </div>
+        <div class="form-card">
+          <!-- BOLETA: DNI -->
+          <div id="panel-dni">
+            <label for="input-dni" data-i18n="lbl_dni">DNI del cliente</label>
+            <input id="input-dni" type="text" inputmode="numeric" maxlength="8" data-i18n-ph="ph_dni" placeholder="Ej: 70123456" autocomplete="off"  aria-describedby="dni-error" aria-invalid="false" />
+            <p id="dni-error" class="error hidden" role="alert"></p>
+          </div>
+
+          <!-- FACTURA: RUC + razón social -->
+          <div id="panel-ruc" class="hidden">
+            <label for="input-ruc" data-i18n="lbl_ruc">RUC</label>
+            <input id="input-ruc" type="text" inputmode="numeric" maxlength="11" data-i18n-ph="ph_ruc" placeholder="Ej: 20509876543" autocomplete="off"  aria-describedby="ruc-error" aria-invalid="false" />
+            <p id="ruc-error" class="error hidden" role="alert"></p>
+            <label for="input-razon" data-i18n="lbl_razon">Razón social</label>
+            <input id="input-razon" type="text" maxlength="60" data-i18n-ph="ph_razon" placeholder="Ej: Transportes del Sur S.A.C." autocomplete="off"  aria-describedby="razon-error" aria-invalid="false" />
+            <p id="razon-error" class="error hidden" role="alert"></p>
+          </div>
+
+          <!-- Detector de placa (traído del paso de identificación) -->
+          <div class="cam-sim">
+            <span class="cam-dot"></span> <span data-i18n="cam_text">CÁMARA ANPR · SIMULACIÓN</span>
+            <strong id="prep-cam-plate">ABC-123</strong>
+            <button id="prep-btn-camara" class="btn btn-small" type="button" data-i18n="cam_btn">📷 Simular lectura</button>
+          </div>
+          <label for="prep-input-placa" data-i18n="lbl_placa">Placa del vehículo</label>
+          <input autocapitalize="characters" spellcheck="false" id="prep-input-placa" type="text" maxlength="7" data-i18n-ph="ph_placa" placeholder="Ej: ABC-123" autocomplete="off"  aria-describedby="prep-placa-error" aria-invalid="false" />
+          <p id="prep-placa-error" class="error hidden" role="alert"></p>
+
+          <label class="check-row">
+            <input id="prep-check-membresia" type="checkbox" />
+            <span data-i18n="membresia_lbl">¿Es usuario membresía Primax? <em>(5% de descuento)</em></span>
+          </label>
+          <div id="prep-membresia-panel" class="hidden">
+            <label for="prep-input-codigo" data-i18n="lbl_codigo">Código de cliente</label>
+            <input autocapitalize="characters" spellcheck="false" id="prep-input-codigo" type="text" data-i18n-ph="ph_codigo" placeholder="Ej: PX-004821" autocomplete="off"  aria-describedby="prep-codigo-error" aria-invalid="false" />
+            <p id="prep-codigo-error" class="error hidden" role="alert"></p>
+            <div class="discount-badge" data-i18n="discount_badge">✓ Descuento del 5% aplicado al total</div>
+          </div>
+
+          <div class="summary-mini">
+            <div><span data-i18n="sum_fuel">Combustible:</span><strong id="prep-mini-fuel">—</strong></div>
+            <div><span data-i18n="sum_doc">Comprobante:</span><strong id="prep-mini-doc">—</strong></div>
+            <div><span data-i18n="sum_monto">Monto prepago:</span><strong id="prep-mini-monto">—</strong></div>
+          </div>
+
+
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-comprobante" data-i18n="volver">← Volver</button>
+        <button id="btn-continuar-datos" class="btn btn-primary" type="button" data-i18n="btn_continuar">Continuar →</button>
+        </div>
+      </section>
+
+      <!-- 4d. MÉTODO DE PAGO (solo prepago) -->
+      <section id="pantalla-metodo" class="screen" aria-label="Método de pago">
+        <div class="screen-head">
+          <span class="step" data-i18n="step_5">PASO 5 / 5</span>
+          <h2 data-i18n="metodo_title">Seleccione su método de pago</h2>
+          <p class="voice-line" data-i18n="voz_metodo">🎙️ "Seleccione cómo desea pagar."</p>
+          <p class="selected-fuel"><span data-i18n="lbl_a_cobrar">Total a cobrar:</span> <strong id="metodo-monto">—</strong></p>
+        </div>
+
+        <div class="pay-grid pay-grid-4">
+          <button class="pay-card pay-card-sm" type="button" data-metodo="YAPE">
+            <span class="pay-icon">📱</span><strong data-i18n="m_yape">YAPE</strong>
+          </button>
+          <button class="pay-card pay-card-sm" type="button" data-metodo="PLIN">
+            <span class="pay-icon">💜</span><strong data-i18n="m_plin">PLIN</strong>
+          </button>
+          <button class="pay-card pay-card-sm" type="button" data-metodo="TARJETA">
+            <span class="pay-icon">💳</span><strong data-i18n="m_tarjeta">TARJETA</strong>
+          </button>
+          <button class="pay-card pay-card-sm" type="button" data-metodo="EFECTIVO">
+            <span class="pay-icon">💵</span><strong data-i18n="m_efectivo">EFECTIVO</strong>
+          </button>
+        </div>
+
+        <!-- YAPE / PLIN: código QR -->
+        <div id="panel-qr" class="prepago-panel hidden">
+          <p class="simulation-note" data-i18n="simulation">Demostración · Operación simulada</p>
+          <h3 id="qr-titulo">YAPE</h3>
+          <div class="qr-wrap">
+            <div class="qr-fake" id="qr-code" role="img" aria-label="Código QR de pago"></div>
+          </div>
+          <p id="qr-msg" class="hint"></p>
+          <div class="nav-row">
+            <button class="btn btn-ghost btn-metodo-volver" type="button" data-i18n="btn_otro_metodo">← Otro método</button>
+            <button id="btn-qr-pagado" class="btn btn-primary" type="button" data-i18n="btn_simular_qr">Ya pagué con la app</button>
+          </div>
+        </div>
+
+        <!-- TARJETA: contactless NFC -->
+        <div id="panel-nfc" class="prepago-panel hidden">
+          <p class="simulation-note" data-i18n="simulation">Demostración · Operación simulada</p>
+          <h3 data-i18n="nfc_title">Pago sin contacto</h3>
+          <div class="nfc-zone" id="nfc-zone">
+            <div class="nfc-wave"></div>
+            <div class="nfc-wave nfc-wave-2"></div>
+            <div class="nfc-wave nfc-wave-3"></div>
+            <div class="nfc-card">💳 <span data-i18n="nfc_card">Tarjeta</span></div>
+          </div>
+          <p id="nfc-msg" class="hint" data-i18n="nfc_hint">Acereque su tarjeta, reloj o celular al lector</p>
+          <div class="nav-row">
+            <button class="btn btn-ghost btn-metodo-volver" type="button" data-i18n="btn_otro_metodo">← Otro método</button>
+            <button id="btn-nfc-tap" class="btn btn-primary" type="button" data-i18n="btn_simular_nfc">Simular acercamiento</button>
+          </div>
+        </div>
+
+        <!-- EFECTIVO: billetes y monedas -->
+        <div id="panel-efectivo" class="prepago-panel hidden">
+          <p class="simulation-note" data-i18n="simulation">Demostración · Operación simulada</p>
+          <h3 data-i18n="ef_title">Ingrese su dinero</h3>
+          <div class="ef-display">
+            <div><small data-i18n="ef_ingresado">Ingresado</small><strong id="ef-total">S/ 0.00</strong></div>
+            <div><small data-i18n="ef_falta">Falta</small><strong id="ef-faltante">S/ 0.00</strong></div>
+          </div>
+          <div id="ef-ok" class="discount-badge hidden" data-i18n="ef_completo">✓ Efectivo suficiente</div>
+
+          <span class="ef-titulo" data-i18n="ef_billetes">Billetes</span>
+          <div class="chips" id="ef-billetes"></div>
+
+          <span class="ef-titulo" data-i18n="ef_monedas">Monedas</span>
+          <div class="chips" id="ef-monedas"></div>
+
+          <p id="ef-error" class="error hidden" role="alert"></p>
+          <div class="nav-row">
+            <button id="btn-ef-retirar" class="btn btn-ghost" type="button" data-i18n="btn_ef_retirar">↩ Devolver</button>
+            <button id="btn-ef-confirmar" class="btn btn-primary" type="button" data-i18n="btn_ef_confirmar">Confirmar efectivo</button>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-datos" data-i18n="volver">← Volver</button>
+        </div>
+      </section>
+
+      <!-- 5. PROCESAMIENTO -->
+      <section id="pantalla-procesamiento" class="screen screen-center" aria-label="Procesamiento de pago">
+        <div class="spinner"></div>
+        <h2 data-i18n="proc_title">Procesando pago...</h2>
+        <p class="hint" data-i18n="proc_hint">Conectando con la pasarela segura · No retire su tarjeta</p>
+        <div class="progress-line"><span></span></div>
+      </section>
+
+      <!-- 6. DESPACHO -->
+      <section id="pantalla-despacho" class="screen" aria-label="Despacho de combustible">
+        <div class="screen-head">
+          <span class="step step-live"><span class="pulse"></span> <span data-i18n="step_live">ABASTECIENDO</span></span>
+          <h2 id="despacho-titulo">Cargando Premium…</h2>
+          <p class="voice-line" data-i18n="voz_despacho">🎙️ El asistente anuncia cada 10 litros.</p>
+        </div>
+
+        <div class="despacho-grid">
+          <div class="tank-wrap">
+            <div class="tank">
+              <div class="waves" aria-hidden="true"><span></span><span></span></div>
+              <div id="fuel-level" class="fuel-level"></div>
+              <div class="particles" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+            <div id="despacho-pct" class="pct">0%</div>
+          </div>
+
+          <div class="counters">
+            <div class="counter"><small data-i18n="ct_litros">LITROS</small><strong id="litros-count">0.00 L</strong></div>
+            <div class="counter highlight"><small data-i18n="ct_soles">SOLES</small><strong id="soles-count">S/ 0.00</strong></div>
+            <div class="counter"><small data-i18n="ct_precio">PRECIO / L</small><strong id="precio-count">S/ 0.00</strong></div>
+            <div id="meta-prepago" class="counter hidden"><small data-i18n="ct_meta">META PREPAGO</small><strong id="meta-monto">S/ 0.00</strong></div>
+            <div id="dispatch-progress" class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="despacho-titulo"><span id="despacho-bar"></span></div>
+            <p id="despacho-info" class="hint">—</p>
+
+          </div>
+        </div>
+      <div class="nav-row dispatch-actions"><button id="btn-detener" class="btn btn-danger btn-giant" data-i18n="btn_detener">■ DETENER</button></div>
+      </section>
+
+      <!-- 7. RESUMEN -->
+      <section id="pantalla-resumen" class="screen" aria-label="Resumen final">
+        <div class="screen-head">
+          <span class="step step-ok" data-i18n="step_ok">✓ CARGA COMPLETADA</span>
+          <h2 data-i18n="resumen_title">Ticket digital</h2>
+        </div>
+        <div class="ticket">
+          <div class="ticket-head">
+            <strong>PRIMAX</strong><span data-i18n="ticket_sub">FuelFlow Autónomo · Kiosco 01</span>
+          </div>
+          <div class="ticket-rows">
+            <div><span data-i18n="row_placa">Placa</span><strong id="t-placa">—</strong></div>
+            <div><span data-i18n="row_doc">Comprobante</span><strong id="t-doc">—</strong></div>
+            <div><span data-i18n="row_docnum">DNI / RUC</span><strong id="t-docnum">—</strong></div>
+            <div><span data-i18n="row_fuel">Combustible</span><strong id="t-fuel">—</strong></div>
+            <div><span data-i18n="row_litros">Litros cargados</span><strong id="t-litros">—</strong></div>
+            <div><span data-i18n="row_precio">Precio por litro</span><strong id="t-precio">—</strong></div>
+            <div><span data-i18n="row_subtotal">Subtotal</span><strong id="t-subtotal">—</strong></div>
+            <div><span data-i18n="row_descuento">Descuento membresía (5%)</span><strong id="t-descuento">—</strong></div>
+            <div class="total"><span data-i18n="row_total">TOTAL A PAGAR</span><strong id="t-total">—</strong></div>
+            <div><span data-i18n="row_modalidad">Modalidad</span><strong id="t-modalidad">—</strong></div>
+            <div><span data-i18n="row_estado">Estado</span><strong id="t-estado">—</strong></div>
+          </div>
+          <div class="ticket-foot" data-i18n="ticket_foot">Gracias por preferir Primax · Que tenga un buen viaje 🛣️</div>
+        </div>
+        <div class="ticket-actions">
+          <button id="btn-pagar-ahora" class="btn btn-primary hidden" data-i18n="btn_pagar_ahora">PAGAR AHORA</button>
+          <button id="btn-comprobante" class="btn btn-secondary" data-i18n="btn_comprobante">🧾 Generar comprobante</button>
+          <button id="btn-finalizar" class="btn btn-ghost" data-i18n="btn_finalizar">Finalizar ↺</button>
+        </div>
+      </section>
+
+      <!-- 8. ADMIN -->
+      <section id="pantalla-admin" class="screen" aria-label="Panel de seguridad">
+        <div id="admin-login">
+          <div class="screen-head">
+            <span class="step" data-i18n="admin_step">🔒 ACCESO RESTRINGIDO</span>
+            <h2 data-i18n="admin_title">Panel de Seguridad / Admin</h2>
+          </div>
+          <div class="form-card narrow">
+            <label for="admin-user" data-i18n="lbl_usuario">Usuario</label>
+            <input id="admin-user" type="text" placeholder="admin" autocomplete="off"  aria-describedby="admin-error" aria-invalid="false" />
+            <label for="admin-pass" data-i18n="lbl_contrasena">Contraseña</label>
+            <input id="admin-pass" type="password" placeholder="••••••••"  aria-describedby="admin-error" aria-invalid="false" />
+            <p id="admin-error" class="error hidden" role="alert"></p>
+            <button id="btn-admin-login" class="btn btn-primary" data-i18n="btn_ingresar">Ingresar</button>
+            <p class="hint" data-i18n="admin_hint">Demo: usuario <b>admin</b> · clave <b>primax123</b></p>
+          </div>
+        </div>
+
+        <div id="admin-dash" class="hidden">
+          <div class="screen-head row-between">
+            <div><span class="step" data-i18n="dash_step">🛡️ MONITOREO EN VIVO</span><h2 data-i18n="dash_title">Dashboard operativo</h2></div>
+            <button id="btn-admin-logout" class="btn btn-small" data-i18n="btn_logout">Cerrar sesión</button>
+          </div>
+          <div class="metrics">
+            <div class="metric"><small data-i18n="metric_ventas">Total ventas hoy</small><strong id="m-ventas">S/ 15,420.00</strong></div>
+            <div class="metric"><small data-i18n="metric_trans">Transacciones</small><strong id="m-trans">47</strong></div>
+            <div class="metric"><small data-i18n="metric_litros">Litros vendidos</small><strong id="m-litros">892 L</strong></div>
+          </div>
+          <div class="admin-grid">
+            <div class="panel">
+              <h3 data-i18n="tbl_title">Últimas transacciones</h3>
+              <div class="table-wrap">
+                <table id="tabla-trans">
+                  <thead><tr><th data-i18n="th_hora">Hora</th><th data-i18n="th_placa">Placa</th><th data-i18n="th_fuel">Combustible</th><th data-i18n="th_monto">Monto</th><th data-i18n="th_estado">Estado</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="panel panel-alert">
+              <h3 data-i18n="alerts_title">🚨 Alertas de seguridad</h3>
+              <ul id="lista-alertas"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" data-nav="pantalla-inicio" data-i18n="admin_return">← Volver a la compra</button>
+        </div>
+      </section>
+    </main>
+
+
+    <aside class="assistant-dock" aria-label="Asistente Primax">
+  <div id="mascota" class="mascota" aria-label="Asistente virtual Primax">
+    <button class="mascota-frame" type="button" data-i18n-aria="repeat_voice" aria-label="Repetir la última indicación">
+      <img id="m-ac" class="mascota-img" src="ojos_abiertos_boca%20_cerrada.jpeg" alt="" decoding="async" />
+      <img id="m-aa" class="mascota-img" src="ojos_abiertos_boca%20_abierta.jpeg" alt="" decoding="async" />
+      <img id="m-cc" class="mascota-img" src="ojos_cerrrados_boca%20_cerrada.jpeg" alt="" decoding="async" />
+      <img id="m-ca" class="mascota-img" src="ojos_cerrrados_boca%20_abierta.jpeg" alt="" decoding="async" />
+    </button>
+    <div class="mascota-tag" data-i18n="mascota_tag">Asistente Primax</div>
+  </div>
+        <div id="voice-status" class="voice-status" role="status" aria-live="polite" title="Estado del asistente de voz">
+          <span class="dot"></span><span id="voice-status-text" data-i18n="voice_ready">Asistente listo</span>
+        </div>
+  <button id="btn-ayuda" class="help-btn" type="button" data-i18n-title="btn_ayuda_title" data-i18n-aria="btn_ayuda_title" title="Llamar asistencia humana" aria-label="Llamar asistencia humana">
+    <span class="help-btn-icon">🛎️</span>
+    <span class="help-btn-text" data-i18n="btn_ayuda">Llamar asistencia</span>
+  </button>
+    </aside>
+    <footer class="statusbar">
+      <span id="status-state" data-i18n="status_listo">● Sistema listo</span>
+      <span id="status-clock">--:--:--</span>
+      <span data-i18n="footer_surtidor">Surtidor 03 · Precios S/ incluyen impuestos</span>
+    </footer>
+  </div>
+
+    <!-- Modal personalizado (sin alert nativo) -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+    <div class="modal">
+      <div id="modal-icon" class="modal-icon">ℹ️</div>
+      <h3 id="modal-title">Aviso</h3>
+      <p id="modal-msg">Mensaje</p>
+      <div class="modal-actions">
+        <button id="modal-ok" class="btn btn-primary" data-i18n="btn_entendido">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal comprobante -->
+  <div id="ticket-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ticket-title" tabindex="-1">
+    <div class="modal modal-wide">
+      <div class="modal-icon">🧾</div>
+      <h3 id="ticket-title" data-i18n="comp_title">Comprobante electrónico</h3>
+      <pre id="comprobante-text"></pre>
+      <div class="modal-actions">
+        <button id="btn-descargar-txt" class="btn btn-secondary" data-i18n="comp_descargar">⬇ Descargar .txt</button>
+        <button id="ticket-close" class="btn btn-primary" data-i18n="comp_cerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Selector de idioma (topbar 🌐) -->
+  <div id="lang-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="lang-title" tabindex="-1">
+    <div class="modal">
+      <div class="modal-icon">🌐</div>
+      <h3 id="lang-title" data-i18n="lang_title">Selecciona tu idioma</h3>
+      <p data-i18n="lang_sub">Select your language · Simiykita akllay</p>
+      <div class="lang-list">
+        <button class="btn btn-primary lang-opt" data-lang="es">🇵🇪 Español</button>
+        <button class="btn lang-opt" data-lang="en">🇺🇸 English</button>
+        <button class="btn lang-opt" data-lang="qu">🇵🇪 Runasimi (Quechua)</button>
+      </div>
+      <div class="modal-actions">
+        <button id="lang-close" class="btn btn-ghost" data-i18n="lang_close">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asistencia humana: progreso y llegada simulados -->
+
+
+  <div id="help-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal">
+      <div id="help-icon" class="modal-icon">📞</div>
+      <h3 id="help-title">Llamando a asistencia…</h3>
+      <p id="help-msg">Un operador del centro de control está siendo notificado. Por favor, permanezca en su vehículo.</p>
+
+      <div id="help-cargando" class="help-cargando">
+        <div class="spinner"></div>
+        <small data-i18n="help_cargando_txt">Cargando…</small>
+      </div>
+
+      <div id="help-bar-wrap" class="help-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="help-title"><span id="help-bar"></span></div>
+
+      <ol id="help-pasos" class="help-pasos">
+        <li data-i18n="help_paso_1">Solicitud enviada al surtidor 03</li>
+        <li data-i18n="help_paso_2">Operador asignado</li>
+        <li data-i18n="help_paso_3">El asistente va en camino</li>
+      </ol>
+
+      <p id="help-estado" class="help-estado">Conectando con el operador…</p>
+
+      <div class="modal-actions">
+        <button id="help-btn-cancelar" class="btn btn-ghost" data-i18n="help_cancelar">Cancelar solicitud</button>
+        <button id="help-btn-cerrar" class="btn btn-primary hidden" data-i18n="help_cerrar">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="js/core/config.js"></script>
+  <script defer src="js/core/state.js"></script>
+  <script defer src="js/core/storage.js"></script>
+  <script defer src="js/domain/validation.js"></script>
+  <script defer src="js/domain/totals.js"></script>
+  <script defer src="js/i18n/messages.js"></script>
+  <script defer src="js/services/settingsService.js"></script>
+  <script defer src="js/services/transactionService.js"></script>
+  <script defer src="js/services/paymentService.js"></script>
+  <script defer src="js/services/fuelService.js"></script>
+  <script defer src="js/services/plateService.js"></script>
+  <script defer src="js/services/assistanceService.js"></script>
+  <script defer src="js/services/receiptService.js"></script>
+  <script defer src="js/core/navigation.js"></script>
+  <script defer src="js/ui/dialogs.js"></script>
+  <script defer src="js/i18n/i18n.js"></script>
+  <script defer src="js/ui/mascot.js"></script>
+  <script defer src="js/ui/voice.js"></script>
+  <script defer src="js/ui/screens.js"></script>
+  <script defer src="js/ui/admin.js"></script>
+  <script defer src="js/ui/assistance.js"></script>
+  <script defer src="script.js"></script>
+</body>
+</html>
