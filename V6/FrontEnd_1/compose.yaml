@@ -1,0 +1,64 @@
+# =============================================================================
+# FuelFlow Autónomo · Primax — Frontend
+# -----------------------------------------------------------------------------
+# Docker Compose V2 (plugin `docker compose`, sin Docker Desktop).
+#
+#   Levantar:   docker compose up -d --build
+#   Ver logs:    docker compose logs -f
+#   Detener:     docker compose down
+#
+# Nota para el futuro: el frontend de membresías que escribe tu compañero
+# irá en su propio compose.yaml con su propio nombre de contenedor y puerto
+# (por ejemplo fuelflow-membresias y 8082). Ambos containers se conectarán
+# después al mismo backend; por ahora no se declara ningún servicio de
+# backend ni PostgreSQL.
+# =============================================================================
+
+name: fuelflow
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Nombre explícito para diferenciarlo del backend y del futuro
+    # frontend de membresías.
+    image: fuelflow-frontend:latest
+
+    container_name: fuelflow-frontend
+
+    # 8081 del host -> 80 del contenedor
+    ports:
+      - "8081:80"
+
+    restart: unless-stopped
+
+    # El proceso de Nginx corre como root dentro del container para poder
+    # escuchar en el puerto 80; los archivos servidos quedan en modo lectura
+    # para todos, así que el sitio se sirve sin problemas.
+    environment:
+      TZ: America/Lima
+
+    # Solo lectura salvo lo que Nginx necesita escribir en runtime:
+    # caché de archivos temporales y el socket de Nginx.
+    tmpfs:
+      - /var/cache/nginx:size=16m
+      - /var/run:size=1m
+
+    # Buenas prácticas: no permite escalar privilegios dentro del container.
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Healthcheck espejo al del Dockerfile (el del compose manda).
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
