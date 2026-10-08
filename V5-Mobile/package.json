@@ -1,0 +1,15 @@
+{
+  "name": "primax-fuelflow-mobile",
+  "version": "5.0.0",
+  "private": true,
+  "description": "Mobile-first local demonstration of Primax FuelFlow",
+  "scripts": {
+    "dev": "node tools/serve.cjs",
+    "test": "node --test tests/domain.test.js tests/services.test.js",
+    "test:mobile": "playwright test",
+    "build": "node tools/build.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
+}
