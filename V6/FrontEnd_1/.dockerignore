@@ -1,0 +1,34 @@
+# --- Docker / build ---
+.git
+.gitignore
+.gitattributes
+.dockerignore
+Dockerfile
+compose.yaml
+compose.yml
+docker-compose.yml
+docker-compose.yaml
+.docker/
+
+# --- Editores / SO ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Docs y entorno ---
+*.md
+!README.md
+.env
+.env.*
+*.log
+
+# --- Cosas que no son del frontend (cuando se agreguen) ---
+node_modules/
+dist/
+build/
+coverage/
+.git/
