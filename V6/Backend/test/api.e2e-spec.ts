@@ -79,7 +79,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
   afterAll(async () => {
     if (app) await app.close();
     if (db) await db.$disconnect();
-    if (originalUrl && /^e2e_[a-f0-9]{32}$/.test(schema)) {
+    if (process.env.KEEP_E2E_SCHEMA !== '1' && originalUrl && /^e2e_[a-f0-9]{32}$/.test(schema)) {
       const cleanup = new PrismaClient({
         datasources: { db: { url: originalUrl } },
       });
@@ -91,6 +91,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
         await cleanup.$disconnect();
       }
     }
+    if (process.env.KEEP_E2E_SCHEMA === '1') console.log('Preserved E2E schema:', schema);
     process.env.DATABASE_URL = originalUrl;
   });
 

@@ -1,50 +1,51 @@
-﻿# Primax Prime
+# Primax Prime
 
-Aplicación independiente de membresía, beneficios y fidelización. HTML/CSS/JavaScript modular; sin backend, base de datos, cobros ni notificaciones reales. No depende de la interfaz de FuelFlow. Usa el logo del proyecto.
+Aplicación de membresía independiente de FuelFlow, conectada al backend común V6.
+Se conservan HTML/CSS, navegación y proyecto Android.
 
-## Ejecutar con Docker
+La guía completa de instalación, Docker, Windows/Debian, seguridad, endpoints y
+prueba conjunta está en [V6/README.md](../README.md).
 
-Desde `V6`: `docker compose up -d --build frontend2` y abrir
-http://localhost:8082. No requiere Node en el host ni `.env` para levantar solo
-este servicio. Docker Desktop no es obligatorio en Linux; Docker Engine y el
-plugin Docker Compose son suficientes. Ver [instrucciones para Debian 13 y el
-stack completo](../README.md).
+## Desarrollo y pruebas
 
-El Dockerfile construye `www/` con Node 22 y sirve ese resultado con Nginx. La
-interfaz, navegación, lógica demo y proyecto Capacitor se mantienen sin cambios;
-no se conecta al backend en esta fase.
-
-## Desarrollo local
-
-Requiere Node.js 22 o superior. Desde esta carpeta:
+Con Node 22/24, backend en localhost:3000 y PostgreSQL disponible:
 
 ```sh
-npm.cmd install
-npm.cmd run dev
+npm ci --no-audit --no-fund
+npm run dev
 ```
 
-Abrir http://127.0.0.1:5180. `npm run build` genera `www/`. `npm test` prueba lógica local. `npm run test:mobile` prueba el build en Chrome en 360×800, 390×844 y 412×915; usa Playwright instalado aquí o, como alternativa local, la instalación existente de V5-Mobile (solo lectura). Chrome debe estar instalado.
+El servidor local en http://127.0.0.1:5180 sirve la UI y hace proxy de /api/v1,
+eliminando cualquier cabecera kiosk. `npm run build` genera www; `npm test`
+verifica servicios; `npm run test:mobile` ejecuta 15 pruebas de interfaz en tres
+tamaños usando respuestas HTTP controladas. Chrome debe estar instalado.
+La prueba real contra BD se ejecuta desde V6 con `node tools/run-integration.cjs`
+o `node tools/run-integration.cjs --docker`.
 
-Para servir el build en PowerShell:
+## Sesión y datos
 
-```powershell
-$env:SERVE_BUILD='1'
-npm.cmd run dev
-```
+Login real: demo@primaxprime.pe; contraseña local definida por DEMO_PASSWORD al crear la cuenta. El servidor emite un JWT con
+expiración; localStorage conserva únicamente sesión y preferencias del
+dispositivo. Cerrar sesión elimina el token y los datos remotos en memoria;
+401 vuelve al login. No se guardan contraseñas.
 
-Los servicios de `js/services/` centralizan usuario, vehículos, movimientos, beneficios y preferencias en la clave localStorage `primax-prime:v1`. Recargar acredita saldo ficticio; canjear descuenta puntos y guarda un cupón. Si el navegador bloquea el almacenamiento, se mantiene una sesión en memoria. Borrar la clave reinicia los datos de demostración.
+Usuario, número de membresía, vehículos, consumos, puntos, beneficios y canjes
+se leen de la API. Las listas están paginadas. La actualización ocurre cada
+10 segundos con la página visible y al recuperar el foco.
+Los canjes se envían con operationId persistente y muestran el cupón real.
+Las recargas de saldo, alias local, notificaciones y asistencia continúan
+identificadas como demostraciones; no afectan puntos del backend.
 
-## Inicio de sesión simulado
+`apiClient` concentra HTTP, JWT, timeout y errores. Los servicios de auth,
+membership, transactions, rewards y benefits mantienen la UI independiente.
 
-La aplicación muestra primero el login. Cuenta única: **demo@primaxprime.pe**, contraseña **Prime123**, nombre inicial **Diego**. Las credenciales se comparan exactamente; no hay registro, backend, API ni base de datos. `js/services/authService.js` separa la autenticación para una futura integración.
+## Configurar API y Android
 
-La sesión se guarda únicamente como `prime_authenticated=true` en localStorage y permite entrar directamente a Inicio al abrir la aplicación. Membresía incluye **Cerrar sesión**: elimina solo esa clave, vuelve al login y conserva todos los datos de `primax-prime:v1`, incluyendo cambios de nombre. Si el almacenamiento está bloqueado, el login muestra un mensaje y no permite acceso. La sesión es una simulación local, sin validación remota.
-
-`npm.cmd test` ejecuta 8 pruebas de servicios/autenticación. `npm.cmd run test:mobile` ejecuta 15 pruebas en Chrome entre los tres tamaños móviles, incluyendo login correcto e incorrecto, mostrar/ocultar contraseña, persistencia al recargar/reabrir y conservación de datos al cerrar sesión.
-
-## Integración futura
-
-Primax Prime → API compartida → PostgreSQL. FuelFlow utilizará esa API para registrar compras; el servidor vinculará miembro/vehículo, generará el movimiento y calculará los puntos. Sustituir los servicios por adaptadores HTTP asíncronos y añadir estados de carga/error a las vistas. Contratos sugeridos: miembro `{id,name,number,points,balance}`, vehículo `{id,plate,label}`, movimiento `{id,memberId,vehicleId,type,amount,points,date,station,source,externalPurchaseId}`. El servidor deberá aplicar autenticación, autorización, idempotencia por compra, reglas de puntos y atomicidad de saldo/canjes. No confiar en localStorage para dinero o puntos reales.
+Web Docker usa /api/v1 mediante Nginx. Android requiere una URL accesible desde
+el dispositivo: establecer PRIME_API_BASE_URL antes del build/sync. Ejemplo
+PowerShell: `$env:PRIME_API_BASE_URL='https://api.example.com/api/v1'`.
+Solo es configuración pública; nunca añadir KIOSK_API_KEY al APK.
+Conservar HTTPS y configurar los orígenes de Capacitor en CORS del backend.
 
 ## Android con Capacitor 8
 
@@ -62,7 +63,9 @@ npm.cmd run android:debug
 
 APK debug: `android/app/build/outputs/apk/debug/app-debug.apk`. Para actualizar solo los recursos web ejecutar `npm.cmd run android:sync`; para abrir el proyecto en Android Studio, `npm.cmd run android:open`. No volver a ejecutar `cap add android` sobre el proyecto existente.
 
-Validación realizada tras añadir el login: 8 pruebas de servicios/autenticación y 15 pruebas móviles en Chrome (360×800, 390×844 y 412×915), todas aprobadas; build web, sincronización Capacitor y Gradle `assembleDebug` completados con JDK 21. El diseño y las funcionalidades existentes se conservan. El código nativo y el wrapper son versionables; `www/`, recursos web copiados, `node_modules/`, `.idea/`, `.gradle/`, directorios `build/`, `local.properties` y APK quedan excluidos.
+Validación histórica anterior a esta integración, tras añadir el login: 8 pruebas de servicios/autenticación y 15 pruebas móviles en Chrome (360×800, 390×844 y 412×915), todas aprobadas; build web, sincronización Capacitor y Gradle `assembleDebug` completados con JDK 21. El diseño y las funcionalidades existentes se conservan. El código nativo y el wrapper son versionables; `www/`, recursos web copiados, `node_modules/`, `.idea/`, `.gradle/`, directorios `build/`, `local.properties` y APK quedan excluidos.
 
 Pendiente para distribución: probar en dispositivo/emulador Android (safe areas, teclado, navegación y persistencia), personalizar icono/splash nativos y configurar firma release. Se conservan los recursos nativos predeterminados de Capacitor. Para iPhone se requiere macOS/Xcode. El logo web es JPG sin transparencia. Datos, promociones, estaciones y contactos son demostrativos.
 
+
+En esta integración se validó el build web y el navegador móvil; no se ejecutó Gradle ni un APK en dispositivo.

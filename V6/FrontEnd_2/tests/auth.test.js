@@ -1,40 +1,6 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {authService} from '../js/services/authService.js';
-
-function storage() {
-  const values=new Map();
-  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)}});
-  return values;
-}
-test('login correcto persiste solo la sesión de la cuenta Diego',()=>{
-  const values=storage();
-  assert.equal(authService.isAuthenticated(),false);
-  assert.deepEqual(authService.login('demo@primaxprime.pe','Prime123'),{name:'Diego',email:'demo@primaxprime.pe'});
-  assert.equal(values.get('prime_authenticated'),'true');
-  assert.equal(values.size,1);
-  assert.equal(authService.isAuthenticated(),true);
-});
-test('credenciales incorrectas y variaciones no permiten acceso',()=>{
-  storage();
-  for(const [email,password] of [['otro@primaxprime.pe','Prime123'],['demo@primaxprime.pe','incorrecta'],['demo@primaxprime.pe','prime123'],['demo@primaxprime.pe','Prime123 '],['Demo@primaxprime.pe','Prime123'],['','']])assert.throws(()=>authService.login(email,password),/correo o la contraseña/);
-  assert.equal(authService.isAuthenticated(),false);
-});
-test('solo true constituye una sesión válida y logout conserva otros datos',()=>{
-  const values=storage();
-  values.set('primax-prime:v1','datos demo intactos');
-  for(const invalid of ['false','1','TRUE','{}']){values.set('prime_authenticated',invalid);assert.equal(authService.isAuthenticated(),false);}
-  values.set('prime_authenticated','true');
-  assert.equal(authService.isAuthenticated(),true);
-  authService.logout();
-  assert.equal(authService.isAuthenticated(),false);
-  assert.equal(values.get('primax-prime:v1'),'datos demo intactos');
-  assert.equal(values.size,1);
-});
-test('almacenamiento bloqueado muestra un error y no permite acceso',()=>{
-  Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw Error('bloqueado');}});
-  assert.equal(authService.isAuthenticated(),false);
-  assert.throws(()=>authService.login('demo@primaxprime.pe','Prime123'),/guardar tu sesión/);
-  assert.throws(()=>authService.logout(),/cerrar tu sesión/);
-  delete globalThis.localStorage;
-});
+import test from 'node:test';import assert from 'node:assert/strict';import {authService} from '../js/services/authService.js';import {SESSION_KEY} from '../js/services/session.js';
+function setup(){const values=new Map();globalThis.localStorage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};return values;}
+test('login HTTP persiste JWT y usuario sin contraseña',async()=>{const values=setup();globalThis.fetch=async(url,options)=>{assert.equal(url,'/api/v1/auth/login');assert.equal(options.method,'POST');assert.deepEqual(JSON.parse(options.body),{email:'demo@primaxprime.pe',password:'FixtureOnly123'});return Response.json({accessToken:'jwt',expiresIn:3600,user:{id:'user',name:'Diego'}});};assert.equal((await authService.login('demo@primaxprime.pe','FixtureOnly123')).name,'Diego');assert.equal(authService.isAuthenticated(),true);assert.equal(values.get(SESSION_KEY).includes('FixtureOnly123'),false);});
+test('login inválido muestra error y no crea sesión',async()=>{setup();globalThis.fetch=async()=>Response.json({message:'incorrecto'},{status:401});await assert.rejects(authService.login('demo@primaxprime.pe','wrong'),/no son correctos/);assert.equal(authService.isAuthenticated(),false);});
+test('logout elimina token y autenticación antigua conservando preferencias',()=>{const values=setup();values.set(SESSION_KEY,JSON.stringify({token:'jwt',expiresAt:Date.now()+10000}));values.set('prime_authenticated','true');values.set('preferences','keep');authService.logout();assert.equal(authService.isAuthenticated(),false);assert.deepEqual([...values.keys()],['preferences']);});
+test('sesión vencida y error de almacenamiento no permiten acceso',async()=>{const values=setup();values.set(SESSION_KEY,JSON.stringify({token:'old',expiresAt:0}));assert.equal(authService.isAuthenticated(),false);globalThis.fetch=async()=>Response.json({accessToken:'jwt',expiresIn:3600,user:{id:'user'}});globalThis.localStorage.setItem=()=>{throw Error('blocked')};await assert.rejects(authService.login('demo','password'),/guardar tu sesión/);});

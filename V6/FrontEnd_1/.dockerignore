@@ -31,4 +31,10 @@ node_modules/
 dist/
 build/
 coverage/
+tests/
+test-results/
+playwright-report/
+*.apk
+*.aab
+*.tmp
 .git/

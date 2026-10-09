@@ -1,7 +1,7 @@
 # Primax V6 — backend compartido
 
 Monolito modular REST para el autoservicio `FrontEnd_1` y Primax Prime `FrontEnd_2`.
-Los dos frontend permanecen independientes e intactos. **Todavía no están conectados a esta API.**
+Los dos frontend permanecen independientes y ya consumen esta API mediante sus proxies. Ver [integración V6](../README.md).
 
 ## Inicio desde cero: solo Docker
 
@@ -134,7 +134,7 @@ Base: `http://localhost:3000/api/v1`. Swagger: `http://localhost:3000/api/docs`.
 
 Listas privadas: arrays paginados mediante `?page=1&limit=20` (máximo 100); puntos de `/memberships/me` incluyen **todo** el ledger, no solo la página actual. Catálogos devuelven registros activos.
 
-Cuenta demo local: `demo@primaxprime.pe` / `Prime123` (configurable con `DEMO_PASSWORD` antes del primer seed). El seed usa bcrypt con coste 12 y no restablece contraseñas ni saldos existentes. No hay registro público.
+Cuenta demo local: `demo@primaxprime.pe`; contraseña definida con `DEMO_PASSWORD` antes del primer seed. El seed usa bcrypt con coste 12 y no restablece contraseñas ni saldos existentes. No hay registro público.
 
 Login entrega `accessToken`, `tokenType: Bearer`, `expiresIn: 3600` y usuario sin hash. Enviar `Authorization: Bearer <token>` en rutas privadas. JWT HS256 verifica emisor, audiencia, caducidad y usuario activo. Un socio no puede consultar vehículos/compras de otro ni crear compras. No se implementan refresh tokens en esta fase; al caducar se inicia sesión de nuevo.
 
@@ -195,13 +195,13 @@ npm run prisma:studio
 
 El seed es idempotente: upserts por claves naturales con actualizaciones vacías. Crea Diego/PRIME-0001, ABC-123 y DEF-456, XYZ-999 sin membresía, Primax Sur, tres combustibles y tres beneficios. No crea compras ni créditos ficticios y no borra información existente.
 
-Variables: `DATABASE_URL`, `JWT_SECRET` (32+ caracteres), `KIOSK_API_KEY` (32+), `PORT`, `POINTS_PER_SOL` (>0, <=100, hasta cuatro decimales), `CORS_ORIGINS`, `DEMO_PASSWORD`. Compose añade `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`. Archivos `.env.example` contienen marcadores y la contraseña pública de la cuenta demo, nunca secretos reales.
+Variables: `DATABASE_URL`, `JWT_SECRET` (32+ caracteres), `KIOSK_API_KEY` (32+), `PORT`, `POINTS_PER_SOL` (>0, <=100, hasta cuatro decimales), `CORS_ORIGINS`, `DEMO_PASSWORD`. Compose añade `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` y admite `KIOSK_SECRET` como nombre preferido de la clave kiosk. Archivos `.env.example` contienen marcadores, nunca secretos reales.
 
 ## Pruebas
 
 Las unitarias verifican autenticación correcta/incorrecta/inactiva, búsqueda y autorización de vehículos, cálculo exacto, validación, creación de compra/pago/ledger, membresía ausente/suspendida, duplicados y canjes.
 
-Las e2e ejecutan NestJS y Prisma reales contra PostgreSQL; crean un esquema `e2e_<uuid>`, aplican todas las migraciones y el seed, y eliminan únicamente ese esquema al terminar. No se trunca el esquema `public`. El usuario de pruebas necesita permisos para crear/eliminar esquemas; no ejecutar con credenciales de producción. Una interrupción abrupta puede dejar un esquema `e2e_*`, que debe identificarse antes de retirarlo.
+Las e2e ejecutan NestJS y Prisma reales contra PostgreSQL; crean un esquema `e2e_<uuid>`, aplican todas las migraciones y el seed, y permiten conservar el esquema usando KEEP_E2E_SCHEMA=1 (el perfil Docker lo configura). Sin esa variable, eliminan únicamente su propio esquema al terminar. No se trunca el esquema `public`. El usuario de pruebas necesita permisos para crear/eliminar esquemas; no ejecutar con credenciales de producción. Una interrupción abrupta puede dejar un esquema `e2e_*`, que debe identificarse antes de retirarlo.
 
 Se verifica HTTP, Swagger, JWT, aislamiento entre usuarios, DTOs, atomicidad mediante un fallo real de constraint, CORS, idempotencia concurrente y canjes concurrentes. Los mensajes de error de la prueba de rollback son intencionales; el resultado de Jest determina éxito o fallo.
 
@@ -223,7 +223,7 @@ Dentro de Compose el host es `postgres` y el puerto `5432`; DBeaver usa el puert
 
 **DBeaver** es una herramienta administrativa externa. **Prisma** es la capa de acceso usada por NestJS. **PostgreSQL** es la base de datos real. La aplicación funciona sin DBeaver.
 
-## Flujo y siguiente fase
+## Flujo integrado
 
 ```mermaid
 sequenceDiagram
@@ -242,4 +242,4 @@ sequenceDiagram
   API-->>F2: Consumos y puntos actualizados
 ```
 
-Siguiente fase: implementar adaptadores HTTP en ambos frontend manteniendo sus pantallas. Primero sustituir `authService` y servicios de membresía/catálogos/historial/canjes de Prime, convirtiendo cadenas Decimal solo para presentación. Después conectar el evento de compra final del autoservicio, con un UUID persistente por operación y el acceso de terminal resuelto sin publicar secretos. Reconciliar identificadores demo y mantener modo demo explícito para las funciones aún no migradas (monedero, documentos, ayuda). Añadir una prueba de navegador que compre desde FrontEnd_1 y observe el consumo y los puntos en FrontEnd_2.
+Los adaptadores HTTP, proxies y prueba de navegador están implementados. Ver ../README.md para ejecutar la integración.

@@ -11,6 +11,7 @@ if (!fs.existsSync(envPath)) {
     envPath,
     template
       .replace('REPLACE_WITH_LOCAL_PASSWORD', secret())
+      .replace('REPLACE_WITH_LOCAL_DEMO_PASSWORD', secret())
       .replace('REPLACE_WITH_RANDOM_SECRET_AT_LEAST_32_CHARACTERS', secret())
       .replace(
         'REPLACE_WITH_RANDOM_TERMINAL_KEY_AT_LEAST_32_CHARACTERS',
@@ -30,6 +31,7 @@ const values = Object.fromEntries(
     }),
 );
 const backendPath = path.join(root, 'Backend/.env');
+values.KIOSK_API_KEY = values.KIOSK_SECRET || values.KIOSK_API_KEY;
 if (!fs.existsSync(backendPath)) {
   const url = `postgresql://${encodeURIComponent(values.POSTGRES_USER)}:${encodeURIComponent(values.POSTGRES_PASSWORD)}@localhost:${values.POSTGRES_PORT}/${values.POSTGRES_DB}?schema=public`;
   const entries = [

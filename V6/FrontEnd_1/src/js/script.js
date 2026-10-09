@@ -6,6 +6,10 @@
  * Extras: i18n (es / en / qu) · asistente visual con 4 imágenes animadas
  * ========================================================================== */
 
+import {catalogService} from './apiClient.js';
+import {transactionsService} from './transactionsService.js';
+let catalog, submitting=false, backendResult=null;
+
 // ---------- Estado global de la aplicación ----------
 const state = {
   combustible: null,      // { nombre, precio }
@@ -40,8 +44,8 @@ const state = {
   idioma: 'es',           // idioma activo: es | en | qu
 };
 
-// ---------- Precios y constantes (datos simulados) ----------
-const PRECIOS = { 'Regular': 21.30, 'Premium': 23.50, 'Diésel': 26.20 };
+// ---------- Constantes del simulador de surtidor ----------
+// Fuel prices and station IDs are loaded from the shared API.
 const GALONES_POR_TICK = 0.13; // 0.13 gal cada 300 ms
 const TICK_MS = 300;
 const DESCUENTO = 0.05;        // 5 % membresía
@@ -53,35 +57,8 @@ const MONEDAS = [1, 0.5, 0.2, 0.1];    // monedas que acepta el cajero
 const TANQUE_GALONES = 14.5;   // capacidad referencial del tanque (~54.9 L)
 const GALONES_AVISO = 5;       // el asistente anuncia cada 5 galones
 
-// Padrón de membresías: cada código tiene una sola placa vinculada y su DNI.
-// En el postpago, la placa leída por ANPR debe coincidir con la del código.
-const MIEMBROS = {
-  'PX-004821': { placa: 'ABC-123', dni: '70123456', nombre: 'María Quispe' },
-  'PX-005517': { placa: 'BKL-482', dni: '45872301', nombre: 'Jorge Ramírez' },
-  'PX-006103': { placa: 'D4X-207', dni: '51928374', nombre: 'Carlos Mendoza' },
-  'PX-007744': { placa: 'FGT-991', dni: '48201539', nombre: 'Ana Fiorella' },
-  'PX-008260': { placa: 'PQR-555', dni: '70192846', nombre: 'Luis Cabrera' },
-};
-// Placas del padrón: la cámara del postpago lee una de estas para que el
-// escenario de coincidencia sea alcanzable siempre.
-const MIEMBROS_PARCELAS = Object.values(MIEMBROS).map((m) => m.placa);
-const MIEMBROS_CODIGOS = Object.keys(MIEMBROS);
-
-/** Socio del padrón a partir del código, o null si no existe. */
-function socioDeCodigo(codigo) {
-  const c = (codigo || '').trim().toUpperCase();
-  return MIEMBROS[c] ? { codigo: c, ...MIEMBROS[c] } : null;
-}
-/** Socio del padrón que tiene esa placa, o null. */
-function socioDePlaca(placa) {
-  const p = (placa || '').trim().toUpperCase();
-  const codigo = MIEMBROS_CODIGOS.find((c) => MIEMBROS[c].placa === p);
-  return codigo ? { codigo, ...MIEMBROS[codigo] } : null;
-}
-/** DNI aleatorio de 8 dígitos (por si el padrón no trajera uno). */
-function dniAleatorio() {
-  return String(Math.floor(10000000 + Math.random() * 89999999));
-}
+// Cámara de demostración; la pertenencia se verifica siempre por API.
+const MIEMBROS_PARCELAS = ['ABC-123', 'DEF-456'];
 const LS_KEY = 'primax_transacciones';
 const LS_IDIOMA = 'primax_idioma';
 
@@ -1362,6 +1339,7 @@ function leerTransacciones() {
 }
 function guardarTransaccion(tx) {
   const lista = leerTransacciones();
+  if(tx.id&&lista.some(row=>row.id===tx.id))return;
   lista.unshift(tx);
   try { localStorage.setItem(LS_KEY, JSON.stringify(lista)); } catch (e) {}
 }
@@ -1369,15 +1347,26 @@ function guardarTransaccion(tx) {
 /* ============================================================================
  * 6. FLUJO DEL CLIENTE
  * ========================================================================== */
-function iniciar() {
+async function iniciar() {
+  try {
+    const pending=transactionsService.current();
+    if(pending?.payload){Object.assign(state,pending.snapshot);await mostrarResumen();return;}
+    const [fuels,stations]=await Promise.all([catalogService.fuels(),catalogService.stations()]);
+    const station=stations.find(s=>s.code==='PRIMAX-SUR'&&s.active);
+    if(!station)throw Error('La estación no está disponible.');
+    catalog={fuels,station};transactionsService.begin();
+    document.querySelectorAll('.fuel-card').forEach(card=>{const fuel=fuels.find(f=>f.name===card.dataset.fuel&&f.active);card.disabled=!fuel;if(fuel){card.dataset.price=fuel.pricePerGallon;const price=card.querySelector('.price');if(price)price.firstChild.textContent='S/ '+Number(fuel.pricePerGallon).toFixed(2)+' ';}});
+  }catch(error){mostrarModal('No pudimos iniciar',error.message,'⚠️');return;}
   hablar(t('voz_bienvenida'));
   mostrarPantalla('pantalla-combustible');
 }
 
 function seleccionarCombustible(nombre, precio, tarjeta) {
+  const fuel=catalog?.fuels.find(f=>f.name===nombre&&f.active);if(!fuel)return;
+  precio=fuel.pricePerGallon;
   document.querySelectorAll('.fuel-card').forEach((c) => c.classList.remove('selected'));
   tarjeta.classList.add('selected');
-  state.combustible = { nombre, precio: parseFloat(precio) };
+  state.combustible = { id: fuel.id, nombre, precio: parseFloat(precio) };
   $('resumen-fuel-mini').textContent = `${nombre} · S/ ${precio}`;
   hablar(t('voz_seleccion', { fuel: nombre }));
   // Pequeña pausa para que el usuario vea el resaltado antes de avanzar
@@ -1456,9 +1445,9 @@ function autocompletarPostpago() {
   marcarAuto('prep-input-placa', 'flag-placa', true);
 
   // El DNI solo en boleta
-  const dni = esFactura ? '' : (socio.dni || dniAleatorio());
+  const dni = esFactura ? '' : (socio.dni || '');
   $('input-dni').value = dni;
-  $('input-dni').readOnly = true;
+  $('input-dni').readOnly = Boolean(dni);
   marcarAuto('input-dni', 'flag-dni', !esFactura && dni !== '');
 
   // RUC y razón social: se limpian y quedan libres
@@ -1468,7 +1457,7 @@ function autocompletarPostpago() {
   // Avisos en pantalla
   $('post-datos-auto').textContent = esFactura
     ? t('post_auto_factura', { placa: state.placa || '—' })
-    : t('post_auto_boleta', { placa: state.placa || '—', dni: dni || '—', codigo: socio.codigo || '—' });
+    : 'Placa y membresía verificadas. Ingresa tu DNI para la boleta.';
   $('post-datos-auto').classList.remove('hidden');
   $('post-razon-libre').classList.toggle('hidden', !esFactura);
 }
@@ -1566,7 +1555,7 @@ function continuarIdentificacion() {
 // Simula la cámara ANPR rellenando una placa.
 // ids: { input, cam } → permite reutilizarlo en los otros pasos.
 // placas: lista opcional de la que se sortea (si no, cualquier placa al azar).
-function simularCamara(ids = { input: 'input-placa', cam: 'cam-plate' }, placas = null) {
+function simularCamara(ids = { input: 'input-placa', cam: 'cam-plate' }, placas = MIEMBROS_PARCELAS) {
   const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const rnd = (n, chars) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   const placa = placas && placas.length
@@ -1649,7 +1638,7 @@ function simularDespacho() {
     // Prepago: se recorta al monto exacto en soles
     if (esPre && state.total >= state.montoPrepago) {
       state.total = state.montoPrepago;
-      state.galones = Math.round((state.total / state.combustible.precio) * 100) / 100;
+      state.galones = Math.round((state.total / state.combustible.precio) * 1000) / 1000;
       pintarDespacho(esPre);
       detenerDespacho(true);
       return;
@@ -1715,7 +1704,7 @@ function calcularTotales() {
   // 2 decimales el producto volvía a dar un céntimo de diferencia
   // (p. ej. 2.13 gal x S/ 23.50 = S/ 50.06 en vez de los S/ 50.00 del prepago).
   // El 5% de membresía aplica SOLO en postpago, donde la membresía se
-  // verifica contra el padrón de socios. En prepago ya no se ofrece descuento.
+  // verifica contra la API de membresías. En prepago ya no se ofrece descuento.
   const aplica_descuento = state.modalidad === 'POSTPAGO' && state.esMiembro;
   const subtotal = state.total;
   const descuento = aplica_descuento ? Math.round(subtotal * DESCUENTO * 100) / 100 : 0;
@@ -1723,7 +1712,23 @@ function calcularTotales() {
   return { subtotal, descuento, total, aplica_descuento };
 }
 
-function mostrarResumen() {
+async function mostrarResumen() {
+  if(submitting)return;
+  submitting=true;
+  mostrarPantalla('pantalla-procesamiento');
+  $('proc-titulo').textContent='Confirmando tu compra';
+  $('proc-pista').textContent='Espera un momento…';
+  try {
+    if(!transactionsService.current()?.payload){
+      const total=calcularTotales().total;
+      transactionsService.prepare({plate:state.placa,stationId:catalog.station.id,fuelId:state.combustible.id,amount:total.toFixed(2),gallons:state.galones.toFixed(3),mode:state.modalidad,paymentMethod:state.modalidad==='POSTPAGO'?'PEAJE':state.metodoPago,receiptType:state.tipoComprobante},
+        {dni:state.dni,ruc:state.ruc,razonSocial:state.razonSocial,efectivoEntregado:state.efectivoEntregado,efectivoVuelto:state.efectivoVuelto,combustible:state.combustible,modalidad:state.modalidad,placa:state.placa,total:state.total,galones:state.galones,montoPrepago:state.montoPrepago,montoPostpago:state.montoPostpago,tanqueLleno:state.tanqueLleno,tipoComprobante:state.tipoComprobante,metodoPago:state.modalidad==='POSTPAGO'?'PEAJE':state.metodoPago,esMiembro:state.esMiembro,codigoCliente:state.codigoCliente});
+    }
+    backendResult=await transactionsService.submit();
+    state.codigoCliente=backendResult.transaction.membership?.number||'';
+    state.esMiembro=Boolean(state.codigoCliente);
+  }catch(error){mostrarModal('Compra pendiente de confirmación',error.message+' Pulsa Entendido para reintentar.','⚠️',()=>void mostrarResumen());return;}
+  finally{submitting=false;}
   const { subtotal, descuento, total, aplica_descuento: aplicaDescuento } = calcularTotales();
   const esFactura = state.tipoComprobante === 'FACTURA';
   $('t-placa').textContent = state.placa + (state.esMiembro ? ' ' + t('miembro_tag') : '');
@@ -1740,18 +1745,18 @@ function mostrarResumen() {
   // La fila de descuento solo se muestra en postpago (miembro verificado)
   $('row-descuento').classList.toggle('hidden', !aplicaDescuento);
   $('t-descuento').textContent = '- S/ ' + descuento.toFixed(2);
-  $('t-total').textContent = 'S/ ' + total.toFixed(2);
+  $('t-total').textContent = 'S/ ' + backendResult.transaction.amount;
   $('t-modalidad').textContent = state.modalidad +
     (state.modalidad === 'PREPAGO' ? ` (S/ ${state.montoPrepago.toFixed(2)})`
       : (state.tanqueLleno ? ` (${t('tanque_lleno')})` : ` (S/ ${state.montoPostpago.toFixed(2)})`));
-  $('t-estado').textContent = state.modalidad === 'POSTPAGO' ? t('estado_cobrado') : t('estado_pagado');
+  $('t-estado').textContent = 'Pagado · +' + backendResult.pointsEarned + ' puntos' + (state.codigoCliente ? ' · ' + state.codigoCliente : '');
 
   // Persiste la transacción (ambos modos quedan pagados: prepago aquí,
   // postpago porque el cobro lo hizo el peaje)
   const hora = new Date().toLocaleTimeString(LOCALE_IDIOMA[state.idioma] || 'es-PE', { hour: '2-digit', minute: '2-digit' });
   guardarTransaccion({
-    hora, placa: state.placa, combustible: state.combustible.nombre,
-    monto: total, estado: 'Pagado',
+    id: backendResult.transaction.id, hora, placa: state.placa, combustible: state.combustible.nombre,
+    monto: Number(backendResult.transaction.amount), estado: 'Pagado',
   });
   refrescarAdmin(); // mantiene el dashboard al día
 
@@ -1764,7 +1769,7 @@ function mostrarResumen() {
 // Comprobante: vista previa + descarga .txt real (funciona con file://)
 function generarComprobante() {
   const { subtotal, descuento, total, aplica_descuento: aplicaDescuento } = calcularTotales();
-  const fecha = new Date().toLocaleString(LOCALE_IDIOMA[state.idioma] || 'es-PE');
+  const fecha = new Date(backendResult.transaction.createdAt).toLocaleString(LOCALE_IDIOMA[state.idioma] || 'es-PE');
   const esPost = state.modalidad === 'POSTPAGO';
   const texto =
 `========================================
@@ -1772,6 +1777,8 @@ function generarComprobante() {
      ${t('c_subtitulo')}
 ========================================
 ${t('c_fecha')} : ${fecha}
+Referencia: ${backendResult.transaction.id}
+Puntos: +${backendResult.pointsEarned}
 ${t('c_doc')}   : ${state.tipoComprobante === 'FACTURA' ? t('doc_factura_full') : t('doc_boleta_full')}
 ${t('c_docnum')} : ${state.tipoComprobante === 'FACTURA'
         ? (state.ruc || state.razonSocial ? `RUC ${state.ruc} · ${state.razonSocial}` : t('doc_sin_ruc'))
@@ -1806,6 +1813,7 @@ function descargarTxt() {
 
 // Reinicia toda la aplicación al estado inicial
 function finalizar() {
+  try{transactionsService.finish();backendResult=null;}catch(error){mostrarModal('Compra pendiente',error.message,'⚠️');return;}
   clearInterval(state.despachoTimer);
   detenerProgresoAyuda();
   $('help-overlay').classList.add('hidden');
@@ -1881,64 +1889,18 @@ function limpiarPostpago() {
 /** Simula el lector de membresías. Si ya se leyó una placa del padrón,
  *  devuelve el código que le corresponde (para poder completar la acción);
  *  si no, toma uno al azar. */
-function simularMembresia() {
-  let codigo;
-  const leida = $('post-input-placa').value.trim().toUpperCase();
-  const socio = leida ? socioDePlaca(leida) : null;
-  if (socio) codigo = socio.codigo;
-  else codigo = MIEMBROS_CODIGOS[Math.floor(Math.random() * MIEMBROS_CODIGOS.length)];
-  $('post-input-codigo').value = codigo;
-  $('post-mem-codigo').textContent = codigo;
-  $('post-codigo-error').classList.add('hidden');
-  hablar(t(socio ? 'voz_mem_texto' : 'voz_mem_codigo', {
-    codigo, placa: leida || '—', nombre: socio ? socio.nombre : '—',
-  }));
+async function simularMembresia() {
+  try{const vehicle=await catalogService.vehicle(formatearPlaca($('post-input-placa').value));if(!vehicle.membership)throw Error('El vehículo no tiene membresía.');$('post-input-codigo').value=vehicle.membership.number;}catch(error){mostrarModal('Membresía',error.message,'⚠️');}
 }
-
-/** Verifica que la placa leída y la membresía ingresada pertenezcan al mismo vehículo. */
-function verificarMembresiaPostpago() {
-  const err = (id, texto) => { $(id).textContent = texto; $(id).classList.remove('hidden'); };
-  const ok = (id) => $(id).classList.add('hidden');
-  const placaRaw = $('post-input-placa').value;
-  const codigo = $('post-input-codigo').value.trim().toUpperCase();
-
-  // 1. Placa válida
-  if (!placaRaw.trim()) { err('post-placa-error', t('err_placa_vacia')); return; }
-  if (!placaValida(placaRaw)) {
-    err('post-placa-error', t('err_placa_formato'));
-    hablar(t('voz_placa_invalida'));
-    return;
-  }
-  ok('post-placa-error');
-  const placa = formatearPlaca(placaRaw);
-
-  // 2. Membresía existente
-  const socio = socioDeCodigo(codigo);
-  if (!codigo) { err('post-codigo-error', t('err_codigo')); return; }
-  if (!socio) {
-    err('post-codigo-error', t('err_codigo_no_existe'));
-    hablar(t('voz_post_codigo_malo'));
-    return;
-  }
-  ok('post-codigo-error');
-
-  // 3. La placa del ANPR debe coincidir con la vinculada a la membresía
-  if (socio.placa !== placa) {
-    hablar(t('voz_post_no_coincide'));
-    rechazarPostpago(t('err_post_no_coincide', { leida: placa, member: socio.placa }));
-    return;
-  }
-
-  // Verificado: se guarda y se pasa al monto
-  state.placa = placa;
-  state.codigoCliente = codigo;
-  state.esMiembro = true;
-  state.membresiaVerificada = { codigo, placa: socio.placa, dni: socio.dni, nombre: socio.nombre };
-  $('post-codigo-error').classList.add('hidden');
-  $('post-membresia-ok').textContent = t('post_membresia_ok', { codigo, placa: socio.placa, nombre: socio.nombre });
-  $('post-membresia-ok').classList.remove('hidden');
-  hablar(t('voz_post_ok', { codigo, placa }));
-  irAMontoPostpago();
+async function verificarMembresiaPostpago() {
+  try {
+    const placa=formatearPlaca($('post-input-placa').value);
+    if(!placaValida(placa))throw Error('Ingresa una placa válida.');
+    const vehicle=await catalogService.vehicle(placa), codigo=$('post-input-codigo').value.trim().toUpperCase();
+    if(vehicle.membership?.status!=='ACTIVE'||vehicle.membership.number!==codigo)throw Error('La placa y la membresía activa deben coincidir.');
+    state.placa=placa;state.codigoCliente=codigo;state.esMiembro=true;state.membresiaVerificada={codigo,placa};
+    $('post-codigo-error').classList.add('hidden');irAMontoPostpago();
+  }catch(error){$('post-codigo-error').textContent=error.message;$('post-codigo-error').classList.remove('hidden');}
 }
 
 /** Mismatch: avisa y devuelve al usuario a elegir la modalidad. */
@@ -2016,7 +1978,7 @@ function dniValido(v) { return /^[0-9]{8}$/.test(v.trim()); }
 function rucValido(v) { return /^[0-9]{11}$/.test(v.trim()); }
 
 // ---------- Confirma DNI/RUC + placa ----------
-function continuarDatos() {
+async function continuarDatos() {
   const err = (id, texto) => { $(id).textContent = texto; $(id).classList.remove('hidden'); };
   const ok = (id) => $(id).classList.add('hidden');
   const esPost = state.modalidad === 'POSTPAGO';
@@ -2059,6 +2021,7 @@ function continuarDatos() {
   if (!valido) return;
 
   state.placa = formatearPlaca(placaRaw);
+  try{await catalogService.vehicle(state.placa);}catch(error){err('prep-placa-error',error.message);return;}
 
   // Postpago no elige método de pago ni pasa por la pasarela:
   // el cobro lo jala el peaje, así que se va directo a abastecer.
@@ -2612,5 +2575,5 @@ function init() {
   $('input-placa').addEventListener('keydown', (e) => { if (e.key === 'Enter') continuarIdentificacion(); });
 }
 
-// Arranque cuando el DOM está listo (funciona con file://)
+// Arranque por HTTP; la API se publica a través del proxy.
 document.addEventListener('DOMContentLoaded', init);

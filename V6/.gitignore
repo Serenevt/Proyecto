@@ -7,3 +7,24 @@ Backend/dist/
 Backend/coverage/
 Backend/test-results/
 Backend/*.log
+
+FrontEnd_1/dist/
+FrontEnd_1/node_modules/
+tools/test-results/
+
+# Generated or local files anywhere inside V6.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules/
+**/dist/
+**/coverage/
+**/test-results/
+**/playwright-report/
+**/*.log
+**/*.tmp
+**/*.apk
+**/*.aab
+**/android/.gradle/
+**/android/build/
+**/android/app/build/

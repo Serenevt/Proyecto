@@ -4,7 +4,12 @@ import { hash } from 'bcryptjs';
 const prisma = new PrismaClient();
 async function seed() {
   const password = process.env.DEMO_PASSWORD;
-  if (!password || password.length < 8 || Buffer.byteLength(password) > 72)
+  if (
+    !password ||
+    password.includes('REPLACE_') ||
+    password.length < 8 ||
+    Buffer.byteLength(password) > 72
+  )
     throw new Error('Set DEMO_PASSWORD (8-72 bytes)');
   const passwordHash = await hash(password, 12);
   await prisma.$transaction(async (tx) => {

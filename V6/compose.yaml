@@ -1,15 +1,33 @@
 name: primax-v6
 
 services:
+  frontend1:
+    build:
+      context: ./FrontEnd_1
+    ports:
+      - "127.0.0.1:8081:80"
+    environment:
+      KIOSK_API_KEY: ${KIOSK_SECRET:-${KIOSK_API_KEY:-}}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [app]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
   frontend2:
     build:
       context: ./FrontEnd_2
     ports:
       - "8082:80"
     restart: unless-stopped
+    networks: [app]
+    security_opt:
+      - no-new-privileges:true
 
   # Empty secret defaults allow frontend2 alone to run without a backend .env.
-  # The full stack still requires Backend/scripts/init-env.cjs; PostgreSQL and
+  # The full stack requires local .env credentials; PostgreSQL and
   # NestJS reject missing credentials at startup. Existing .env values win.
   postgres:
     image: postgres:17.6-bookworm
@@ -21,6 +39,7 @@ services:
       - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks: [data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -35,15 +54,16 @@ services:
     environment: &backend-env
       DATABASE_URL: postgresql://${POSTGRES_USER:-primax}:${POSTGRES_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-primax_v6}?schema=public
       JWT_SECRET: ${JWT_SECRET:-}
-      KIOSK_API_KEY: ${KIOSK_API_KEY:-}
+      KIOSK_API_KEY: ${KIOSK_SECRET:-${KIOSK_API_KEY:-}}
       POINTS_PER_SOL: ${POINTS_PER_SOL:-1}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081,http://localhost:5180}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081,http://localhost:8082,http://localhost:5180}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       PORT: 3000
     depends_on:
       postgres:
         condition: service_healthy
     command: ["npm", "run", "prisma:migrate"]
+    networks: [data]
     restart: "no"
 
   seed:
@@ -55,6 +75,7 @@ services:
       migrate:
         condition: service_completed_successfully
     command: ["node", "dist/prisma/seed.js"]
+    networks: [data]
     restart: "no"
 
   backend:
@@ -62,6 +83,7 @@ services:
       context: ./Backend
       target: runtime
     environment: *backend-env
+    networks: [app, data]
     ports:
       - "127.0.0.1:${PORT:-3000}:3000"
     depends_on:
@@ -83,10 +105,17 @@ services:
       context: ./Backend
       target: test
     environment: *backend-env
+    networks: [app, data]
     depends_on:
       backend:
         condition: service_healthy
-    command: ["sh", "-c", "npm test && npm run test:e2e && npm run lint && npm run build"]
+    command: ["sh", "-c", "npm test && KEEP_E2E_SCHEMA=1 npm run test:e2e && npm run lint && npm run build"]
 
 volumes:
   postgres_data:
+
+networks:
+  app:
+  # Separate bridge: frontends are not attached. Keep the loopback host port
+  # available for DBeaver and local tests (internal bridges suppress it).
+  data:
