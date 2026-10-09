@@ -2,6 +2,20 @@
 
 Aplicación independiente de membresía, beneficios y fidelización. HTML/CSS/JavaScript modular; sin backend, base de datos, cobros ni notificaciones reales. No depende de la interfaz de FuelFlow. Usa el logo del proyecto.
 
+## Ejecutar con Docker
+
+Desde `V6`: `docker compose up -d --build frontend2` y abrir
+http://localhost:8082. No requiere Node en el host ni `.env` para levantar solo
+este servicio. Docker Desktop no es obligatorio en Linux; Docker Engine y el
+plugin Docker Compose son suficientes. Ver [instrucciones para Debian 13 y el
+stack completo](../README.md).
+
+El Dockerfile construye `www/` con Node 22 y sirve ese resultado con Nginx. La
+interfaz, navegación, lógica demo y proyecto Capacitor se mantienen sin cambios;
+no se conecta al backend en esta fase.
+
+## Desarrollo local
+
 Requiere Node.js 22 o superior. Desde esta carpeta:
 
 ```sh
