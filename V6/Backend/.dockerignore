@@ -6,3 +6,8 @@ coverage
 !.env.example
 *.log
 test-results
+.git
+.idea
+.vscode
+playwright-report
+*.tmp

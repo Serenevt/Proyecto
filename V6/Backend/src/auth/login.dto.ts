@@ -9,7 +9,7 @@ export class LoginDto {
   @IsEmail()
   @MaxLength(254)
   email: string;
-  @ApiProperty({ example: 'Prime123', minLength: 1, maxLength: 72 })
+  @ApiProperty({ example: 'LOCAL_DEMO_PASSWORD', minLength: 1, maxLength: 72 })
   @IsString()
   @MinLength(1)
   @MaxLength(72)

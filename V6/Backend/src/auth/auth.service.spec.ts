@@ -16,13 +16,13 @@ describe('AuthService', () => {
       name: 'Diego',
       email: 'demo@primaxprime.pe',
       active: true,
-      passwordHash: await hash('Prime123', 4),
+      passwordHash: await hash('FixtureOnly123', 4),
     }),
   );
   it('login correcto devuelve JWT sin hash', async () => {
     const result = await service.login({
       email: 'demo@primaxprime.pe',
-      password: 'Prime123',
+      password: 'FixtureOnly123',
     });
     expect(result.accessToken).toBe('signed-token');
     expect(result.user).not.toHaveProperty('passwordHash');
@@ -36,16 +36,16 @@ describe('AuthService', () => {
   it('rechaza correo desconocido', async () => {
     users.findByEmail.mockResolvedValueOnce(null);
     await expect(
-      service.login({ email: 'missing@example.com', password: 'Prime123' }),
+      service.login({ email: 'missing@example.com', password: 'FixtureOnly123' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
   it('rechaza usuario inactivo aunque la contraseña sea correcta', async () => {
     users.findByEmail.mockResolvedValueOnce({
       active: false,
-      passwordHash: await hash('Prime123', 4),
+      passwordHash: await hash('FixtureOnly123', 4),
     });
     await expect(
-      service.login({ email: 'demo@primaxprime.pe', password: 'Prime123' }),
+      service.login({ email: 'demo@primaxprime.pe', password: 'FixtureOnly123' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

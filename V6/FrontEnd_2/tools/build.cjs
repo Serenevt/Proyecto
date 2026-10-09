@@ -1,1 +1,3 @@
 const fs=require('node:fs');const path=require('node:path');const root=path.resolve(__dirname,'..');const output=path.join(root,'www');fs.mkdirSync(output,{recursive:true});for(const name of ['index.html','styles','js','assets'])fs.cpSync(path.join(root,name),path.join(output,name),{recursive:true});console.log('Primax Prime: build listo en www/');
+
+const apiBase=process.env.PRIME_API_BASE_URL||'/api/v1';if(apiBase!=='/api/v1'&&!/^https?:\/\//.test(apiBase))throw Error('Invalid PRIME_API_BASE_URL');fs.writeFileSync(path.join(output,'js/config.js'),'export const API_BASE_URL = '+JSON.stringify(apiBase.replace(/\/$/,''))+';\n');
