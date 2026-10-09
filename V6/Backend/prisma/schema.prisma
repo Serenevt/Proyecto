@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TransactionStatus {
+  PAID
+}
+
+enum PurchaseMode {
+  PREPAGO
+  POSTPAGO
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TARJETA
+  YAPE
+  PLIN
+  PEAJE
+}
+
+enum PaymentStatus {
+  CAPTURED
+}
+
+enum ReceiptType {
+  BOLETA
+  FACTURA
+}
+
+enum RewardKind {
+  EARN
+  REDEEM
+}
+
+enum RedemptionStatus {
+  ISSUED
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @db.VarChar(254)
+  name         String      @db.VarChar(80)
+  passwordHash String      @db.VarChar(100)
+  active       Boolean     @default(true)
+  membership   Membership?
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+}
+
+model Membership {
+  id           String           @id @default(uuid()) @db.Uuid
+  number       String           @unique @db.VarChar(30)
+  userId       String           @unique @db.Uuid
+  user         User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status       MembershipStatus @default(ACTIVE)
+  vehicles     Vehicle[]
+  transactions Transaction[]
+  movements    RewardMovement[]
+  redemptions  Redemption[]
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+}
+
+model Vehicle {
+  id           String        @id @default(uuid()) @db.Uuid
+  plate        String        @unique @db.VarChar(7)
+  label        String        @db.VarChar(80)
+  membershipId String?       @db.Uuid
+  membership   Membership?   @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId])
+}
+
+model Station {
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique @db.VarChar(30)
+  name         String        @db.VarChar(100)
+  address      String        @db.VarChar(200)
+  active       Boolean       @default(true)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model Fuel {
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @unique @db.VarChar(30)
+  name           String        @db.VarChar(80)
+  pricePerGallon Decimal       @db.Decimal(10, 2)
+  active         Boolean       @default(true)
+  transactions   Transaction[]
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model Transaction {
+  id             String            @id @default(uuid()) @db.Uuid
+  operationId    String            @unique @db.Uuid
+  requestHash    String            @db.Char(64)
+  vehicleId      String            @db.Uuid
+  vehicle        Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  membershipId   String?           @db.Uuid
+  membership     Membership?       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  stationId      String            @db.Uuid
+  station        Station           @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuelId         String            @db.Uuid
+  fuel           Fuel              @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  amount         Decimal           @db.Decimal(12, 2)
+  currency       String            @default("PEN") @db.Char(3)
+  unitPrice      Decimal           @db.Decimal(10, 2)
+  gallons        Decimal?          @db.Decimal(12, 3)
+  pointsRate     Decimal           @db.Decimal(10, 4)
+  pointsEarned   Int
+  mode           PurchaseMode
+  receiptType    ReceiptType       @default(BOLETA)
+  status         TransactionStatus @default(PAID)
+  payment        Payment?
+  rewardMovement RewardMovement?
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+  @@index([vehicleId, createdAt])
+  @@index([stationId, createdAt])
+  @@index([fuelId])
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  transactionId String        @unique @db.Uuid
+  transaction   Transaction   @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(CAPTURED)
+  provider      String        @default("DEMO") @db.VarChar(30)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model RewardMovement {
+  id            String       @id @default(uuid()) @db.Uuid
+  membershipId  String       @db.Uuid
+  membership    Membership   @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  kind          RewardKind
+  points        Int
+  transactionId String?      @unique @db.Uuid
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  redemptionId  String?      @unique @db.Uuid
+  redemption    Redemption?  @relation(fields: [redemptionId], references: [id], onDelete: Restrict)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+}
+
+model Benefit {
+  id          String       @id @default(uuid()) @db.Uuid
+  code        String       @unique @db.VarChar(30)
+  title       String       @db.VarChar(120)
+  description String       @db.VarChar(500)
+  category    String       @db.VarChar(80)
+  pointsCost  Int
+  active      Boolean      @default(true)
+  redemptions Redemption[]
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+}
+
+model Redemption {
+  id             String           @id @default(uuid()) @db.Uuid
+  operationId    String           @unique @db.Uuid
+  membershipId   String           @db.Uuid
+  membership     Membership       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  benefitId      String           @db.Uuid
+  benefit        Benefit          @relation(fields: [benefitId], references: [id], onDelete: Restrict)
+  pointsSpent    Int
+  status         RedemptionStatus @default(ISSUED)
+  rewardMovement RewardMovement?
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+  @@index([benefitId])
+}

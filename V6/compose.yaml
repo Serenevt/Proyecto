@@ -1,0 +1,92 @@
+name: primax-v6
+
+services:
+  frontend2:
+    build:
+      context: ./FrontEnd_2
+    ports:
+      - "8082:80"
+    restart: unless-stopped
+
+  # Empty secret defaults allow frontend2 alone to run without a backend .env.
+  # The full stack still requires Backend/scripts/init-env.cjs; PostgreSQL and
+  # NestJS reject missing credentials at startup. Existing .env values win.
+  postgres:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-primax_v6}
+      POSTGRES_USER: ${POSTGRES_USER:-primax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./Backend
+      target: build
+    environment: &backend-env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-primax}:${POSTGRES_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-primax_v6}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-}
+      KIOSK_API_KEY: ${KIOSK_API_KEY:-}
+      POINTS_PER_SOL: ${POINTS_PER_SOL:-1}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081,http://localhost:5180}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npm", "run", "prisma:migrate"]
+    restart: "no"
+
+  seed:
+    build:
+      context: ./Backend
+      target: build
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["node", "dist/prisma/seed.js"]
+    restart: "no"
+
+  backend:
+    build:
+      context: ./Backend
+      target: runtime
+    environment: *backend-env
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: ./Backend
+      target: test
+    environment: *backend-env
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: ["sh", "-c", "npm test && npm run test:e2e && npm run lint && npm run build"]
+
+volumes:
+  postgres_data:
