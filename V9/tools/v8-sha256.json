@@ -1,0 +1,906 @@
+[
+    {
+        "path":  ".env",
+        "sha256":  "24F7A014CFD21F1CDDB61103DF5510FDAF02501DBAA36ADFCAAB50035348E44B"
+    },
+    {
+        "path":  ".env.example",
+        "sha256":  "42E0AC20075B5FCA67C6DCB05C1041894AAADE25097BE4145D8EA502353F5636"
+    },
+    {
+        "path":  ".gitattributes",
+        "sha256":  "26A12F95D5DAA0C5A000B419D3209A461066E0DCBA3B25A083BF9754999A0DF3"
+    },
+    {
+        "path":  ".gitignore",
+        "sha256":  "7FB7E4033AF193B9DE7B6302AEFB25D98A55D7697CD136AA8BC390C0A6EF8F58"
+    },
+    {
+        "path":  "compose.yaml",
+        "sha256":  "17E247F41CD5D469A34315E69CB233D9D12105318E902E630A1C8525723D4461"
+    },
+    {
+        "path":  "DOCKER-RESULTS.md",
+        "sha256":  "7DE9D7762D9FA9508FF92661D1C2E4CAEC77048484AB8298B08857D68395FFFF"
+    },
+    {
+        "path":  "INTEGRATION-RESULTS.md",
+        "sha256":  "3ACEF5B74856FDE73DE6A53A8C297BBAA0444ED6AFDC6B94497C25E2E444208B"
+    },
+    {
+        "path":  "README.md",
+        "sha256":  "C793E2C6CB0D39EF15FCF464CAEDB04D8BC44D8ED18DE5F9DFC604B44E25E552"
+    },
+    {
+        "path":  "Backend\\.dockerignore",
+        "sha256":  "F1C8306FC63A026DEDCB2A21CB3D4A6D646BFE82001A6FF5BCA5F7CEDE928DDF"
+    },
+    {
+        "path":  "Backend\\.env.example",
+        "sha256":  "704FBBA95E6B631B12BCFD2C4529308E16D5BE9891CB3103C09DD389E45E432E"
+    },
+    {
+        "path":  "Backend\\.prettierrc.json",
+        "sha256":  "32DCD743A0FFCA59A737C87ABCFCC3F57A0CEDE5CEDB6A8B1B68D32A3B6D4506"
+    },
+    {
+        "path":  "Backend\\Dockerfile",
+        "sha256":  "4228228B841CC394B89ECCFE84F2509E7DDFFFE5AA6CC83DC8E3E2A9409A127C"
+    },
+    {
+        "path":  "Backend\\eslint.config.cjs",
+        "sha256":  "797D035C30223C560091CA2CFF966511C9D7EC07B8BA6815EA6F78A30AAA1CCF"
+    },
+    {
+        "path":  "Backend\\jest.config.cjs",
+        "sha256":  "2CE2FE46183AD1270AD2478F8396BA0A725C14E4F25CA1544646BD01B8BCCD75"
+    },
+    {
+        "path":  "Backend\\package-lock.json",
+        "sha256":  "A71A01B4EEF14B2C7115F0D19AE673F41071484890A4799471DF8B7AAF3E8F0E"
+    },
+    {
+        "path":  "Backend\\package.json",
+        "sha256":  "0CE6E44580E1ACE6A165ABA1950933020711506471DEDBE4E5249ECF881B1E9C"
+    },
+    {
+        "path":  "Backend\\README.md",
+        "sha256":  "C4F12A018749A9EC28AD8404B632116332CB33DA24F3BB504773127F1D308E7F"
+    },
+    {
+        "path":  "Backend\\tsconfig.build.json",
+        "sha256":  "143F714555B60BFBFDAB39B9C4C143992E7848E50366C22DE42BA5CC08D11100"
+    },
+    {
+        "path":  "Backend\\tsconfig.json",
+        "sha256":  "1C60CB42C075128A91BDEBB85ECFAF337D0E6512460D231C968BE4A5FD2D915E"
+    },
+    {
+        "path":  "Backend\\VERIFICATION.md",
+        "sha256":  "C0C160AEB70619838EE315ABBAFCDA7F0449EF6DA9CDBF52302EEB1BBA0B8901"
+    },
+    {
+        "path":  "Backend\\prisma\\demo-query.sql",
+        "sha256":  "CEEF2F1352F06D1C7B5FFC14D6CF28085645DE9B7DAD962EE38E546A87677F28"
+    },
+    {
+        "path":  "Backend\\prisma\\schema.prisma",
+        "sha256":  "A6AFDE8CFCF825DC0D698FB0844CBB6BD74531DB5CEAC6095C3D19C1362C8FCB"
+    },
+    {
+        "path":  "Backend\\prisma\\seed.ts",
+        "sha256":  "9B081A842D50596CBD0E9AF1E51B5D5E1AA05AB20B53E921A3A5610B99CC9534"
+    },
+    {
+        "path":  "Backend\\prisma\\migrations\\migration_lock.toml",
+        "sha256":  "99836963713B4F5B269AD49AF0ED3D7B0B2E336115C2F92DC9AC683D139D0900"
+    },
+    {
+        "path":  "Backend\\prisma\\migrations\\20261008235020_init\\migration.sql",
+        "sha256":  "0FDFD41B4AA8B09A8DE5B0E840259AAD2FCCEC60AFC3441472FA1B634C93AEC3"
+    },
+    {
+        "path":  "Backend\\prisma\\migrations\\20261008235100_constraints\\migration.sql",
+        "sha256":  "464E43009A57EB7C97DA9A608B057FA1C4BB820F41997A6D553FC065623DE7EB"
+    },
+    {
+        "path":  "Backend\\prisma\\migrations\\20261009120000_postpago_wallet\\migration.sql",
+        "sha256":  "5EF896AFC897FCFE645E6F463C981D9F8231FFF488F861AA025B394C918A92BD"
+    },
+    {
+        "path":  "Backend\\prisma\\migrations\\20261009130000_authorization_dispensing\\migration.sql",
+        "sha256":  "1BFE7579CBE6F048315DF69E7A83A1C4932595B9F7C882F821CEE66CF8646A5B"
+    },
+    {
+        "path":  "Backend\\prisma\\migrations\\20261009131000_dispense_progress\\migration.sql",
+        "sha256":  "9A61D44DFF18206A964209EC8E1A9E5594F6BDDF77CB28A6D78643D692E51BDB"
+    },
+    {
+        "path":  "Backend\\scripts\\demo.cjs",
+        "sha256":  "ED3A40BE4CFBB6556EFF01F895F73C643766413E4A774BA771D8F2197593817B"
+    },
+    {
+        "path":  "Backend\\scripts\\init-env.cjs",
+        "sha256":  "BB5FDAF9A11C9E043932E3635E4CD5392066E439D367988EC37EEAD15AC568C2"
+    },
+    {
+        "path":  "Backend\\src\\app.module.ts",
+        "sha256":  "311ECC604FB0BEA31FAFFD4CA33D82371F5819095418D7B68D0F1991000E2953"
+    },
+    {
+        "path":  "Backend\\src\\main.ts",
+        "sha256":  "DC1FA7DE3EEFDDC70B557A199C294CA5BB8C27A8BEFBB4650129DC298B1A1F33"
+    },
+    {
+        "path":  "Backend\\src\\setup-app.ts",
+        "sha256":  "B56938BD8CAD84A42D73D340A26A2D9378483C1DDCD2A8C135D76E6190C9B951"
+    },
+    {
+        "path":  "Backend\\src\\auth\\access.guard.ts",
+        "sha256":  "C85BA50BC39FE2102B83A5F30F24652BC893756EB6A3432B58758F5BF46E8553"
+    },
+    {
+        "path":  "Backend\\src\\auth\\access.ts",
+        "sha256":  "BB04C837A0143F505A70073E9CD7D03C9DA167BBDEA88BF82ACBDB88B30B39BF"
+    },
+    {
+        "path":  "Backend\\src\\auth\\auth.controller.ts",
+        "sha256":  "7BB95C693326071A4A9970D1E9C4436F3125B12DB855091B03F230D04C4542D5"
+    },
+    {
+        "path":  "Backend\\src\\auth\\auth.module.ts",
+        "sha256":  "9352EB4CF7A63CD12EF2C6E6853756848AEF9906E502825D2C88F15B03572786"
+    },
+    {
+        "path":  "Backend\\src\\auth\\auth.service.spec.ts",
+        "sha256":  "3BD42003AC68644843E908180F514083207C360CA6B9D83D3B289359031BE665"
+    },
+    {
+        "path":  "Backend\\src\\auth\\auth.service.ts",
+        "sha256":  "962CAD80E2492200FA7104009355ED5A30FE4C7989C8B4BB95602E6A40D288A6"
+    },
+    {
+        "path":  "Backend\\src\\auth\\login.dto.ts",
+        "sha256":  "6D2795C72ACA4368ADE1F1DFCD609D551A7A24F3AAFD385954B3A2B8C14151C2"
+    },
+    {
+        "path":  "Backend\\src\\benefits\\benefits.controller.ts",
+        "sha256":  "05CFF27227A8CF47DC3279B93F3DEEF39667CFD10A559D89AF6A4D4B329D8836"
+    },
+    {
+        "path":  "Backend\\src\\benefits\\benefits.module.ts",
+        "sha256":  "712635C28C02073BF81420DC8CE3B5A0043B9F7E687BD11EFD97D04D9B700872"
+    },
+    {
+        "path":  "Backend\\src\\benefits\\benefits.repository.ts",
+        "sha256":  "B1503C743645514D1B3EB25A4FFD5C9D3D17DEC75A51A4E9D9686D547D5C6329"
+    },
+    {
+        "path":  "Backend\\src\\benefits\\benefits.service.ts",
+        "sha256":  "CDD9316B109FB680F76636FC93D4ED3BB00FD18ED3703F0857D8BFD30B15CF7D"
+    },
+    {
+        "path":  "Backend\\src\\common\\http-error.filter.ts",
+        "sha256":  "7FB34B617D1555F994518CE20AEC7A7B00206E45745453D56FC1EB7CC963EA5D"
+    },
+    {
+        "path":  "Backend\\src\\common\\pagination.dto.ts",
+        "sha256":  "DD74DCC2EAC93F6E15B0DFD4D4ED981748F680DB6D455B2DD867D8140326FCE7"
+    },
+    {
+        "path":  "Backend\\src\\common\\response.dto.ts",
+        "sha256":  "D5016B0E83D8536B1023229B7C5251E28D2DD83ACF45C9BD98F1FF502ECA3949"
+    },
+    {
+        "path":  "Backend\\src\\config\\environment.ts",
+        "sha256":  "3D0874BD56FF71DAE714FAB8164FA0B0B3CE32F3971F92108D5DBA3B23F6708D"
+    },
+    {
+        "path":  "Backend\\src\\config\\load-env.ts",
+        "sha256":  "F0C2850BC60A3B62821FA1B92AC2325C2B80044F2B5A771A651D9C4E59D65EB9"
+    },
+    {
+        "path":  "Backend\\src\\fuels\\fuels.controller.ts",
+        "sha256":  "AEA9F7ED31DFED3A8C1EF5FE61CE19B9BC0C7B840E139998D2FD28EFB4A3DC07"
+    },
+    {
+        "path":  "Backend\\src\\fuels\\fuels.module.ts",
+        "sha256":  "A8545B41989C444F3F406256482BE6E998A603E511C95CECC133134674666255"
+    },
+    {
+        "path":  "Backend\\src\\fuels\\fuels.repository.ts",
+        "sha256":  "AF4BDD903D88E77E4322CFEB54541B3D7F8D02D52823EB9768827C2C7A616508"
+    },
+    {
+        "path":  "Backend\\src\\fuels\\fuels.service.ts",
+        "sha256":  "CB0760FBD46F618FFC6A97CEE48A7F90C856A583BFC7B192CAFA80D22FAFEA70"
+    },
+    {
+        "path":  "Backend\\src\\health\\health.controller.ts",
+        "sha256":  "1D782B19E290C8E3F4FEC06239F0A010B1B73080E78F87530F21EBC89D259F03"
+    },
+    {
+        "path":  "Backend\\src\\health\\health.module.ts",
+        "sha256":  "76A4985F22BECACA4E6483D1B870FD0E388079452CAC71466D8DC73E74A32FF2"
+    },
+    {
+        "path":  "Backend\\src\\health\\health.service.ts",
+        "sha256":  "27E9EB84248085B4CA28DBD265C025A616360A1BC019522C61F8E0391C3DFF18"
+    },
+    {
+        "path":  "Backend\\src\\memberships\\memberships.controller.ts",
+        "sha256":  "5D6100F1A084B72D7B1B1BD7CCB4C8C9951591665153B2DC5831A7C5FC74C386"
+    },
+    {
+        "path":  "Backend\\src\\memberships\\memberships.module.ts",
+        "sha256":  "838BBEF2A5F110B8C581B4F05A025AB007DEC0E5A94E081E6023F3465ACFE946"
+    },
+    {
+        "path":  "Backend\\src\\memberships\\memberships.repository.ts",
+        "sha256":  "D50EBAF11491803F489764C7D3659F9152993B191FEE0AEAB9F2836C6A8E67BF"
+    },
+    {
+        "path":  "Backend\\src\\memberships\\memberships.service.ts",
+        "sha256":  "1B4F4E20729DE0D7B127DBA01E35131826770048E853E59395D8E40D70CCD23A"
+    },
+    {
+        "path":  "Backend\\src\\payments\\payments.module.ts",
+        "sha256":  "60F884449DAD75ECCD59A5E190BB5814010DC45B89B711901BFC38513ADBBDD7"
+    },
+    {
+        "path":  "Backend\\src\\payments\\payments.service.spec.ts",
+        "sha256":  "7C6DD3C0B3A4D062933A18375B26362EA045201560AF67EF96364A86485E94D7"
+    },
+    {
+        "path":  "Backend\\src\\payments\\payments.service.ts",
+        "sha256":  "93C205755896D515C4855FA43B99BEB3EABA8F3BBA15F43AF60E41AD9DDF5EA8"
+    },
+    {
+        "path":  "Backend\\src\\prisma\\prisma.module.ts",
+        "sha256":  "4DDB0DDF2A30F78F4A9052F7F11BFF7422BA3E15D9E7BDDE0A9F605EB05EA359"
+    },
+    {
+        "path":  "Backend\\src\\prisma\\prisma.service.ts",
+        "sha256":  "7F5B4ECEACF01F0D507EF5FBCAC50230DDB0AD9B2C62A55E2725782E7BAC5BB7"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\points-policy.service.spec.ts",
+        "sha256":  "4DD99F36CAD97641911ECED798F3A2FC438C0EF8836BC7026B6E0E6E6795D646"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\points-policy.service.ts",
+        "sha256":  "54235709FEFFB9DBA37129B19A4697E35974634552446A42B6DCBECEFCF58746"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\redeem.dto.ts",
+        "sha256":  "232245E782D3F20E7EDCAFC84EE982119520D5284F6B2C47D17DBF6E1D086F2B"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\rewards.controller.ts",
+        "sha256":  "931D15861165F8514747D21D3211AE037B254C99D53B6775CF0C9A49F7E28339"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\rewards.module.ts",
+        "sha256":  "6CA4611E3A81136A16D1948FA365A007F34A779058A3E4CA14CDA69325C5BAB0"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\rewards.repository.ts",
+        "sha256":  "CE26D731FC50EE8209DC15EEB1CF0232C236A3FA6E037E8AC143CBA20C9EAB90"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\rewards.service.spec.ts",
+        "sha256":  "57BD42850E93B8BBCAD7D5761C946E0C5AE8539890BB555439FAE3B675C46FB5"
+    },
+    {
+        "path":  "Backend\\src\\rewards\\rewards.service.ts",
+        "sha256":  "F268866A2736EAEF7562EC5A00CB39117C9AE3790FB8F512574B194B559C2759"
+    },
+    {
+        "path":  "Backend\\src\\stations\\stations.controller.ts",
+        "sha256":  "075F5256D27FE557480332BD49A0950B2E03235821CE12B626E2074DDDCB0BC4"
+    },
+    {
+        "path":  "Backend\\src\\stations\\stations.module.ts",
+        "sha256":  "804A277F6A60DBBDFBC7350FE7ED03232BC6554C7C974CDB7FB2BF12E65138A3"
+    },
+    {
+        "path":  "Backend\\src\\stations\\stations.repository.ts",
+        "sha256":  "D949F97CCB6A644E092CF10C60CA7AE2E6DA32936239B6CE56E19A013F9F4676"
+    },
+    {
+        "path":  "Backend\\src\\stations\\stations.service.ts",
+        "sha256":  "ADC833C5882E78853E31DAAE538D9560E4DD0972CEAD699C677C54F1971C1182"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\authorizations.controller.ts",
+        "sha256":  "399C0A00BA6BC7AE55EFEA03F8919C395E59CBC49AEC1862B233D3C405052A69"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\authorizations.repository.ts",
+        "sha256":  "6EC618BFCDAA0CEE29DBF3F69715FE9F5D22A4039DDE88F0F0FFB6EBCF0F469B"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\authorizations.service.spec.ts",
+        "sha256":  "3B477BC66F9C26A8B8DD5342AFEF39B53F90D559411B46F369223449C5CF453E"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\authorizations.service.ts",
+        "sha256":  "9DA12415484475DA1FA8E98E085272C0DC8563FFC3884300DD402CD0F2989874"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\create-authorization.dto.ts",
+        "sha256":  "0EC0DD7F8FE89C0047A770F63A5AC1A54D642AEA160AAF071E8AED0D0ECC1793"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\create-transaction.dto.ts",
+        "sha256":  "101A41924443F74583EC6435FA36FD56E3D6EDF45D508FFE4401D63D2E5D85A5"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\dispense-progress.dto.ts",
+        "sha256":  "3F5AA27176AD0B4A6C8F1E0573B440ADB0B4153AE6ACC846D509FD857875AA81"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transaction-response.dto.ts",
+        "sha256":  "9640D9160B8D9BDBB6BE1AFE3E8AB935B64411B18739E9046B634A458620796D"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transaction.model.ts",
+        "sha256":  "C5461478FA25ACAAE8191C14A8829F1EAFF7B69C3DAAB7F28F73A3E179AFBEE1"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transactions.controller.ts",
+        "sha256":  "FE389D7CB6967F874239A1CBB217183527C0F4D28CE0DD12DAB73B9C28C7AC3E"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transactions.module.ts",
+        "sha256":  "D44E88E5609935C8427D7C29BDC8380F9D296360686176F17B90AAB9AC82399B"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transactions.repository.ts",
+        "sha256":  "83D1E04FAD6A5B872DD4BA14C75A90E2C26EE3A03DF29D4F1A3EA2B9202F9331"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transactions.service.spec.ts",
+        "sha256":  "2EFD1D9AB48796F47428387A632C458C6BDED904C0E46548D437C899052E24EB"
+    },
+    {
+        "path":  "Backend\\src\\transactions\\transactions.service.ts",
+        "sha256":  "45A3EC81FDD60E60BAABEFBB3097FA3B0C23964EE37D2F950A666E3A871BB487"
+    },
+    {
+        "path":  "Backend\\src\\users\\users.module.ts",
+        "sha256":  "2C160FA5456302F39737EFE37DDDA575B7C3A5973DA5F4403F3EE9648230FDA2"
+    },
+    {
+        "path":  "Backend\\src\\users\\users.repository.ts",
+        "sha256":  "62769704E3582E8AC8E5F75289044302DA8EF8D39230DEB3F1D9D4958D1EDCE0"
+    },
+    {
+        "path":  "Backend\\src\\users\\users.service.ts",
+        "sha256":  "3B5D954B06CAE24EF90A4C32A502CD433013FD5669512B4E16D811064F67B0BE"
+    },
+    {
+        "path":  "Backend\\src\\vehicles\\plate.dto.ts",
+        "sha256":  "9F54EEB0346144875675E4B524D9E6D1D3744780A61DBB7338453A6527B4E1F9"
+    },
+    {
+        "path":  "Backend\\src\\vehicles\\vehicles.controller.ts",
+        "sha256":  "C4E7E3C2F5560222A09823454F9E85B3528CEEE20EED1FD4833490358AFA0A08"
+    },
+    {
+        "path":  "Backend\\src\\vehicles\\vehicles.module.ts",
+        "sha256":  "BEF8EB2EEFBC67022227016B5243F14AC202AA932BFEB97265E167DA74FCCC09"
+    },
+    {
+        "path":  "Backend\\src\\vehicles\\vehicles.repository.ts",
+        "sha256":  "CCE5CA25CE5E4C729CBEFCED9AB6A22E3722ACB990E709FECAF74AE595247988"
+    },
+    {
+        "path":  "Backend\\src\\vehicles\\vehicles.service.spec.ts",
+        "sha256":  "622EF54F78881A19E26CE674392C044B28EC54D654E429992D5480015150AA17"
+    },
+    {
+        "path":  "Backend\\src\\vehicles\\vehicles.service.ts",
+        "sha256":  "F1B374D00DB3406F9D24F49CAE38896705C3F0C1A853DE65B231FD45848841C9"
+    },
+    {
+        "path":  "Backend\\src\\wallet\\recharge.dto.ts",
+        "sha256":  "7988BD30912C9926D1001EC95E5AF3660EBB877FC0904AA7B8A3AA9F322CED4B"
+    },
+    {
+        "path":  "Backend\\src\\wallet\\wallet.controller.ts",
+        "sha256":  "A80DC5C8ABB740AB2C367F5B27235E0E0C27E22667E065D3EAF203BA1ED7F762"
+    },
+    {
+        "path":  "Backend\\src\\wallet\\wallet.module.ts",
+        "sha256":  "FDA3129B18B24DB3A01AC0E7B854095F8D6D2AECA7AA7FECEAC0C6A134F83519"
+    },
+    {
+        "path":  "Backend\\src\\wallet\\wallet.repository.ts",
+        "sha256":  "48ADB69931B7F9FB825D602423C2EB8254E8A784E5395DBEA68709183E7B1230"
+    },
+    {
+        "path":  "Backend\\src\\wallet\\wallet.service.spec.ts",
+        "sha256":  "BA6CFF01D704159E5548EFBA2A03778FA78D6D216ECB0CE6142E7D40EBA4F1C3"
+    },
+    {
+        "path":  "Backend\\src\\wallet\\wallet.service.ts",
+        "sha256":  "0F386BA41E024B3E961D05F3EB797C83982913FC48F45DABF980CA21954FB340"
+    },
+    {
+        "path":  "Backend\\test\\api.e2e-spec.ts",
+        "sha256":  "076B4D61E62FD51C2B85D330B66D37BE7B731CC02B6FEBD930E33C7238BACF70"
+    },
+    {
+        "path":  "Backend\\test\\jest-e2e.config.cjs",
+        "sha256":  "822EB9254DDF620DA7320561FF9B47CF168CBB5EE3280E46C93DD246D8706E61"
+    },
+    {
+        "path":  "FrontEnd_1\\.dockerignore",
+        "sha256":  "FBE03A587BB17FE0F1353F7D00BE501DF82F5470917A911A869473806733D311"
+    },
+    {
+        "path":  "FrontEnd_1\\compose.yaml",
+        "sha256":  "FD38ED119CF243477A0D7B53C7BAAD2B38A571D857D933B72773E30F22304B2D"
+    },
+    {
+        "path":  "FrontEnd_1\\Dockerfile",
+        "sha256":  "02D9D7AC71F4EB2D93B9066EBED4BEC84253B4D888D4937D02B6D3C43F8A2D2A"
+    },
+    {
+        "path":  "FrontEnd_1\\package.json",
+        "sha256":  "DC0B083260EAD57F5FFA33137E11CAA506D5AF4F3C3C1D8114EEE34B26AA16F3"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\logo-primax-horizontal.jpg",
+        "sha256":  "FDAED2B10C23CF5696AFF67DE94A629B258611057563DC67549911F14AD430EB"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\Logo_Plin.png",
+        "sha256":  "FA4F43776C21A7F6954921151ADC9E2B5FC776517389EFBBF93E1F126B901108"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\Logo_Yape.png",
+        "sha256":  "AB79ADF8B23C392C2DC188D0D7EEF356DEAF383150B42BDE18EA2B700314CDD7"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\ojos_abiertos_boca _abierta.jpeg",
+        "sha256":  "C161CCB9F662028936CC99DF6229AE8096F3105A96FE4E15411C151DBD2A982E"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\ojos_abiertos_boca _cerrada.jpeg",
+        "sha256":  "796582E1C90D99538BCE4D12F21A8525D22C3A59A5D4BB50D870D7CC421A1DCA"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\ojos_cerrrados_boca _abierta.jpeg",
+        "sha256":  "BB540E4B2A86A4522904C109FB17D148FA8AF96420129B61603A31E559CC357B"
+    },
+    {
+        "path":  "FrontEnd_1\\assets\\img\\ojos_cerrrados_boca _cerrada.jpeg",
+        "sha256":  "1513F42E0A25F886B13E33CE7422515243974A1BE9E2E7FAE71B2E603F7E3BAC"
+    },
+    {
+        "path":  "FrontEnd_1\\nginx\\15-kiosk-key.sh",
+        "sha256":  "3B3C241EA4D2BBA86498C8CDC07CD840AB9BDED6D5554304C9CB64CB97A445D0"
+    },
+    {
+        "path":  "FrontEnd_1\\nginx\\default.conf",
+        "sha256":  "6F2E74410AEB963A1949B653084722B5E6C84C3BC80DD114D42933E14039F44E"
+    },
+    {
+        "path":  "FrontEnd_1\\src\\index.html",
+        "sha256":  "27C4E3E205650ABD95392648E5A58383BC5589E584697018ADEA8CDE836AF8D2"
+    },
+    {
+        "path":  "FrontEnd_1\\src\\js\\apiClient.js",
+        "sha256":  "8E915EA1D678E251FB730EC86D3FD2BF532446808F2B3B095C852AF7DC33C883"
+    },
+    {
+        "path":  "FrontEnd_1\\src\\js\\script.js",
+        "sha256":  "4B6CAC200633954D87FE0149E47EC8AA113BBE8F6532899C1D1E88D390D7F930"
+    },
+    {
+        "path":  "FrontEnd_1\\src\\js\\transactionsService.js",
+        "sha256":  "6932F159F872612CFA307C68BCA0EAFFA9450BA170BA596341C56781AF1C04FB"
+    },
+    {
+        "path":  "FrontEnd_1\\src\\styles\\styles.css",
+        "sha256":  "F09160E065EEA3D63FA4589799C83B94B1E5C3D7EF511784C2C91A1B374C893C"
+    },
+    {
+        "path":  "FrontEnd_1\\tests\\recovery.test.js",
+        "sha256":  "171308CFD5A9D61D16EEE342F853351B980E9DBD23D6F267472B37BCCF6C0181"
+    },
+    {
+        "path":  "FrontEnd_1\\tests\\terminology.test.js",
+        "sha256":  "C7E13630D036B135E4894FC4F367A78D6CA4DFE8891DE616891287AF25FC6622"
+    },
+    {
+        "path":  "FrontEnd_1\\tests\\transactions.test.js",
+        "sha256":  "00275EE81A67073C27D4BC7B48F2950EC2C6646F1E953EEC2FECC935F31BC2C4"
+    },
+    {
+        "path":  "FrontEnd_1\\tools\\build.cjs",
+        "sha256":  "84EDD49EBFE80953FD22C8A26549EC82214EFE383E0EC63CC2F41CD54800A7B5"
+    },
+    {
+        "path":  "FrontEnd_2\\.dockerignore",
+        "sha256":  "F73F3FBF60F9D85F0D0D988AF9280F889DA486088C635317FC22FCA9610BA745"
+    },
+    {
+        "path":  "FrontEnd_2\\.gitignore",
+        "sha256":  "767C00E8F0FEEFD9C52C9AC544D76237831914E09C4428C6F4826FC13205368A"
+    },
+    {
+        "path":  "FrontEnd_2\\capacitor.config.json",
+        "sha256":  "E317C36A6CC11853FBEA739060C81B9172B89DA5EC7E6F10C84184A69ED34420"
+    },
+    {
+        "path":  "FrontEnd_2\\Dockerfile",
+        "sha256":  "4B54EC283F640CBF40932CF711452D06A4A04FE6AD22278E4B5AD3490749CD43"
+    },
+    {
+        "path":  "FrontEnd_2\\index.html",
+        "sha256":  "7D1ADEFC0F67D511ED4363B9454B8B250858C0A25CC3D51F0AF1C94433C2BDC1"
+    },
+    {
+        "path":  "FrontEnd_2\\package-lock.json",
+        "sha256":  "C904B078C913D87F96B266F0E0B3C5ACE2A7DAFBD93C95AF61B2BB46C45AB647"
+    },
+    {
+        "path":  "FrontEnd_2\\package.json",
+        "sha256":  "85E9EBCD0CCF3CE37CABDB4DC8CA9AFBEECDCF043C36C80F28EC0BC3C251641C"
+    },
+    {
+        "path":  "FrontEnd_2\\playwright.config.cjs",
+        "sha256":  "3B90F2E2709A4A7A21F0EB9ABE526F4BFE3103EB3CEBA7EDD52D9CBBEE2C9C36"
+    },
+    {
+        "path":  "FrontEnd_2\\README.md",
+        "sha256":  "AFD6059F1B3400E2E8B1A893FB6ECE45FD8CB138E854FE87ACAD6777B8329B85"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\.gitignore",
+        "sha256":  "02C4F883FF251C1F572714EA1F61BAB0C4BAD91D686ED1CB6D34B3C3BCF59128"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\build.gradle",
+        "sha256":  "46ADE7DB7AFEB8049CCEA59FCE83095DCA736CEB8C9ACD79CC944E988C3357D9"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\capacitor.settings.gradle",
+        "sha256":  "B488E162F552D6EFB8286793C7871BBC1061C9BF5CA3A6A495FDEB8988A541C7"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\gradle.properties",
+        "sha256":  "3BAB15C5B8BC4C2F4B6CF525497D15AD4ABCA53A460E6DD2EB0F0135817D31E6"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\gradlew",
+        "sha256":  "B187B4C52E749F5760AFDD6FADC31B2A98AD35FB249BF0DFF03B72650F320409"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\gradlew.bat",
+        "sha256":  "94102713EB8FB22D032397924C0F38AB2DA783BA60D07054339F1190A0C4E2CD"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\settings.gradle",
+        "sha256":  "6CE098D15EBD69B44C4ECD786BCA1BDC366340D2459B2AF4D7BB0AB317AA9669"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\variables.gradle",
+        "sha256":  "83D502C9ED8FCF1DD4791482067ABEEDBEBAE49FAFE9CD14A8A1F5891DEB0D88"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\.gitignore",
+        "sha256":  "99C54E51EE601A60FBDE8016B2CBF717483BC2E92773BE86C9247D02A7FA6EA4"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\build.gradle",
+        "sha256":  "C170FFD1D9ACA53318553231B40A365E24AC7279238678163D059F0142F02DEE"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\capacitor.build.gradle",
+        "sha256":  "7051CADFDBC532197D2CFD4F8A11684D81367F23CF7952E5A208F7B6AA0833E0"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\proguard-rules.pro",
+        "sha256":  "1CF8C57E8F79C250B0AF9C1A5A4EDAD71A5C348A79AB70243B6BAE086C150AD2"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\androidTest\\java\\com\\getcapacitor\\myapp\\ExampleInstrumentedTest.java",
+        "sha256":  "FF50B4C110A7434312F9AF54171F9E8523B015836F707C9B387B76D4C38A97F8"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\AndroidManifest.xml",
+        "sha256":  "B642D0F51D088301D0107C9B94C85994FBC612E0A7B6A9CB1754113AE1BE90CD"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\java\\com\\primax\\prime\\MainActivity.java",
+        "sha256":  "087543274745CC99C71F19290E8C6CBE49BEA444F58258B39387F682B2EA7752"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable\\ic_launcher_background.xml",
+        "sha256":  "718BA51ADF166BB55C3E9936BB8199A0148457F7F0191AAA2F37A94F3159D6EC"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable\\splash.png",
+        "sha256":  "5CF98B4451BD99B20DF26F9E608A46946118BE6B0AE90762F9CA1786A30C76FF"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-hdpi\\splash.png",
+        "sha256":  "08CC34AD7713FE7ED58BCEAA37B2387B670C53CD60264B4BD6442DB3098E75DC"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-mdpi\\splash.png",
+        "sha256":  "5CF98B4451BD99B20DF26F9E608A46946118BE6B0AE90762F9CA1786A30C76FF"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-xhdpi\\splash.png",
+        "sha256":  "22F87E1E3BC89AA01A7DBC39C9A4DB058CD0BF4AD3FE9F55712BF69EB997F4BF"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-xxhdpi\\splash.png",
+        "sha256":  "42AA26392546FCDEE1B8D3AC6D4B41BFCCEB41DC6A4F3A3C30C24A8A8F4DB862"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-xxxhdpi\\splash.png",
+        "sha256":  "60393CE8636FD263E4E1FEA3FD4AB2DE948C6295E898FDA9B50AC4E5283BE809"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-hdpi\\splash.png",
+        "sha256":  "C5015F4BA3628392B538386C5E210F0B94F352A3160ADAB934FD0311972137CA"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-mdpi\\splash.png",
+        "sha256":  "07FA579E1C83E04BA7F9CBCBFCF41B68E15FE3638F2C44A04E58B809103E6B69"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-xhdpi\\splash.png",
+        "sha256":  "B73049CB37FE76D6C11B87A796766BF6AF0C85483B31EB6A921657B0D764A4B9"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-xxhdpi\\splash.png",
+        "sha256":  "0C7F1212F25B7B90E9A6E1D320013E4FF3D3E03E634CBB07B7B7981CAC51627F"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-xxxhdpi\\splash.png",
+        "sha256":  "3DB071A03B2F8FFE0DFD4170FC59842D53CD15BBA5E88AF59401D58EFABF7827"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-v24\\ic_launcher_foreground.xml",
+        "sha256":  "A8514094F754B099D3E55CE1D6E0B2DE79DB418B2EEACB0FC2A6BB0BFADEF221"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\layout\\activity_main.xml",
+        "sha256":  "5D770FEB791313B947020CBFC57E5C733C556DAC5E9E49261A1190E527073253"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-anydpi-v26\\ic_launcher.xml",
+        "sha256":  "9C3A7E0A6515C6E1A7AE834A9AE430311EBC3241F7B2E5E7F0460AA690709A7C"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-anydpi-v26\\ic_launcher_round.xml",
+        "sha256":  "9C3A7E0A6515C6E1A7AE834A9AE430311EBC3241F7B2E5E7F0460AA690709A7C"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-hdpi\\ic_launcher.png",
+        "sha256":  "72B71C3581CA3B5A23B1C168D69B9D855B3F184FA079902A01F088EB4F0607D5"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-hdpi\\ic_launcher_foreground.png",
+        "sha256":  "32BAA10D2632A4417454A579F992BD640E0A3CEC79321423559B2C9940DE58A9"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-hdpi\\ic_launcher_round.png",
+        "sha256":  "BFCC1B0FA931B14BB241372C76AB4F04374B67D02363C98D9CB12EDFDACDF5F3"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-mdpi\\ic_launcher.png",
+        "sha256":  "27ED3603010EBC278F64F8645741AB132FF517ABB5308EB9DF6C8E42A48956B2"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-mdpi\\ic_launcher_foreground.png",
+        "sha256":  "58E78A618778926B1F6D9472A6468DE878DE8530970934E94AAB5BA4BA08CC00"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-mdpi\\ic_launcher_round.png",
+        "sha256":  "0166FC333074C373FBD0CE6B5DEFD71552166165AC778121CA9C9DFF6B83F0FC"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xhdpi\\ic_launcher.png",
+        "sha256":  "D35DBFFF175B83C13EF59CF924ABFC810F7B6A158595D7417C5498EA8C7C7ED1"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xhdpi\\ic_launcher_foreground.png",
+        "sha256":  "6F88083B8166CC559102F7044688DE7525287632EBE09AC45D001AC8BF4B3EAE"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xhdpi\\ic_launcher_round.png",
+        "sha256":  "40911A00922868686854A4804B93FD6E56B503664696DE03F450BFF690AFFB6D"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxhdpi\\ic_launcher.png",
+        "sha256":  "ED346EB1E3F0280F15709393705899B3FF55C20B88F4E0308006B3C33CF5FE14"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxhdpi\\ic_launcher_foreground.png",
+        "sha256":  "4A82BC1E9923576275869998925CE0AE021A79AA18B24A0DD87AD6B61CA85053"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxhdpi\\ic_launcher_round.png",
+        "sha256":  "1EE4CD9FF371DCB2E3938097E434F6FB8731688ED7165E61FC63693AD5B2F455"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxxhdpi\\ic_launcher.png",
+        "sha256":  "87CB2F2FFE992652BB4FA768C73719A37B5852AB17FBF8E170E888F7A42B0761"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxxhdpi\\ic_launcher_foreground.png",
+        "sha256":  "BD24FD383253BF8D43F0A81F11C071D76D1D555114376DD647CD9FB38FA0A9DA"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxxhdpi\\ic_launcher_round.png",
+        "sha256":  "AB93096331E7CD8EC379F73F1E9ADCAAA9EE1115C9F4FF10411A811FB9700174"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\values\\ic_launcher_background.xml",
+        "sha256":  "CD40BAFE618FF506F4088778B135CB4FAA15F25E0C9B475E22D730C74B7BE115"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\values\\strings.xml",
+        "sha256":  "E65FD418FDACB4AEB231A121FF88D7FC6A71B3A9E5B404DFD72308EF8A34CF93"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\values\\styles.xml",
+        "sha256":  "18EBBA36575E9461347EE67361B23CAF095F158EE85DBEFE1B83A4669BA5BD6C"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\main\\res\\xml\\file_paths.xml",
+        "sha256":  "A46ED43EF65C90CB6778F4581DECF3556E3F0055AAD8F36D69DAE16F9A0E99AA"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\app\\src\\test\\java\\com\\getcapacitor\\myapp\\ExampleUnitTest.java",
+        "sha256":  "D4045AE8FAC1F0807E6B24EB34E68409A9A235DF9D1A3F896FB8C9A49424363D"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\gradle\\wrapper\\gradle-wrapper.jar",
+        "sha256":  "7D3A4AC4DE1C32B59BC6A4EB8ECB8E612CCD0CF1AE1E99F66902DA64DF296172"
+    },
+    {
+        "path":  "FrontEnd_2\\android\\gradle\\wrapper\\gradle-wrapper.properties",
+        "sha256":  "9A479A85AA879BB55284FC16D0DE5B81A745C3854F4E2D88C42E7DEBAF007435"
+    },
+    {
+        "path":  "FrontEnd_2\\assets\\primax.jpg",
+        "sha256":  "FDAED2B10C23CF5696AFF67DE94A629B258611057563DC67549911F14AD430EB"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\app.js",
+        "sha256":  "60E50755B6D7F99A2A9745521795C3F05968444454063123DFE6B3202FFB6926"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\components.js",
+        "sha256":  "D62EEFE26FCCDF7DBA25F28C49244754F63450B0AF0C4BBA7A3BB30F84EB822F"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\config.js",
+        "sha256":  "7E33B3C0AC58479BC091234C3B05C26C96A5188DB61931FFD414702D8A80FF4B"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\login.js",
+        "sha256":  "60BF6C24E54D1BEB46EC851CECEB041E6B0EBD9EFF0F2C17A4E4493B67093222"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\views.js",
+        "sha256":  "190DB7E83D35B97DB93213075419D7631D59442C2FC4D181C34EA69F7104AA51"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\apiClient.js",
+        "sha256":  "1779DB6B59E14FADCF6E8ADDE35C3701E35673C9A27A60526A45C411814BA99E"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\authService.js",
+        "sha256":  "FE9DD74647F5931D64A7E0DED9CABBC82AD094D42967E4FE707DE5FB8EA1529D"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\benefitsService.js",
+        "sha256":  "1168FAB4F28E7D9E5E612FDA11AEBD304760001A6A94D83B97369CEB93BDFB93"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\index.js",
+        "sha256":  "891FCD7741C46E91A31D78695ABB62876E98E440827D2D6D02A7A9EDB08D78C2"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\membershipService.js",
+        "sha256":  "3C05D93CE9632B2309C8FF130C8A0D025935D8285214F28B5303EDE85DDBBD70"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\rewardsService.js",
+        "sha256":  "CDA2F4718CA415A8BFC424D659FF137B55752E2AF1D606742CC81F3D988CE791"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\session.js",
+        "sha256":  "82E87829B3B30D81BDD5FC060B479B3637EAECDDD31EE73BB19EF44E27089FE8"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\store.js",
+        "sha256":  "324FA5FA8F5AF8D0E2B5B74F4B90C301AFDA6DD64ABFDA814380A235241B1CF2"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\transactionsService.js",
+        "sha256":  "D26BFE2BDA5A5C62C52029541D98D60AE953A6046B90C2F970F611C5DD0F08FE"
+    },
+    {
+        "path":  "FrontEnd_2\\js\\services\\walletService.js",
+        "sha256":  "F2A1E277C7DD4E7E839A38E6BC7695FD3253F4C2845DAEAA7AA287AC13A6EF21"
+    },
+    {
+        "path":  "FrontEnd_2\\nginx\\default.conf",
+        "sha256":  "252BB880EF9B478D823CC166C2874C925864A3D147EFC8F5D40A971E02CFA426"
+    },
+    {
+        "path":  "FrontEnd_2\\styles\\app.css",
+        "sha256":  "0279466A5D72E1D5F02545AFE9637656263B95BCF8DA29CC6DDC3BB501733ACC"
+    },
+    {
+        "path":  "FrontEnd_2\\styles\\login.css",
+        "sha256":  "F4E9C47F598C283AEC43BBDA80D5540D62B39F20271E3FE9F593E3184F30E17F"
+    },
+    {
+        "path":  "FrontEnd_2\\tests\\api-fixture.cjs",
+        "sha256":  "98988FEFDEA09D02C9DE7071415FF018C008729730467C5BD413A8593D4727AA"
+    },
+    {
+        "path":  "FrontEnd_2\\tests\\auth.test.js",
+        "sha256":  "67963940248437BCF4B085C330D9C51B5AEC395CEF5712EFE95E282B8D24D1C0"
+    },
+    {
+        "path":  "FrontEnd_2\\tests\\login.spec.cjs",
+        "sha256":  "72D7EB64BF73A60A1DDB6B7CBB6A18F61D331F03A44C8AE534DDAC95D0D615A9"
+    },
+    {
+        "path":  "FrontEnd_2\\tests\\mobile.spec.cjs",
+        "sha256":  "C5E18607E7345FE0D5DA3A8C378C5BE013C2A51777EBD80494ECB96EB96F7932"
+    },
+    {
+        "path":  "FrontEnd_2\\tests\\services.test.js",
+        "sha256":  "C4609B5E7C026266C5C3E387EFD06C9B707B9B0DC3F178B009E40BF0A4C9EEFB"
+    },
+    {
+        "path":  "FrontEnd_2\\tools\\build.cjs",
+        "sha256":  "08CC34706E9C7F6CAF0F170110C2328D58344CE0CEFDB49F20BB9AEDB8874101"
+    },
+    {
+        "path":  "FrontEnd_2\\tools\\mobile.cjs",
+        "sha256":  "EFAFCA54EA20B1C20830FCFE6ECA9A8CA5AE3388BE7063C2FC1E1A51E37B2BB7"
+    },
+    {
+        "path":  "FrontEnd_2\\tools\\serve.cjs",
+        "sha256":  "406B725A745E5E953FD4874FBD880A378F5E82D9EA494D7B1AF0F652FA031466"
+    },
+    {
+        "path":  "tools\\audit-docker.cjs",
+        "sha256":  "8D0EC1EFEAC51F20853D3F9B720D207F57042816909431F37A6B88E57221F4DD"
+    },
+    {
+        "path":  "tools\\check-standalone.cjs",
+        "sha256":  "E9A62DBDD441E0C639CF1CDBEC6434757B7CA591CE282C6438BDCCC1D5B1E583"
+    },
+    {
+        "path":  "tools\\integration.spec.cjs",
+        "sha256":  "7EF6C0B62C367EFFA6B00B7F5E66E0308952671EBF68B726DE081E301F704451"
+    },
+    {
+        "path":  "tools\\playwright.integration.cjs",
+        "sha256":  "825B8B1B5554629C7F87D3AA728AA52A26968C3CB5A44A715DD6F8658C0F466B"
+    },
+    {
+        "path":  "tools\\run-integration.cjs",
+        "sha256":  "D45AF151B3CE42B787897AC4EF05FDA31B530DD1B5064F139BA4EF3DBB1BA9EB"
+    },
+    {
+        "path":  "tools\\serve.cjs",
+        "sha256":  "14F223AFA65A992931FEE9D6AC370EAE7D075B84DBDB40036F700EC3673CA056"
+    }
+]
