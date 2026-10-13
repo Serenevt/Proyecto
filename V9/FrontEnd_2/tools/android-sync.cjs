@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+const api = process.env.PRIME_API_BASE_URL;
+if (!api || !/^https?:\/\//.test(api)) throw Error('Android requires an absolute PRIME_API_BASE_URL (https://server/api/v1 or HTTP for debug LAN).');
+execFileSync(process.execPath, [path.join(__dirname, 'build.cjs')], { cwd: root, stdio: 'inherit' });
+const config = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8'));
+config.android = { ...config.android, allowMixedContent: api.startsWith('http:') };
+fs.writeFileSync(path.join(root, 'capacitor.config.json'), JSON.stringify(config, null, 2) + '\n');
+execFileSync(process.execPath, [path.join(root, 'node_modules/@capacitor/cli/bin/capacitor'), 'sync', 'android'], { cwd: root, stdio: 'inherit' });
