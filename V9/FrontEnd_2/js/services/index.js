@@ -5,6 +5,7 @@ import { transactionsService } from './transactionsService.js';
 import { rewardsService } from './rewardsService.js';
 import { benefitsApi } from './benefitsService.js';
 import { walletService } from './walletService.js';
+import { apiClient } from './apiClient.js';
 let loading;
 export function resetData() { write(initialState()); }
 export function refreshData() {
@@ -37,7 +38,7 @@ export function refreshData() {
     write({ member: { ...m, name: m.user.name, balance, reserved, available, total, pendingBalance: Number(m.pendingBalance || 0), alias: local.alias || '' }, vehicles: m.vehicles,
       selectedVehicle: m.vehicles.some(v => v.plate === local.selectedVehicle) ? local.selectedVehicle : m.vehicles[0]?.plate || '',
       settings: { notifications: local.notifications ?? true }, rewards,
-      transactions: [...txs.map(t => ({ id: t.id, operationId: t.operationId, type: 'consumo', amount: Number(t.amount), points: t.pointsEarned, date: t.createdAt, station: t.station.name, vehicle: t.vehicle.plate, status: t.status, pendingBalance: Number(t.debt?.amountPending || 0), real: true })), ...movements].sort((a,b) => b.date.localeCompare(a.date)),
+      transactions: [...txs.map(t => ({ id: t.id, operationId: t.operationId, type: 'consumo', amount: Number(t.amount), points: t.pointsEarned, date: t.createdAt, station: t.station.name, vehicle: t.vehicle.plate, status: t.status, payment: t.payment, pendingBalance: Number(t.debt?.amountPending || 0), real: true })), ...movements].sort((a,b) => b.date.localeCompare(a.date)),
       benefits: benefits.map(b => ({ ...b, cost: b.pointsCost, theme: ['fuel','coffee','wash'].includes(b.code) ? b.code : 'fuel', symbol: b.code === 'coffee' ? '☕' : '✦', tag: b.pointsCost + ' puntos' })),
       redemptions: redemptions.map(r => ({ ...r, title: r.benefit.title })),
     });
@@ -49,7 +50,7 @@ export const memberService = { async updateProfile(data) { await membershipServi
   name = String(name).trim(); if (!name || name.length > 80) throw Error('Ingresa un nombre de 1 a 80 caracteres.');
   saveLocal({ alias: name }); read().member.alias = name;
 } };
-export const vehicleService = { list: () => read().vehicles, selected: () => read().selectedVehicle, select(plate) {
+export const vehicleService = { async add(data) { const result = await apiClient('/vehicles', { method: 'POST', body: data }); await refreshData(); return result; }, list: () => read().vehicles, selected: () => read().selectedVehicle, select(plate) {
   if (!read().vehicles.some(v => v.plate === plate)) throw Error('Vehículo no válido.');
   saveLocal({ selectedVehicle: plate }); read().selectedVehicle = plate;
 } };

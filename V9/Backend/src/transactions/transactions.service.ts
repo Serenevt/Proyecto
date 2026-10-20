@@ -41,16 +41,22 @@ export class TransactionsService {
     if (gallons?.lte(0))
       throw new BadRequestException('Los galones deben ser positivos');
     const code = dto.membershipCode?.trim().toUpperCase() ?? null;
-    const payment = this.payments.authorize(
-      amount,
-      dto.paymentMethod,
-      dto.mode,
-    );
+    // Closing a prepaid delivery must never initiate another payment.
+    const payment =
+      dto.mode === 'POSTPAGO'
+        ? this.payments.authorize(amount, dto.paymentMethod, dto.mode)
+        : {
+            amount,
+            method: dto.paymentMethod,
+            status: 'CAPTURED' as const,
+            provider: 'DEMO',
+          };
     const requestHash = createHash('sha256')
       .update(
         JSON.stringify({
           plate,
           amount: amount.toFixed(2),
+          ...(dto.unitPrice ? { unitPrice: dto.unitPrice } : {}),
           stationId: dto.stationId,
           fuelId: dto.fuelId,
           mode: dto.mode,
@@ -109,10 +115,73 @@ export class TransactionsService {
       if (!station?.active)
         throw new NotFoundException('Estación no disponible');
 
-      // Ata el importe cobrado al volumen realmente despachado.
-      this.policy.assertMatchesDispatch(amount, gallons, fuel.pricePerGallon);
+      if (!dto.authorizationId)
+        throw new BadRequestException('Se requiere autorización previa');
+      const auth = await this.authorizations.byId(dto.authorizationId, tx);
+      if (!auth) throw new NotFoundException('Autorización no encontrada');
+      if (
+        auth.vehicleId !== vehicle.id ||
+        auth.stationId !== dto.stationId ||
+        auth.fuelId !== dto.fuelId ||
+        auth.mode !== dto.mode
+      )
+        throw new BadRequestException(
+          'La autorización no corresponde a esta operación',
+        );
+      if (dto.mode === 'POSTPAGO' && auth.membershipId !== membership?.id)
+        throw new BadRequestException(
+          'La autorización no corresponde a esta membresía',
+        );
+      if (!['RESERVED', 'DISPENSING'].includes(auth.status))
+        throw new ConflictException(
+          'La autorización ya fue liquidada o liberada, o requiere intervención',
+        );
+      if (!auth.unitPrice)
+        throw new ConflictException(
+          'Precio histórico desconocido; requiere intervención',
+        );
+      if (
+        !gallons ||
+        !amount.eq(auth.dispensedAmount) ||
+        !gallons.eq(auth.dispensedGallons) ||
+        amount.gt(auth.authorizedAmount)
+      )
+        throw new BadRequestException(
+          'El cierre no coincide con el avance registrado',
+        );
+      if (!gallons.eq(amount.div(auth.unitPrice).toDecimalPlaces(3)))
+        throw new BadRequestException(
+          'El importe no coincide con el volumen despachado',
+        );
+      if (dto.unitPrice && !auth.unitPrice.eq(dto.unitPrice))
+        throw new BadRequestException(
+          'El precio no coincide con el autorizado',
+        );
+      let prepaidPaymentId: string | null = null;
+      if (dto.mode === 'PREPAGO') {
+        const prepaid = auth.paymentId
+          ? await tx.payment.findUnique({ where: { id: auth.paymentId } })
+          : null;
+        if (
+          !prepaid ||
+          prepaid.status !== 'CAPTURED' ||
+          prepaid.method !== dto.paymentMethod ||
+          prepaid.amount.lt(amount)
+        )
+          throw new BadRequestException('Pago previo no aprobado');
+        prepaidPaymentId = prepaid.id;
+        await this.authorizations.settle(
+          auth.id,
+          {
+            status: 'SETTLED',
+            consumedAmount: auth.dispensedAmount,
+            outcome: dto.outcome === 'AUTO' ? 'AUTO' : 'MANUAL',
+          },
+          tx,
+        );
+      }
 
-      let authorizationId: string | null = null;
+      let authorizationId: string | null = auth.id;
       let pending = new Prisma.Decimal(0);
       if (dto.mode === PurchaseMode.POSTPAGO) {
         const settlement = await this.settleReservation(
@@ -164,7 +233,7 @@ export class TransactionsService {
           stationId: station.id,
           fuelId: fuel.id,
           amount,
-          unitPrice: fuel.pricePerGallon,
+          unitPrice: auth.unitPrice,
           gallons,
           pointsRate: this.policy.rate,
           pointsEarned: points,
@@ -175,16 +244,18 @@ export class TransactionsService {
           receiptRuc,
           receiptBusinessName,
           status: pending.gt(0) ? 'PAYMENT_PENDING' : 'PAID',
-          payment: {
-            create: {
-              ...payment,
-              status: pending.isZero()
-                ? 'CAPTURED'
-                : pending.eq(amount)
-                  ? 'PENDING'
-                  : 'PARTIAL',
-            },
-          },
+          payment: prepaidPaymentId
+            ? { connect: { id: prepaidPaymentId } }
+            : {
+                create: {
+                  ...payment,
+                  status: pending.isZero()
+                    ? 'CAPTURED'
+                    : pending.eq(amount)
+                      ? 'PENDING'
+                      : 'PARTIAL',
+                },
+              },
           ...(pending.gt(0)
             ? {
                 debt: {

@@ -39,14 +39,18 @@ export class AuthorizationsController {
   create(@Body() dto: CreateAuthorizationDto) {
     return this.service.create(dto);
   }
+  @Post(':id/intervention')
+  @KioskOnly()
+  intervention(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.service.intervention(id);
+  }
   @Post(':id/progress')
   @KioskOnly()
   @ApiSecurity('kiosk')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description:
-      'Avance informativo del abastecimiento. No mueve saldo ni cobra; el ' +
-      'importe definitivo lo fija la confirmación de compra.',
+      'Avance validado del abastecimiento. El cierre debe coincidir con este registro.',
   })
   progress(
     @Param('id', new ParseUUIDPipe()) id: string,

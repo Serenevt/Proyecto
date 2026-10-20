@@ -17,9 +17,11 @@ async function main() {
       const container = JSON.parse(docker('inspect', docker(...lan, 'ps', '-q', service).trim()))[0];
       assert.equal(container.State.Health.Status, 'healthy');
       const binding = Object.values(container.NetworkSettings.Ports).flat().find(Boolean);
-      assert.equal(binding.HostIp, '0.0.0.0');
+      assert.equal(binding.HostIp, config.services[service].ports[0].host_ip);
       const route = service === 'backend' ? '/api/v1/health' : '/';
-      assert.equal((await fetch('http://127.0.0.1:' + binding.HostPort + route)).status, 200);
+      const host = binding.HostIp === '0.0.0.0' ? '127.0.0.1' : binding.HostIp;
+      assert.equal((await fetch('http://' + host + ':' + binding.HostPort + route)).status, 200);
+      if (process.env.LAN_TEST_HOST) assert.equal((await fetch('http://' + process.env.LAN_TEST_HOST + ':' + binding.HostPort + route)).status, 200);
       console.log('LAN binding + HTTP OK:', service, binding.HostPort);
     }
     const db = JSON.parse(docker('inspect', docker(...lan, 'ps', '-q', 'postgres').trim()))[0];

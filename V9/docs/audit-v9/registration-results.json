@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-19",
+  "scope": "Registration, authenticated vehicles, shared Backend and Android preparation",
+  "endpoint": "POST /api/v1/auth/register",
+  "vehicleEndpoint": "POST /api/v1/vehicles",
+  "hash": "bcrypt cost 12; 10 characters minimum, 72 UTF-8 bytes maximum",
+  "membership": {
+    "status": "ACTIVE",
+    "number": "PRIME- plus 24 random hexadecimal characters",
+    "atomic": "Prisma nested write, rollback verified with PostgreSQL failure",
+    "newMigration": false
+  },
+  "suites": {
+    "Backend": 100,
+    "FuelFlow": 49,
+    "Prime": 25,
+    "Mobile": 33,
+    "OCR": 7,
+    "E2E": 104,
+    "DockerIntegration": 12
+  },
+  "passed": 330,
+  "failed": 0,
+  "skipped": 0,
+  "priorCases": 296,
+  "newCases": 34,
+  "logicalScenariosMergingMobileViewports": 308,
+  "android": {
+    "result": "BUILD SUCCESSFUL",
+    "path": "FrontEnd_2/android/app/build/outputs/apk/debug/app-debug.apk",
+    "bytes": 4183397,
+    "sha256": "BFF06A419ADC21202282BF927CBB43840E9ECE42C4FBA419A3AA343FD413A0A2",
+    "api": "http://192.168.1.12:3000/api/v1",
+    "physicalInstallation": false,
+    "serverSecretsAbsent": true,
+    "demoCredentialLiteralsAbsent": true
+  },
+  "lan": {
+    "tested": true,
+    "secondDeviceTested": false,
+    "backendPort": 3000,
+    "bind": "host LAN IPv4 (V6 already owns loopback:3000)",
+    "database": "loopback only",
+    "ocr": "internal only",
+    "finalMode": "local restored"
+  },
+  "persistence": {
+    "realFiveContainerRestart": true,
+    "freshLogin": true,
+    "unchangedUserMembershipProfileVehicleTransactionPoints": true
+  },
+  "evidence": {
+    "userId": "7ab7728b-fc59-4b30-8919-9f9617f91c17",
+    "membershipId": "64afeca3-7cab-469e-831c-e522e4f9f5c1",
+    "number": "PRIME-6F17DD07616C27471792ED0F",
+    "plate": "R3L-188",
+    "transactionId": "f5fb82d5-62a9-493f-90c7-34e82b5249b5",
+    "points": 100
+  },
+  "requirements": {
+    "updated": [
+      "RF-16",
+      "RN-12",
+      "RNF-14"
+    ],
+    "promoted": [],
+    "remainingPartialReason": "organizational consent/ownership and native device validation"
+  },
+  "v8": "226 SHA-256 files unchanged",
+  "commit": false,
+  "push": false,
+  "deploy": false
+}

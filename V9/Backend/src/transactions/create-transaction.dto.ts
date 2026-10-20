@@ -11,6 +11,10 @@ import { PaymentMethod, PurchaseMode, ReceiptType } from '@prisma/client';
 import { ReceiptProfileDto } from '../memberships/profile.dto';
 
 export class CreateTransactionDto extends ReceiptProfileDto {
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsString()
+  @Matches(/^\d{1,6}(\.\d{1,2})?$/)
+  unitPrice?: string;
   @ApiProperty({
     format: 'uuid',
     description: 'UUID estable por compra. Reutilízalo al reintentar.',

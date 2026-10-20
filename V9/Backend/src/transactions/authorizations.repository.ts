@@ -40,7 +40,10 @@ export class AuthorizationsRepository {
    */
   active(membershipId: string, db: Prisma.TransactionClient | PrismaClient) {
     return db.fuelAuthorization.findMany({
-      where: { membershipId, status: { in: ['RESERVED', 'DISPENSING'] } },
+      where: {
+        membershipId,
+        status: { in: ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'] },
+      },
       select: {
         id: true,
         status: true,
@@ -56,7 +59,7 @@ export class AuthorizationsRepository {
   pendingOlderThan(before: Date, db: Prisma.TransactionClient | PrismaClient) {
     return db.fuelAuthorization.findMany({
       where: {
-        status: { in: ['RESERVED', 'DISPENSING'] },
+        status: { in: ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'] },
         createdAt: { lt: before },
       },
       select: {

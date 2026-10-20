@@ -22,4 +22,9 @@
 .login-footer span{display:block;margin-top:7px;letter-spacing:2px;font-size:9px;color:var(--blue);font-weight:700}
 .logout-button{width:100%;min-height:48px;margin-top:16px;border:1px solid #dce3ea;background:#f6f8fb;color:var(--blue);border-radius:12px;font-weight:650}
 .logout-button:hover{background:#edf2f8}
+.auth-switch{text-align:center;margin-top:22px;font-size:14px}.auth-switch a{color:var(--orange);font-weight:700}
+.register-screen{justify-content:flex-start}.register-screen .login-brand{margin-bottom:24px}
+#register-form{gap:10px}#register-form input{font-size:16px;min-height:48px;background:white}#register-form label{color:var(--blue)}
+#register-form details{border:1px solid var(--orange-border);padding:14px;border-radius:12px}#register-form summary{cursor:pointer;color:var(--blue)}#register-form details label{display:block;margin-top:14px}#register-form details input{width:100%;margin-top:6px}
+#register-form .primary{min-height:54px}#register-form .form-error{overflow-wrap:anywhere}
 @media(max-width:374px){.login-screen{padding-left:22px;padding-right:22px}.login-heading h1{font-size:28px}}

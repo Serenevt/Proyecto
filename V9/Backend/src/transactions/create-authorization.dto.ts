@@ -7,7 +7,7 @@ import {
   IsUUID,
   Matches,
 } from 'class-validator';
-import { ReceiptType } from '@prisma/client';
+import { PaymentMethod, PurchaseMode, ReceiptType } from '@prisma/client';
 import { PlateDto } from '../vehicles/plate.dto';
 
 /**
@@ -18,6 +18,12 @@ import { PlateDto } from '../vehicles/plate.dto';
  * que quede comprometido mientras la manguera dispensa.
  */
 export class CreateAuthorizationDto extends PlateDto {
+  @IsOptional() @IsEnum(PurchaseMode) mode?: PurchaseMode;
+  @IsOptional() @IsEnum(PaymentMethod) paymentMethod?: PaymentMethod;
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,6}(\.\d{1,2})?$/)
+  unitPrice?: string;
   @ApiPropertyOptional({ default: false })
   @IsOptional()
   @IsBoolean()
@@ -42,9 +48,10 @@ export class CreateAuthorizationDto extends PlateDto {
     description: 'Código de membresía Prime capturado en el terminal.',
     example: 'PRIME-0001',
   })
+  @IsOptional()
   @IsString()
   @Matches(/^[A-Z0-9-]{4,30}$/)
-  membershipCode: string;
+  membershipCode?: string;
 
   @ApiProperty({ format: 'uuid' })
   @IsUUID()

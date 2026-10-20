@@ -2,6 +2,41 @@
 
 V9 conserva la base estable V8 y agrega saldo pendiente auditable, perfil fiscal, snapshots de comprobantes y reconocimiento de placa. Todo el código nuevo está en esta carpeta. V8 permanece intacta; `node tools/verify-v8.cjs` contrasta los 226 archivos originales con SHA-256.
 
+La fase de registro agrega cuentas reales con membresía automática y vinculación autenticada de vehículo, compartidas por FuelFlow web y Prime web/APK. Evidencia vigente: [registro y multicanal](docs/audit-v9/REGISTRATION-VALIDATION.md); la validación de octubre 12 se conserva como antecedente.
+
+## Registro real y vinculación de vehículo
+
+En Primax Prime, **Crear cuenta** abre el registro real. Nombre, correo y contraseña son obligatorios; DNI, RUC y razón social son opcionales e independientes. Tras crear la cuenta se inicia sesión automáticamente mediante el mismo JWT del login. También se puede cerrar sesión y volver a entrar desde otro navegador o la APK. Las cuentas y datos financieros viven en PostgreSQL; localStorage guarda el token de sesión y preferencias, no crea usuarios ni constituye la fuente de verdad.
+
+- `POST /api/v1/auth/register`: nombre saneado de 1–80 caracteres, correo válido normalizado a minúsculas y único en PostgreSQL, contraseña de al menos 10 caracteres y hasta 72 bytes UTF-8. No se recorta la contraseña; se rechazan contraseñas compuestas solo por espacios.
+- DNI: exactamente 8 dígitos cuando se proporciona. RUC: exactamente 11. Razón social: 1–160 caracteres tras retirar etiquetas HTML y caracteres de control. No se valida identidad ante RENIEC/SUNAT.
+- Se reutiliza **bcrypt con coste 12**. Solo se guarda `passwordHash`, nunca texto plano. Las respuestas de registro y login contienen `accessToken`, `tokenType`, `expiresIn` y usuario público `{id,name,email}`; no incluyen contraseña ni hash.
+- User y Membership se crean mediante escritura anidada atómica de Prisma. Si falla la membresía, la base revierte también el usuario. No se requieren migraciones adicionales: se usan las tablas y restricciones existentes.
+- Membership nace `ACTIVE`, con saldo cero y número `PRIME-` más 24 caracteres hexadecimales aleatorios generados por Backend. La restricción única protege el número y se reintenta una colisión. `PRIME-0001` continúa reservado a la demo existente.
+- Registro: 5 solicitudes/minuto; login: 10/minuto, mediante la infraestructura Throttler existente. Son límites por IP observada por Backend; detrás de Nginx varias personas pueden compartir ese límite. No hay verificación de correo ni recuperación de contraseña implementadas en esta fase.
+
+No es obligatorio registrar vehículo durante el alta. Después, abre **Membresía → Agregar vehículo**, ingresa placa y nombre y confirma **Guardar vehículo**. `POST /api/v1/vehicles` exige JWT, obtiene la membresía del usuario autenticado, valida placa/etiqueta y membresía activa, y no acepta un `membershipId` elegido por el cliente. Crea un vehículo o vincula uno todavía sin membresía; repetir el mismo vínculo es idempotente. Una placa asociada a otra membresía se rechaza con 409. Esta vinculación es una solicitud autenticada del usuario, no una certificación de propiedad vehicular ni un mecanismo de transferencia entre titulares.
+
+Demostración compartida:
+
+1. Arranca un único stack V9 con `docker compose up -d --build` y, para celular, el override LAN descrito abajo.
+2. Regístrate desde Prime web o la APK. Se crean User y Membership en ese Backend.
+3. Agrega el vehículo desde Membresía. Para pospago puedes usar la recarga DEMO y las reglas de crédito ya existentes; el saldo inicial es cero.
+4. En FuelFlow del PC introduce esa placa/membresía y realiza una compra DEMO.
+5. Prime consulta la misma Transaction y muestra historial, puntos, saldo/deuda según las reglas existentes. No se copian bases entre clientes.
+
+El flujo automatizado `tools/registration.spec.cjs` ejecuta alta, sesión nueva, vínculo, compra desde FuelFlow e historial Prime con PostgreSQL real. `tools/check-registration-persistence.cjs --before` toma una referencia del usuario de prueba y, después de reiniciar contenedores, el mismo comando sin `--before` comprueba persistencia y un login nuevo. No borra usuarios ni reinicializa saldos.
+
+## Preparación para un servidor público — sin despliegue
+
+La APK admite `PRIME_API_BASE_URL=https://api.example.com/api/v1`; se recompila para ese servidor. FuelFlow permanece como web con proxy Nginx: el navegador usa `/api/v1` y el proxy adjunta la credencial del terminal **server-side**. Mantener FuelFlow y Backend en la misma red privada del servidor conserva esa configuración; separar hosts requeriría configurar el upstream privado del proxy, no incluir la clave en JavaScript.
+
+La separación permite evaluar posteriormente alojamiento web, un servicio NestJS/Node o contenedor, PostgreSQL persistente y OCR privado. Para evaluar Vercel, el frontend estático es una pieza candidata, pero FuelFlow necesita conservar su proxy protegido. Railway/Render son opciones a evaluar para servicios/contenedores y base persistente; no se crearon configuraciones específicas, cuentas, recursos ni despliegues en esos proveedores. La selección final debe revisar límites y soporte vigentes antes de desplegar.
+
+Antes de publicar: HTTPS, secretos solo en servidor, CORS con orígenes concretos, credenciales demo deshabilitadas y control de acceso de terminal adecuado. PostgreSQL y OCR permanecen privados. El proxy kiosco actual es para demo local, no una autorización pública para cualquier visitante de Internet.
+
+**Local no significa compartido:** instalar otro stack en cada PC crea bases separadas. Para la demo compartida solo el PC servidor ejecuta PostgreSQL/Backend; FuelFlow web y APK se conectan a él. Si el servidor local se apaga, la APK no puede registrar usuarios ni consultar datos nuevos.
+
 ## Arquitectura
 
 ```text
@@ -120,7 +155,9 @@ docker compose -f compose.yaml -f compose.lan.yaml config --quiet
 docker compose -f compose.yaml -f compose.lan.yaml up -d --build
 ```
 
-Una sola máquina ejecuta el stack. Los demás dispositivos abren `http://IP_DEL_HOST:8081` y `:8082` (o los puertos configurados). El override publica únicamente frontends y API en `0.0.0.0`. PostgreSQL sigue en `127.0.0.1`; OCR no tiene puerto host. Limita el firewall a tu red privada. No se modificó el firewall automáticamente.
+Una sola máquina ejecuta el stack. En la configuración local actual FuelFlow usa `http://IP_DEL_HOST:9081` y Prime web `:9082`. El Backend LAN usa `http://IP_DEL_HOST:3000`, independientemente de `PORT=3100` del modo local. `LAN_BACKEND_PORT` permite cambiar el puerto LAN y `LAN_BACKEND_BIND` la interfaz (por defecto `0.0.0.0`). PostgreSQL sigue en `127.0.0.1:5434`; OCR no tiene puerto host. Los puertos de `.env.example` son configurables. Limita el firewall a tu red privada; no se modifica automáticamente.
+
+Si otro stack ocupa `127.0.0.1:3000`, configura `LAN_BACKEND_BIND=IP_DEL_HOST` para enlazar V9 solamente a la interfaz LAN sin detener ese stack. No uses el literal `IP_DEL_HOST`: sustitúyelo por la IP IPv4 real del PC. No cambies el puerto interno del Backend, que sigue siendo 3000.
 
 Las aplicaciones web usan API relativa `/api/v1` a través de Nginx, así todos ven la **misma base del servidor**. Dos compañeros que ejecutan stacks locales separados tienen dos bases distintas, aunque usen el mismo código.
 
@@ -141,7 +178,17 @@ npm.cmd run android:sync
 .\android\gradlew.bat -p android assembleDebug --console=plain
 ```
 
-En un teléfono LAN usa `http://IP_DEL_HOST:3000/api/v1` (o 3100 aquí) con el override LAN y firewall adecuado. Incluye los orígenes Capacitor `https://localhost,http://localhost` en `CORS_ORIGINS`. Para Internet usa HTTPS. El sync configura mixed content únicamente si la URL es HTTP y el manifest de debug permite tráfico claro para demo. No hay conexión APK→PostgreSQL.
+En un teléfono LAN usa `http://IP_DEL_HOST:3000/api/v1` con el override LAN y firewall adecuado. Incluye los orígenes Capacitor `https://localhost,http://localhost` en `CORS_ORIGINS`; son los orígenes internos de la WebView, no la dirección del servidor. Para Internet usa HTTPS. El sync configura mixed content únicamente si la URL es HTTP y el manifest de debug permite tráfico claro para demo. No hay conexión APK→PostgreSQL. El build Android rechaza localhost/127.0.0.1, URLs con credenciales y rutas que no terminen en `/api/v1`.
+
+Desde la raíz V9, para un celular en la misma red:
+
+```powershell
+$env:PRIME_API_BASE_URL='http://IP_DEL_HOST:3000/api/v1'
+$env:FUELFLOW_DEMO='0'
+npm.cmd run android:debug --prefix FrontEnd_2
+```
+
+APK: `FrontEnd_2/android/app/build/outputs/apk/debug/app-debug.apk`. La URL queda incorporada al build: para otro servidor se configura la variable y se recompila. No contiene JWT_SECRET, KIOSK_SECRET ni acceso directo a PostgreSQL. Tras compilar Android, `npm.cmd run build --prefix FrontEnd_2` sin esa variable vuelve a generar el bundle web con API relativa; no modifica el APK ya producido.
 
 Linux: exporta la variable, ejecuta `npm run android:sync` y `bash android/gradlew -p android assembleDebug --console=plain`. Evita el script heredado `android:debug` basado en `.bat` en Linux. Se compiló APK debug con JDK 21 / Gradle 8.14.3 / AGP 8.13.0, sin release signing. No se probó instalación en dispositivo físico.
 
@@ -177,6 +224,7 @@ La ejecución física en Debian 13 queda pendiente. Se validaron las imágenes L
 | POSTGRES_DB / USER / PASSWORD | Base y credenciales locales |
 | POSTGRES_PORT | Puerto admin loopback, 5433 |
 | PORT | Puerto host del Backend, 3000; interno siempre 3000 |
+| LAN_BACKEND_PORT / LAN_BACKEND_BIND | Puerto LAN (3000) e interfaz LAN (0.0.0.0 por defecto); independientes del puerto local |
 | FRONTEND1_PORT / FRONTEND2_PORT | Puertos web 8081 / 8082 |
 | JWT_SECRET | Firma de sesiones, solo Backend |
 | KIOSK_SECRET | Autenticación de terminal, solo Nginx/Backend; alias KIOSK_API_KEY compatible |

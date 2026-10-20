@@ -8,4 +8,4 @@ services:
       - "0.0.0.0:${FRONTEND2_PORT:-8082}:80"
   backend:
     ports: !override
-      - "0.0.0.0:${PORT:-3000}:3000"
+      - "${LAN_BACKEND_BIND:-0.0.0.0}:${LAN_BACKEND_PORT:-3000}:3000"

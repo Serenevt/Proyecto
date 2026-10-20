@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-17T00:21:12.185Z",
+  "node": "v24.19.0",
+  "browser": "155.0.8059.80",
+  "platform": "win32",
+  "viewport": "1280x800",
+  "concurrency": 1,
+  "warmupsExcluded": 1,
+  "repetitions": 10,
+  "scope": "Two FuelFlow transitions; mocked catalog; no backend, DB, Nginx, OCR, payment or hardware. Includes intentional 900 ms UI delay. Cannot establish RNF-02 for the full main flow.",
+  "samples": [
+    {
+      "startToFuelMs": 16.7,
+      "fuelToModeMs": 919.7
+    },
+    {
+      "startToFuelMs": 14.9,
+      "fuelToModeMs": 915.1
+    },
+    {
+      "startToFuelMs": 18.1,
+      "fuelToModeMs": 914.3
+    },
+    {
+      "startToFuelMs": 16,
+      "fuelToModeMs": 914.9
+    },
+    {
+      "startToFuelMs": 15.7,
+      "fuelToModeMs": 914.9
+    },
+    {
+      "startToFuelMs": 14.4,
+      "fuelToModeMs": 914.6
+    },
+    {
+      "startToFuelMs": 15.7,
+      "fuelToModeMs": 914.3
+    },
+    {
+      "startToFuelMs": 14.6,
+      "fuelToModeMs": 916.8
+    },
+    {
+      "startToFuelMs": 13.9,
+      "fuelToModeMs": 914.2
+    },
+    {
+      "startToFuelMs": 11.8,
+      "fuelToModeMs": 914.5
+    }
+  ],
+  "summary": {
+    "startToFuelMs": {
+      "median": 15.3,
+      "p95": 18.1,
+      "max": 18.1
+    },
+    "fuelToModeMs": {
+      "median": 914.75,
+      "p95": 919.7,
+      "max": 919.7
+    }
+  }
+}

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PaymentsService } from '../payments/payments.service';
 import { creditCapacity, funding } from '../wallet/debt';
 import { createHash } from 'node:crypto';
 import {
@@ -25,6 +26,9 @@ export function authorizationResponse(value: {
   id: string;
   status: AuthorizationStatus;
   outcome?: AuthorizationOutcome | null;
+  unitPrice?: Prisma.Decimal | null;
+  interventionReason?: string | null;
+  mode?: string;
   authorizedAmount: Prisma.Decimal;
   reservedAmount: Prisma.Decimal;
   consumedAmount: Prisma.Decimal | null;
@@ -36,13 +40,16 @@ export function authorizationResponse(value: {
   const zero = new Prisma.Decimal(0);
   return {
     id: value.id,
+    unitPrice: value.unitPrice?.toFixed(2) ?? null,
+    interventionReason: value.interventionReason ?? null,
     status: value.status,
     outcome: value.outcome ?? null,
     authorizedAmount: value.authorizedAmount.toFixed(2),
     reservedAmount: value.reservedAmount.toFixed(2),
-    creditReserved: value.authorizedAmount
-      .minus(value.reservedAmount)
-      .toFixed(2),
+    creditReserved:
+      value.mode === 'PREPAGO'
+        ? '0.00'
+        : value.authorizedAmount.minus(value.reservedAmount).toFixed(2),
     // Tolerancia a registros previos a la migración de avance.
     dispensedAmount: (value.dispensedAmount ?? zero).toFixed(2),
     dispensedGallons: (value.dispensedGallons ?? zero).toFixed(3),
@@ -60,6 +67,7 @@ export class AuthorizationsService {
   constructor(
     private readonly repo: AuthorizationsRepository,
     private readonly wallet: WalletRepository,
+    private readonly payments: PaymentsService,
   ) {}
 
   /**
@@ -74,8 +82,9 @@ export class AuthorizationsService {
    * dos veces el mismo saldo desde dos surtidores simultáneos.
    */
   create(dto: CreateAuthorizationDto) {
+    if (dto.mode === 'PREPAGO') return this.createPrepaid(dto);
     const plate = normalizePlate(dto.plate) as string;
-    const code = dto.membershipCode.trim().toUpperCase();
+    const code = (dto.membershipCode ?? '').trim().toUpperCase();
     const amount = new Prisma.Decimal(dto.amount);
     if (amount.lte(0))
       throw new BadRequestException('El monto a autorizar debe ser positivo');
@@ -94,6 +103,7 @@ export class AuthorizationsService {
           fuelId: dto.fuelId,
           receiptType: dto.receiptType ?? 'BOLETA',
           allowDebt: dto.allowDebt === true,
+          ...(dto.unitPrice ? { unitPrice: dto.unitPrice } : {}),
         }),
       )
       .digest('hex');
@@ -140,6 +150,7 @@ export class AuthorizationsService {
       if (!station?.active)
         throw new NotFoundException('Estación no disponible');
 
+      this.checkPrice(dto.unitPrice, fuel.pricePerGallon);
       // Bloqueo de fila: serializa reservas concurrentes sobre la misma cuenta.
       await this.wallet.lockMembership(membership.id, tx);
       const fresh = await tx.membership.findUnique({
@@ -175,6 +186,7 @@ export class AuthorizationsService {
           vehicleId: vehicle.id,
           stationId: station.id,
           fuelId: fuel.id,
+          unitPrice: fuel.pricePerGallon,
           authorizedAmount: amount,
           reservedAmount: split.cash,
           releasedAmount: new Prisma.Decimal(0),
@@ -231,6 +243,17 @@ export class AuthorizationsService {
         throw new ConflictException(
           'La autorización ya fue liquidada o liberada',
         );
+      if (!authorization.unitPrice)
+        throw new ConflictException(
+          'Precio histórico desconocido; requiere intervención',
+        );
+      const expectedGallons = amount
+        .div(authorization.unitPrice)
+        .toDecimalPlaces(3);
+      if (!gallons.eq(expectedGallons))
+        throw new BadRequestException(
+          'El volumen no coincide con el precio autorizado',
+        );
       if (amount.gt(authorization.authorizedAmount))
         throw new BadRequestException(
           'El consumo supera el importe reservado; autoriza de nuevo antes de abastecer',
@@ -278,6 +301,10 @@ export class AuthorizationsService {
         throw new ConflictException(
           'La autorización ya fue liquidada o liberada',
         );
+      if (!consumed.eq(authorization.dispensedAmount))
+        throw new BadRequestException(
+          'El cierre no coincide con el avance registrado',
+        );
       if (consumed.lt(0))
         throw new BadRequestException('El consumo no puede ser negativo');
       if (consumed.gt(authorization.reservedAmount))
@@ -285,6 +312,10 @@ export class AuthorizationsService {
           'El consumo supera el importe reservado; autoriza de nuevo antes de abastecer',
         );
 
+      if (!authorization.membershipId || authorization.mode !== 'POSTPAGO')
+        throw new ConflictException(
+          'Requiere intervención para liquidar prepago',
+        );
       await this.wallet.lockMembership(authorization.membershipId, tx);
       const membership = await tx.membership.findUnique({
         where: { id: authorization.membershipId },
@@ -350,6 +381,10 @@ export class AuthorizationsService {
       )
         throw new ConflictException('La autorización ya no está reservada');
 
+      if (!authorization.membershipId || authorization.mode !== 'POSTPAGO')
+        throw new ConflictException(
+          'Requiere intervención para liquidar prepago',
+        );
       await this.wallet.lockMembership(authorization.membershipId, tx);
       const fresh = await tx.membership.findUnique({
         where: { id: authorization.membershipId },
@@ -389,6 +424,147 @@ export class AuthorizationsService {
           tx,
         );
       return authorizationResponse(released);
+    });
+  }
+
+  private checkPrice(confirmed: string | undefined, actual: Prisma.Decimal) {
+    if (confirmed && !actual.eq(confirmed))
+      throw new ConflictException(
+        'El precio cambió; confirma nuevamente la solicitud',
+      );
+  }
+
+  /** DEMO: el pago se confirma en una transacción ANTERIOR a la autorización. */
+  private async createPrepaid(dto: CreateAuthorizationDto) {
+    const amount = new Prisma.Decimal(dto.amount);
+    if (amount.lte(0) || amount.gt('999999.99'))
+      throw new BadRequestException('Monto inválido');
+    const method = dto.paymentMethod;
+    if (!method) throw new BadRequestException('Indica el medio de pago');
+    const requestHash = createHash('sha256')
+      .update(
+        JSON.stringify({
+          ...dto,
+          plate: normalizePlate(dto.plate),
+          amount: amount.toFixed(2),
+        }),
+      )
+      .digest('hex');
+    // Una respuesta perdida reutiliza este pago; no vuelve a cobrar.
+    const paid = await this.repo.atomic(async (tx) => {
+      const existing = await tx.payment.findUnique({
+        where: { operationId: dto.operationId },
+      });
+      if (existing) {
+        if (existing.requestHash !== requestHash)
+          throw new ConflictException('operationId ya usado con otros datos');
+        return existing;
+      }
+      const fuel = await tx.fuel.findUnique({ where: { id: dto.fuelId } });
+      if (!fuel?.active)
+        throw new NotFoundException('Combustible no disponible');
+      this.checkPrice(dto.unitPrice, fuel.pricePerGallon);
+      const result = await this.payments.authorize(amount, method, 'PREPAGO');
+      return tx.payment.create({
+        data: {
+          ...result,
+          operationId: dto.operationId,
+          requestHash,
+          unitPrice: fuel.pricePerGallon,
+        },
+      });
+    });
+    return this.repo.atomic(async (tx) => {
+      const payment = await tx.payment.findUnique({ where: { id: paid.id } });
+      if (
+        !payment ||
+        payment.status !== 'CAPTURED' ||
+        !payment.amount.eq(amount) ||
+        !payment.unitPrice
+      )
+        throw new ConflictException(
+          'Pago no aprobado; no se autoriza abastecimiento. Requiere intervención',
+        );
+      const existing = await this.repo.byOperation(dto.operationId, tx);
+      if (existing) {
+        if (
+          existing.requestHash !== requestHash ||
+          existing.mode !== 'PREPAGO' ||
+          existing.paymentId !== payment.id
+        )
+          throw new ConflictException(
+            'operationId ya usado con otra autorización',
+          );
+        return {
+          authorization: authorizationResponse(existing),
+          replayed: true,
+        };
+      }
+      const vehicle = await tx.vehicle.findUnique({
+        where: { plate: normalizePlate(dto.plate) as string },
+        include: { membership: true },
+      });
+      if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+      if (
+        dto.membershipCode &&
+        vehicle.membership?.number !== dto.membershipCode
+      )
+        throw new BadRequestException(
+          'El código de membresía no corresponde al vehículo',
+        );
+      const station = await tx.station.findUnique({
+        where: { id: dto.stationId },
+      });
+      const fuel = await tx.fuel.findUnique({ where: { id: dto.fuelId } });
+      if (!station?.active || !fuel?.active)
+        throw new ConflictException(
+          'Estación o combustible no disponible; requiere intervención',
+        );
+      const authorization = await this.repo.create(
+        {
+          operationId: dto.operationId,
+          requestHash,
+          vehicleId: vehicle.id,
+          membershipId: vehicle.membershipId,
+          stationId: station.id,
+          fuelId: fuel.id,
+          mode: 'PREPAGO',
+          paymentId: payment.id,
+          unitPrice: payment.unitPrice,
+          authorizedAmount: payment.amount,
+          reservedAmount: new Prisma.Decimal(0),
+          releasedAmount: new Prisma.Decimal(0),
+          balanceAfter: new Prisma.Decimal(0),
+          status: 'RESERVED',
+        },
+        tx,
+      );
+      return {
+        authorization: authorizationResponse(authorization),
+        replayed: false,
+      };
+    });
+  }
+
+  intervention(id: string) {
+    return this.repo.atomic(async (tx) => {
+      const auth = await this.repo.byId(id, tx);
+      if (!auth) throw new NotFoundException('Autorización no encontrada');
+      if (
+        ['SETTLED', 'RELEASED', 'INTERVENTION_REQUIRED'].includes(auth.status)
+      )
+        return authorizationResponse(auth);
+      return authorizationResponse(
+        await this.repo.settle(
+          id,
+          {
+            status: 'INTERVENTION_REQUIRED',
+            interventionReason:
+              'Fallo crítico reportado por terminal; revisar estado antes de continuar',
+          },
+          tx,
+        ),
+      );
     });
   }
 

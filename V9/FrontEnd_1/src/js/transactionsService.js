@@ -1,5 +1,9 @@
 import { apiClient, authorizationService } from './apiClient.js';
 
+export function recoveryFailure(error) {
+  return {action:'blocked', kind: error.status === 401 || error.status === 403 ? 'authentication' : error.status >= 500 ? 'unavailable' : error.kind || (error.status ? 'validation' : 'network'), reason: error.message || 'No se pudo consultar el estado. Reintenta.'};
+}
+
 export const OPERATION_KEY = 'fuelflow:operation:v1';
 
 /**
@@ -15,6 +19,7 @@ export function createTransactionsService({
   uuid = () => crypto.randomUUID(),
 } = {}) {
   let inFlight;
+  let authorizing;
   const current = () => JSON.parse(storage.getItem(OPERATION_KEY) || 'null');
   const save = (value) => {
     storage.setItem(OPERATION_KEY, JSON.stringify(value));
@@ -24,6 +29,35 @@ export function createTransactionsService({
 
   return {
     current,
+    checkpoint(snapshot) { return save({...this.begin(), snapshot}); },
+    requireIntervention(reason, snapshot) {
+      return save({...this.begin(), snapshot, intervention: reason});
+    },
+    authorize(body, snapshot) {
+      if (authorizing) return authorizing;
+      const pending = this.begin();
+      if (pending.intervention) return Promise.reject(Error('Requiere intervención'));
+      // A cached response is recovery evidence, never permission to dispense.
+      // Replay the stable request so Backend revalidates the persisted state.
+      const requestBody = pending.authorizationRequest || {...body, operationId:pending.operationId};
+      save({...pending, authorizationRequest:requestBody, snapshot});
+      authorizing = authorizations.reserve(requestBody).then(result => {
+        if (result?.authorization?.status !== 'RESERVED' || !result.authorization.unitPrice)
+          throw Error('Backend no autorizó el abastecimiento');
+        save({...current(), authorization:result});
+        return result;
+      }).catch(error => {
+        // Definitive postpaid validation rejection created no reservation.
+        // The user may explicitly accept debt and retry with the same UUID.
+        if (error.status === 400 && requestBody.mode === 'POSTPAGO') {
+          const saved = current();
+          delete saved.authorizationRequest;
+          save(saved);
+        }
+        throw error;
+      }).finally(() => {authorizing = null;});
+      return authorizing;
+    },
     begin() {
       return current() || save({ operationId: uuid() });
     },
@@ -50,19 +84,20 @@ export function createTransactionsService({
     async reconcile() {
       const pending = current();
       if (!pending?.payload) return { action: 'empty' };
-      const { authorizationId, mode } = pending.payload;
-      if (mode !== 'POSTPAGO' || !authorizationId) {
+      const { authorizationId } = pending.payload;
+      if (!authorizationId) {
         return { action: 'retry' };
       }
       let auth;
       try {
         auth = await authorizations.status(authorizationId);
-      } catch {
-        // 404: la reserva no existe (base reiniciada, por ejemplo). El payload
-        // local ya no puede cobrar nada, así que se descarta.
-        return { action: 'discard', reason: 'La reserva de saldo ya no existe.' };
+      } catch (error) {
+        if (error.status === 404) return { action: 'discard', reason: 'La reserva de saldo ya no existe.' };
+        return recoveryFailure(error);
       }
-      if (!AUTHORIZATION_CLOSED.includes(auth.status)) return { action: 'retry' };
+      if (auth.status === 'INTERVENTION_REQUIRED') return {action:'blocked', kind:'intervention', reason:'Requiere intervención del personal.'};
+      if (['RESERVED','DISPENSING'].includes(auth.status)) return { action: 'retry' };
+      if (!AUTHORIZATION_CLOSED.includes(auth.status)) return {action:'blocked',kind:'intervention',reason:'Estado de autorización desconocido; requiere revisión.'};
       if (auth.status === 'SETTLED') {
         // El backend ya registró el cobro. Antes de reenviar, verificamos que
         // el payload persistido conserve su operationId y los campos que el
@@ -80,7 +115,7 @@ export function createTransactionsService({
         );
         if (!completo) {
           return {
-            action: 'discard',
+            action: 'blocked',
             reason:
               'Falta información de la operación guardada; no se puede recuperar el comprobante.',
           };
@@ -93,14 +128,8 @@ export function createTransactionsService({
           const result = await this.submit();
           save({ ...pending, result, recovered: true });
           return { action: 'recovered', result };
-        } catch {
-          // El reenvío no se resolvió (por ejemplo, la compra quedó registrada
-          // con otro operationId). No se crea una operación nueva: se informa
-          // el estado y se permite iniciar una compra nueva de forma segura.
-          return {
-            action: 'discard',
-            reason: 'No pudimos recuperar la compra confirmada.',
-          };
+        } catch (error) {
+          return recoveryFailure(error);
         }
       }
       return { action: 'discard', reason: 'La reserva fue liberada sin consumo.' };
@@ -109,6 +138,7 @@ export function createTransactionsService({
     submit() {
       if (inFlight) return inFlight;
       const pending = current();
+      if (pending?.intervention) return Promise.reject(Error('Requiere intervención'));
       if (!pending?.payload) return Promise.reject(Error('La compra aún no está lista.'));
       if (pending.result) return Promise.resolve(pending.result);
       inFlight = request('/transactions', { method: 'POST', body: pending.payload })
@@ -123,13 +153,14 @@ export function createTransactionsService({
 
     /** Descarta únicamente la operación local obsoleta. */
     discard() {
-      if (inFlight) throw Error('Espera a que termine la confirmación.');
+      if (inFlight || authorizing) throw Error('Espera a que termine la confirmación.');
       clear();
     },
 
     finish() {
-      if (inFlight) throw Error('Espera a que termine la confirmación.');
+      if (inFlight || authorizing) throw Error('Espera a que termine la confirmación.');
       const pending = current();
+      if (pending?.intervention || (pending?.authorizationRequest && !pending.result)) throw Error('La operación requiere revisión antes de finalizar.');
       if (pending?.payload && !pending.result) throw Error('Primero confirma la compra pendiente.');
       clear();
     },
