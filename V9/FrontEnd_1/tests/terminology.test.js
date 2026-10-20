@@ -35,7 +35,7 @@ test('el descuento de membresía ya no se aplica en el importe', () => {
 test('el postpago reserva saldo antes de abastecer', () => {
   assert.match(script, /async function reservarSaldoPostpago\(\)/);
   // La reserva se pide al backend con placa y código de membresía.
-  assert.match(script, /authorizationService\.reserve\(\{/);
+  assert.match(script, /transactionsService\.authorize\(body/);
   assert.match(script, /membershipCode: state\.codigoCliente/);
   // Y su id viaja en la confirmación de la compra.
   assert.match(script, /authorizationId:state\.autorizacionId/);
@@ -63,7 +63,7 @@ test('el tope del abastecimiento se calcula sobre el importe, no sobre galones',
 });
 
 test('el frontend reporta el avance y consulta el estado de la reserva', () => {
-  assert.match(script, /function reportarAvance\(\)/);
+  assert.match(script, /function reportarAvance\(force = false\)/);
   // El cliente HTTP expone progress y status.
   const client = readFileSync(new URL('../src/js/apiClient.js', import.meta.url), 'utf8');
   assert.match(client, /progress:\(id,amount,gallons\)/);
@@ -72,13 +72,13 @@ test('el frontend reporta el avance y consulta el estado de la reserva', () => {
 
 test('el flujo de la operación pasa por los cinco estados', () => {
   assert.match(script, /estadoOperacion: 'PENDIENTE'/);
-  for (const estado of ['AUTORIZADO', 'ABASTECIENDO', 'FINALIZADO', 'COBRADO'])
+  for (const estado of ['AUTORIZADO', 'ABASTECIENDO', 'FINALIZADO'])
     assert.ok(script.includes(`marcarEstadoOperacion('${estado}')`), `falta ${estado}`);
   // Solo el backend confirma el cobro: COBRADO se marca después de que el
   // submit responde, nunca antes.
   assert.match(
     script,
-    /backendResult=await transactionsService\.submit\(\);[\s\S]{0,300}marcarEstadoOperacion\('COBRADO'\)/,
+    /backendResult=await transactionsService\.submit\(\);[\s\S]{0,300}marcarEstadoOperacion\(paymentState\(backendResult.transaction\).paid \? 'COBRADO' : 'PAYMENT_PENDING'\)/,
   );
 });
 

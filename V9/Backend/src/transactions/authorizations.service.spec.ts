@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { PaymentsService } from '../payments/payments.service';
 import { Prisma, WalletMovementKind } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { WalletRepository } from '../wallet/wallet.repository';
@@ -39,7 +40,13 @@ function harness(balance = '500.00') {
       findUnique: jest.fn().mockResolvedValue(VEHICLE_WITH_MEMBERSHIP),
     },
     fuel: {
-      findUnique: jest.fn().mockResolvedValue({ id: 'f1', active: true }),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({
+          id: 'f1',
+          active: true,
+          pricePerGallon: new Prisma.Decimal('23.50'),
+        }),
     },
     station: {
       findUnique: jest.fn().mockResolvedValue({ id: 's1', active: true }),
@@ -81,6 +88,7 @@ function harness(balance = '500.00') {
   const service = new AuthorizationsService(
     authRepo as unknown as AuthorizationsRepository,
     wallet as unknown as WalletRepository,
+    new PaymentsService(),
   );
   return { service, authRepo, wallet, txDb };
 }
@@ -185,6 +193,7 @@ describe('AuthorizationsService (reserva de saldo postpago)', () => {
     authRepo.byId.mockResolvedValue({
       id: 'auth-1',
       membershipId: 'm1',
+      mode: 'POSTPAGO',
       reservedAmount: new Prisma.Decimal('200.00'),
       status: 'RESERVED',
     });
@@ -203,6 +212,7 @@ describe('AuthorizationsService (reserva de saldo postpago)', () => {
     authRepo.byId.mockResolvedValue({
       id: 'auth-1',
       membershipId: 'm1',
+      mode: 'POSTPAGO',
       reservedAmount: new Prisma.Decimal('200.00'),
       status: 'RELEASED',
     });
@@ -246,6 +256,8 @@ describe('AuthorizationsService (reserva de saldo postpago)', () => {
 describe('AuthorizationsService (abastecimiento y liquidación)', () => {
   const reservation = (overrides: Record<string, unknown> = {}) => ({
     id: 'auth-1',
+    mode: 'POSTPAGO',
+    unitPrice: new Prisma.Decimal('23.50'),
     membershipId: 'm1',
     stationId: 's1',
     fuelId: 'f1',
@@ -289,6 +301,7 @@ describe('AuthorizationsService (abastecimiento y liquidación)', () => {
     const service = new AuthorizationsService(
       authRepo as unknown as AuthorizationsRepository,
       wallet as unknown as WalletRepository,
+      new PaymentsService(),
     );
     return { service, authRepo, wallet, txDb };
   }
@@ -331,7 +344,7 @@ describe('AuthorizationsService (abastecimiento y liquidación)', () => {
     );
     const result = await service.progress('auth-1', {
       amount: '20.00',
-      gallons: '0.900',
+      gallons: '0.851',
     });
     expect(result.dispensedAmount).toBe('40.00');
     expect(authRepo.settle).not.toHaveBeenCalled();
@@ -339,7 +352,9 @@ describe('AuthorizationsService (abastecimiento y liquidación)', () => {
 
   it('Detener cobra solo lo consumido y libera el excedente (caso 300/100/43.50)', async () => {
     const { service, authRepo, wallet } = dispensingHarness('200.00');
-    authRepo.byId.mockResolvedValue(reservation());
+    authRepo.byId.mockResolvedValue(
+      reservation({ dispensedAmount: new Prisma.Decimal('43.50') }),
+    );
     const result = await service.settle(
       'auth-1',
       new Prisma.Decimal('43.50'),
@@ -359,7 +374,9 @@ describe('AuthorizationsService (abastecimiento y liquidación)', () => {
 
   it('un consumo igual a lo reservado no libera nada', async () => {
     const { service, authRepo, wallet } = dispensingHarness('200.00');
-    authRepo.byId.mockResolvedValue(reservation());
+    authRepo.byId.mockResolvedValue(
+      reservation({ dispensedAmount: new Prisma.Decimal('100') }),
+    );
     await service.settle(
       'auth-1',
       new Prisma.Decimal('100.00'),

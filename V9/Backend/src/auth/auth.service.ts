@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './login.dto';
+import { RegisterDto } from './register.dto';
 @Injectable()
 export class AuthService {
   private readonly dummyHash = hash('invalid-account-timing-placeholder', 12);
@@ -18,6 +19,13 @@ export class AuthService {
     );
     if (!user?.active || !valid)
       throw new UnauthorizedException('Correo o contraseña incorrectos');
+    return this.session(user);
+  }
+  async register(dto: RegisterDto) {
+    const user = await this.users.register(dto, await hash(dto.password, 12));
+    return this.session(user);
+  }
+  private async session(user: { id: string; name: string; email: string }) {
     return {
       accessToken: await this.jwt.signAsync({ sub: user.id }),
       tokenType: 'Bearer',

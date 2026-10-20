@@ -29,7 +29,7 @@ test('deuda e historial pendiente se actualizan después de recargar sin doble e
   await page.getByRole('button', { name: 'Recargar saldo' }).click(); await page.getByLabel('Monto en soles').fill('20');
   await page.locator('#recharge-form').evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
   await expect(page.locator('#dialog')).not.toBeVisible(); expect(calls).toBe(1); await expect(page.locator('.pending-balance')).toHaveCount(0);
-  await page.getByRole('navigation').getByRole('link', { name: 'Consumos', exact: true }).click(); await expect(page.locator('#movements')).toContainText('Pago completado');
+  await page.getByRole('navigation').getByRole('link', { name: 'Consumos', exact: true }).click(); await expect(page.locator('#movements')).toContainText('Pagado');
 });
 test('error Backend muestra recuperación y permite cerrar sesión', async ({ page, context }) => {
   await context.route('**/memberships/me', route => route.fulfill({ status: 503, json: { message: 'unavailable' } }));

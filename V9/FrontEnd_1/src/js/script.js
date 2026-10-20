@@ -7,6 +7,7 @@
  * ========================================================================== */
 
 import {openPlateCamera, insufficientBalance} from './plateCamera.js';
+import { paymentState } from './paymentState.js';
 import {catalogService, authorizationService} from './apiClient.js';
 import {transactionsService} from './transactionsService.js';
 let catalog, submitting=false, backendResult=null;
@@ -1372,12 +1373,13 @@ function leerTransacciones() {
       localStorage.setItem(LS_KEY, JSON.stringify(TRANSACCIONES_EJEMPLO));
       return [...TRANSACCIONES_EJEMPLO];
     }
-    return JSON.parse(raw);
+    return JSON.parse(raw).map(row => row.id ? {...row, estado:paymentState(row).label} : row);
   } catch (e) { return [...TRANSACCIONES_EJEMPLO]; }
 }
 function guardarTransaccion(tx) {
   const lista = leerTransacciones();
-  if(tx.id&&lista.some(row=>row.id===tx.id))return;
+  const previous = tx.id ? lista.findIndex(row=>row.id===tx.id) : -1;
+  if(previous >= 0) lista.splice(previous,1);
   lista.unshift(tx);
   try { localStorage.setItem(LS_KEY, JSON.stringify(lista)); } catch (e) {}
 }
@@ -1388,11 +1390,18 @@ function guardarTransaccion(tx) {
 async function iniciar() {
   try {
     const pending=transactionsService.current();
+    if(pending?.intervention || (!pending?.payload && pending?.authorizationRequest)){
+      Object.assign(state,pending.snapshot||{});
+      state.autorizacionId = pending.authorization?.authorization?.id || state.autorizacionId;
+      requerirIntervencion(Error(pending.intervention || 'Operación interrumpida antes del cierre; revisar autorización y consumo.'));
+      return;
+    }
     if(pending?.payload){
       // Antes de reenviar nada, se consulta el estado real en el backend. Una
       // reserva ya liquidada hace que el reenvío siempre fuera 409 y el terminal
       // quedara atrapado en "compra pendiente" para siempre.
       const check=await transactionsService.reconcile();
+      if(check.action==='blocked'){mostrarModal('Operación conservada',check.reason,'⚠️');return;}
       if(check.action==='discard'){
         // Solo se descarta esta operación obsoleta; el resto del
         // almacenamiento local (idioma, historial de ejemplo) se conserva.
@@ -1407,7 +1416,7 @@ async function iniciar() {
         backendResult=check.result;
         state.codigoCliente=backendResult.transaction.membership?.number||state.codigoCliente;
         state.esMiembro=Boolean(state.codigoCliente);
-        marcarEstadoOperacion('COBRADO');
+        marcarEstadoOperacion(paymentState(backendResult.transaction).paid ? 'COBRADO' : 'PAYMENT_PENDING');
         mostrarModal('Compra recuperada','El backend ya había registrado esta compra. Se recuperó el comprobante sin cobrar de nuevo.','✅',()=>pintarResumen());
         return;
       }
@@ -1641,18 +1650,20 @@ function applyVehicle(vehicle) {
 
 // ---------- Procesamiento de pago (solo prepago) ----------
 // El postpago no pasa por aquí: el saldo ya se descontó al reservar.
-function procesarPago() {
+let paymentInFlight = false;
+async function procesarPago() {
+  if (paymentInFlight || state.pagoAutorizado || state.estadoOperacion === 'INTERVENTION_REQUIRED') return;
+  paymentInFlight = true;
   mostrarPantalla('pantalla-procesamiento');
-  $('proc-titulo').innerHTML = t('proc_title');
-  $('proc-pista').innerHTML = t('proc_hint');
-  hablar(t('voz_proc_pre'));
-  actualizarEstado(t('proc_title'));
-  // Simula 2 s de espera con pasarela
-  setTimeout(() => {
+  $('proc-titulo').textContent = 'Validando pago DEMO en Backend';
+  try {
+    await ejecutarReserva(state.montoPrepago);
     state.pagoAutorizado = true;
-    hablar(t('voz_autorizado'));
     mostrarModal(t('modal_pago_t'), t('modal_pago_m'), '✅', simularDespacho);
-  }, 2000);
+  } catch (error) {
+    state.pagoAutorizado = false;
+    mostrarModal('Pago no autorizado', error.message + ' Reintenta con la misma operación.', '⚠️', () => void procesarPago());
+  } finally { paymentInFlight = false; }
 }
 
 // ---------- Aviso de consumo postpago (solo postpago) ----------
@@ -1705,6 +1716,8 @@ function pintarInfoDespacho() {
 }
 
 function simularDespacho() {
+  if (!state.autorizacionId || state.estadoOperacion !== 'AUTORIZADO' || (state.modalidad === 'PREPAGO' && !state.pagoAutorizado)) return;
+  progressInFlight = Promise.resolve();
   // Reinicia contadores
   state.galones = 0; state.total = 0; state.ultimoAnuncioGalones = 0;
   state.ultimoAvanceEnviado = 0; state.detencionManual = false;
@@ -1742,7 +1755,7 @@ function simularDespacho() {
     }
     pintarDespacho(esPre);
 
-    // Avance al backend: informativo, no cobra. Se agrupa para no generar una
+    // Avance validado por backend; no cobra. Se agrupa para no generar una
     // llamada por cada tick del simulador.
     reportarAvance();
 
@@ -1760,16 +1773,34 @@ function simularDespacho() {
  *
  * No mueve saldo ni registra cobro: el dinero ya está reservado. Sirve para
  * que el backend conserve lo despachado si el terminal se reinicia. Los errores
- * se ignoran a propósito: un fallo de red no debe detener el surtidor, y la
- * confirmación final sigue siendo la única fuente de verdad del cobro.
+ * detienen la automatización: el último avance validado por Backend es la
+ * fuente de verdad del cierre y una discrepancia requiere intervención.
  */
-function reportarAvance() {
-  if (state.modalidad !== 'POSTPAGO' || !state.autorizacionId) return;
-  if (state.total - state.ultimoAvanceEnviado < 1) return;
+let progressInFlight = Promise.resolve();
+function reportarAvance(force = false) {
+  if (!state.autorizacionId || state.estadoOperacion === 'INTERVENTION_REQUIRED') return progressInFlight;
+  if (!force && state.total - state.ultimoAvanceEnviado < 1) return progressInFlight;
+  const amount = state.total.toFixed(2);
+  const gallons = (state.total / state.combustible.precio).toFixed(3);
+  state.galones = Number(gallons);
   state.ultimoAvanceEnviado = state.total;
-  authorizationService
-    .progress(state.autorizacionId, state.total.toFixed(2), state.galones.toFixed(3))
-    .catch(() => { /* se reintentará en el siguiente tick */ });
+  const snapshot = {...state, despachoTimer:null};
+  transactionsService.checkpoint(snapshot);
+  progressInFlight = progressInFlight.then(async () => {
+    if (state.estadoOperacion === 'INTERVENTION_REQUIRED') throw Error('Requiere intervención');
+    return authorizationService.progress(state.autorizacionId, amount, gallons);
+  });
+  progressInFlight.catch(error => requerirIntervencion(error));
+  return progressInFlight;
+}
+
+function requerirIntervencion(error) {
+  clearInterval(state.despachoTimer);
+  state.despachoTimer = null;
+  marcarEstadoOperacion('INTERVENTION_REQUIRED');
+  transactionsService.requireIntervention(error.message, {...state});
+  if (state.autorizacionId) authorizationService.intervention(state.autorizacionId).catch(() => {});
+  mostrarModal('Requiere intervención del personal', error.message + ' Operación detenida. El estado se conserva; no continúe abasteciendo.', '⚠️');
 }
 
 function pintarDespacho(esPre) {
@@ -1782,7 +1813,8 @@ function pintarDespacho(esPre) {
   $('despacho-pct').textContent = Math.floor(pct) + '%';
 }
 
-function detenerDespacho(automatico = false) {
+async function detenerDespacho(automatico = false) {
+  if (state.estadoOperacion === 'INTERVENTION_REQUIRED') return;
   clearInterval(state.despachoTimer);
   state.despachoTimer = null;
   // El cobro se emite UNA sola vez por consumo final: no se abre la
@@ -1803,8 +1835,10 @@ function detenerDespacho(automatico = false) {
   } else {
     hablar(automatico ? t('voz_prepago_listo') : t('voz_detenida'));
   }
+  try { await reportarAvance(true); } catch { return; }
+  if (state.estadoOperacion === 'INTERVENTION_REQUIRED') return;
   marcarEstadoOperacion('FINALIZADO');
-  setTimeout(finDeCarga, 700);
+  finDeCarga();
 }
 
 /**
@@ -1818,12 +1852,13 @@ function marcarEstadoOperacion(estado) {
   state.estadoOperacion = estado;
   const el = document.getElementById('estado-operacion');
   if (!el) return;
-  el.textContent = t('op_' + estado.toLowerCase());
+  el.textContent = estado === 'PAYMENT_PENDING' ? 'Pago pendiente' : estado === 'INTERVENTION_REQUIRED' ? 'Requiere intervención' : t('op_' + estado.toLowerCase());
   el.setAttribute('data-estado', estado);
 }
 
 /** Tras la carga: postpago pasa por el cobro externo; prepago va al ticket. */
 function finDeCarga() {
+  if (state.estadoOperacion === 'INTERVENTION_REQUIRED') return;
   if (state.modalidad === 'POSTPAGO') mostrarConsumoPostpago();
   else mostrarResumen();
 }
@@ -1849,6 +1884,7 @@ function calcularTotales() {
 }
 
 async function mostrarResumen() {
+  if (state.estadoOperacion === 'INTERVENTION_REQUIRED') return;
   if(submitting)return;
   submitting=true;
   mostrarPantalla('pantalla-procesamiento');
@@ -1864,13 +1900,13 @@ async function mostrarResumen() {
     state.cobroIniciado = true;
     if(!transactionsService.current()?.payload){
       const total=calcularTotales().total;
-      transactionsService.prepare({plate:state.placa,stationId:catalog.station.id,fuelId:state.combustible.id,amount:total.toFixed(2),gallons:state.galones.toFixed(3),mode:state.modalidad,paymentMethod:state.modalidad==='POSTPAGO'?'SALDO_PRIME':state.metodoPago,receiptType:state.tipoComprobante,...(state.dni?{receiptDni:state.dni}:{}),...(state.ruc?{receiptRuc:state.ruc}:{}),...(state.razonSocial?{receiptBusinessName:state.razonSocial}:{}),...(state.codigoCliente?{membershipCode:state.codigoCliente}:{}),saveReceiptProfile:Boolean($('save-receipt-profile')?.checked),...(state.modalidad==='POSTPAGO'?{authorizationId:state.autorizacionId,membershipCode:state.codigoCliente,outcome:state.motivoFin==='AUTO'?'AUTO':'MANUAL'}:{})},
+      transactionsService.prepare({plate:state.placa,stationId:catalog.station.id,fuelId:state.combustible.id,amount:total.toFixed(2),gallons:state.galones.toFixed(3),mode:state.modalidad,paymentMethod:state.modalidad==='POSTPAGO'?'SALDO_PRIME':state.metodoPago,receiptType:state.tipoComprobante,...(state.dni?{receiptDni:state.dni}:{}),...(state.ruc?{receiptRuc:state.ruc}:{}),...(state.razonSocial?{receiptBusinessName:state.razonSocial}:{}),...(state.codigoCliente?{membershipCode:state.codigoCliente}:{}),saveReceiptProfile:Boolean($('save-receipt-profile')?.checked),authorizationId:state.autorizacionId,unitPrice:state.combustible.precio.toFixed(2),outcome:state.motivoFin==='AUTO'?'AUTO':'MANUAL'},
         {dni:state.dni,ruc:state.ruc,razonSocial:state.razonSocial,efectivoEntregado:state.efectivoEntregado,efectivoVuelto:state.efectivoVuelto,combustible:state.combustible,modalidad:state.modalidad,placa:state.placa,total:state.total,galones:state.galones,montoPrepago:state.montoPrepago,montoPostpago:state.montoPostpago,tanqueLleno:state.tanqueLleno,tipoComprobante:state.tipoComprobante,metodoPago:state.modalidad==='POSTPAGO'?'SALDO_PRIME':state.metodoPago,esMiembro:state.esMiembro,codigoCliente:state.codigoCliente,autorizacionId:state.autorizacionId,motivoFin:state.motivoFin});
     }
     backendResult=await transactionsService.submit();
     state.codigoCliente=backendResult.transaction.membership?.number||'';
     state.esMiembro=Boolean(state.codigoCliente);
-    marcarEstadoOperacion('COBRADO');
+    marcarEstadoOperacion(paymentState(backendResult.transaction).paid ? 'COBRADO' : 'PAYMENT_PENDING');
   }catch(error){
     // Fallo de red o rechazo del backend: la operación queda pendiente con su
     // mismo operationId, así que reintentar no duplica el cobro. No se marca
@@ -1889,6 +1925,7 @@ async function mostrarResumen() {
  * en ese caso se reconcilia con el backend y se ofrece empezar de nuevo.
  */
 async function manejarFalloConfirmacion(error) {
+  if (error.status === 400) { requerirIntervencion(error); return; }
   const cerrada=/liquidada o liberada|autorización.*no encontrada|no encontrada/i.test(error.message||'');
   if(!cerrada){
     // Fallo de red o validación: la operación sigue pendiente con su mismo
@@ -1901,10 +1938,11 @@ async function manejarFalloConfirmacion(error) {
     backendResult=check.result;
     state.codigoCliente=backendResult.transaction.membership?.number||state.codigoCliente;
     state.esMiembro=Boolean(state.codigoCliente);
-    marcarEstadoOperacion('COBRADO');
+    marcarEstadoOperacion(paymentState(backendResult.transaction).paid ? 'COBRADO' : 'PAYMENT_PENDING');
     mostrarModal('Compra recuperada','Esta compra ya estaba registrada. Se recuperó el comprobante sin cobrar de nuevo.','✅',()=>pintarResumen());
     return;
   }
+  if(check.action !== 'discard'){mostrarModal('Operación conservada',check.reason || 'Reintenta la consulta de estado.','⚠️');return;}
   transactionsService.discard();
   limpiarEstadoOperacion();
   mostrarModal('Operación descartada',
@@ -1914,6 +1952,9 @@ async function manejarFalloConfirmacion(error) {
 
 /** Pinta el ticket con el resultado que ya existe en backendResult. */
 function pintarResumen(){
+  state.total = Number(backendResult.transaction.amount);
+  if(backendResult.transaction.gallons != null) state.galones = Number(backendResult.transaction.gallons);
+  if(backendResult.transaction.unitPrice != null) state.combustible.precio = Number(backendResult.transaction.unitPrice);
   const { subtotal, descuento, total, aplica_descuento: aplicaDescuento } = calcularTotales();
   const esFactura = state.tipoComprobante === 'FACTURA';
   $('t-placa').textContent = state.placa + (state.esMiembro ? ' ' + t('miembro_tag') : '');
@@ -1934,14 +1975,14 @@ function pintarResumen(){
   $('t-modalidad').textContent = state.modalidad +
     (state.modalidad === 'PREPAGO' ? ` (S/ ${state.montoPrepago.toFixed(2)})`
       : (state.tanqueLleno ? ` (${t('tanque_lleno')})` : ` (S/ ${state.montoPostpago.toFixed(2)})`));
-  $('t-estado').textContent = (backendResult.transaction.status === 'PAYMENT_PENDING' ? 'Pendiente S/ ' + Number(backendResult.transaction.debt.amountPending).toFixed(2) : 'Pagado') + ' · +' + backendResult.pointsEarned + ' puntos' + (state.codigoCliente ? ' · ' + state.codigoCliente : '');
+  $('t-estado').textContent = paymentState(backendResult.transaction).label + ' · +' + backendResult.pointsEarned + ' puntos' + (state.codigoCliente ? ' · ' + state.codigoCliente : '');
 
-  // Persiste la transacción (ambos modos quedan pagados: prepago aquí,
-  // postpago porque el saldo se liquidó al confirmar la reserva)
+  // Conserva el estado financiero confirmado; una deuda nunca se etiqueta pagada.
   const hora = new Date().toLocaleTimeString(LOCALE_IDIOMA[state.idioma] || 'es-PE', { hour: '2-digit', minute: '2-digit' });
   guardarTransaccion({
     id: backendResult.transaction.id, hora, placa: state.placa, combustible: state.combustible.nombre,
-    monto: Number(backendResult.transaction.amount), estado: 'Pagado',
+    monto: Number(backendResult.transaction.amount), estado: paymentState(backendResult.transaction).label,
+    status:backendResult.transaction.status,payment:backendResult.transaction.payment,debt:backendResult.transaction.debt,
   });
   refrescarAdmin(); // mantiene el dashboard al día
 
@@ -1980,7 +2021,7 @@ ${t('c_metodo')}     : ${state.metodoPago || '—'}${state.metodoPago === 'EFECT
         ? `\n${t('c_ef_entregado')}  : S/ ${(state.efectivoEntregado || 0).toFixed(2)}`
           + `\n${t('c_ef_vuelto')}    : S/ ${(state.efectivoVuelto || 0).toFixed(2)}`
         : ''}
-${t('c_estado')}   : ${backendResult.transaction.status === 'PAYMENT_PENDING' ? 'Pendiente S/ ' + Number(backendResult.transaction.debt.amountPending).toFixed(2) : 'Pago completado'}
+${t('c_estado')}   : ${paymentState(backendResult.transaction).label}
 ========================================
   ${t('c_gracias')}
 ========================================`;
@@ -2332,24 +2373,23 @@ async function reservarSaldoPostpago() {
 /** Pide la reserva al backend y refleja el estado AUTORIZADO. */
 async function ejecutarReserva(monto, allowDebt = false) {
   const body = {
+    mode: state.modalidad,
+    ...(state.modalidad === 'PREPAGO' ? {paymentMethod:state.metodoPago} : {}),
+    unitPrice:state.combustible.precio.toFixed(2),
     allowDebt,
     plate: state.placa,
     amount: monto.toFixed(2),
-    membershipCode: state.codigoCliente,
+    ...(state.codigoCliente ? {membershipCode: state.codigoCliente} : {}),
     stationId: catalog.station.id,
     fuelId: state.combustible.id,
     receiptType: state.tipoComprobante || 'BOLETA',
   };
-  const key = 'primax-v9-reservation';
-  const saved = JSON.parse(sessionStorage.getItem(key) || 'null');
-  const signature = JSON.stringify(body);
-  const operationId = saved?.signature === signature ? saved.operationId : crypto.randomUUID();
-  sessionStorage.setItem(key, JSON.stringify({ signature, operationId }));
-  const result = await authorizationService.reserve({ ...body, operationId });
-  sessionStorage.removeItem(key);
+  const result = await transactionsService.authorize(body, {...state, despachoTimer:null});
   state.autorizacionId = result.authorization.id;
   state.montoReservado = Number(result.authorization.authorizedAmount);
+  state.combustible.precio = Number(result.authorization.unitPrice);
   state.codigoCliente = result.membershipNumber || state.codigoCliente;
+  transactionsService.checkpoint({...state, despachoTimer:null});
   marcarEstadoOperacion('AUTORIZADO');
   return true;
 }
@@ -2682,6 +2722,10 @@ function asistenciaHaLlegado() {
 
 /** Abre el cuadro de carga y arranca la cuenta de llegada. */
 function abrirAsistencia() {
+  if (state.estadoOperacion === 'INTERVENTION_REQUIRED') {
+    mostrarModal('Intervención requerida', 'La operación está detenida. Contacta al personal de la estación. Este piloto no notifica ni asigna un operador automáticamente.', '⚠️');
+    return;
+  }
   detenerProgresoAyuda();
   $('help-overlay').classList.remove('hidden');
   $('help-icon').textContent = '📞';

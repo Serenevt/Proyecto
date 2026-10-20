@@ -1,10 +1,13 @@
 import { JwtService } from '@nestjs/jwt';
 import '../src/config/load-env';
+import { recordedPurchase } from './recorded-purchase';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { plainToInstance } from 'class-transformer';
+import { CreateAuthorizationDto } from '../src/transactions/create-authorization.dto';
 import request from 'supertest';
 import { setupApp } from '../src/setup-app';
 
@@ -114,21 +117,18 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
         allowDebt,
       });
   const buy = (authorizationId: string, amount: string, extra = {}) =>
-    request(app.getHttpServer())
-      .post('/api/v1/transactions')
-      .set('x-kiosk-key', key)
-      .send({
-        operationId: randomUUID(),
-        plate,
-        membershipCode: number,
-        amount,
-        stationId,
-        fuelId,
-        mode: 'POSTPAGO',
-        paymentMethod: 'SALDO_PRIME',
-        authorizationId,
-        ...extra,
-      });
+    recordedPurchase(app, key, db, {
+      operationId: randomUUID(),
+      plate,
+      membershipCode: number,
+      amount,
+      stationId,
+      fuelId,
+      mode: 'POSTPAGO',
+      paymentMethod: 'SALDO_PRIME',
+      authorizationId,
+      ...extra,
+    });
   const recharge = (amount: string, operationId = randomUUID()) =>
     request(app.getHttpServer())
       .post('/api/v1/memberships/me/recharges')
@@ -149,6 +149,188 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     return (await buy(res.body.authorization.id, amount).expect(201)).body
       .transaction;
   }
+  it('critical: prepago persists payment before authorization and rejects manipulated closure', async () => {
+    const fuel = await db.fuel.findUniqueOrThrow({ where: { id: fuelId } });
+    const operationId = randomUUID();
+    const body = {
+      operationId,
+      plate,
+      stationId,
+      fuelId,
+      mode: 'PREPAGO',
+      paymentMethod: 'TARJETA',
+      amount: '100.00',
+      unitPrice: fuel.pricePerGallon.toFixed(2),
+    };
+    const authorize = () =>
+      request(app.getHttpServer())
+        .post('/api/v1/authorizations')
+        .set('x-kiosk-key', key)
+        .send(body);
+    const [a, b] = await Promise.all([authorize(), authorize()]);
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.authorization.id).toBe(b.body.authorization.id);
+    const auth = await db.fuelAuthorization.findUniqueOrThrow({
+      where: { id: a.body.authorization.id },
+      include: { payment: true },
+    });
+    expect(auth.payment?.status).toBe('CAPTURED');
+    expect(await db.payment.count({ where: { operationId } })).toBe(1);
+    const gallons = (80 / Number(fuel.pricePerGallon)).toFixed(3);
+    await request(app.getHttpServer())
+      .post(`/api/v1/authorizations/${auth.id}/progress`)
+      .set('x-kiosk-key', key)
+      .send({ amount: '80.00', gallons })
+      .expect(200);
+    const close = {
+      operationId: randomUUID(),
+      plate,
+      stationId,
+      fuelId,
+      mode: 'PREPAGO',
+      paymentMethod: 'TARJETA',
+      authorizationId: auth.id,
+      amount: '80.00',
+      gallons,
+    };
+    for (const changes of [
+      { amount: '1.00', gallons: undefined },
+      { amount: '79.00' },
+      { amount: '90.00' },
+      { gallons: '0.001' },
+      { unitPrice: '0.01' },
+      { amount: '101.00' },
+    ]) {
+      await request(app.getHttpServer())
+        .post('/api/v1/transactions')
+        .set('x-kiosk-key', key)
+        .send({ ...close, ...changes })
+        .expect(400);
+    }
+    await db.fuel.update({
+      where: { id: fuelId },
+      data: { pricePerGallon: fuel.pricePerGallon.add(1) },
+    });
+    try {
+      const result = await request(app.getHttpServer())
+        .post('/api/v1/transactions')
+        .set('x-kiosk-key', key)
+        .send(close)
+        .expect(201);
+      expect(Number(result.body.transaction.unitPrice)).toBe(
+        Number(fuel.pricePerGallon),
+      );
+      expect(result.body.transaction.amount).toBe('80.00');
+    } finally {
+      await db.fuel.update({
+        where: { id: fuelId },
+        data: { pricePerGallon: fuel.pricePerGallon },
+      });
+    }
+  });
+  it.each(['PENDING', 'REJECTED'] as const)(
+    'critical: persisted %s payment never authorizes, including retries',
+    async (status) => {
+      const body = {
+        operationId: randomUUID(),
+        plate,
+        stationId,
+        fuelId,
+        mode: 'PREPAGO',
+        paymentMethod: 'TARJETA',
+        amount: '100.00',
+      };
+      const fuel = await db.fuel.findUniqueOrThrow({ where: { id: fuelId } });
+      // Provider-result fixture in the isolated schema, not a commercial payment.
+      await db.payment.create({
+        data: {
+          operationId: body.operationId,
+          requestHash: createHash('sha256')
+            .update(JSON.stringify(plainToInstance(CreateAuthorizationDto, body)))
+            .digest('hex'),
+          amount: body.amount,
+          method: 'TARJETA',
+          provider: 'DEMO',
+          status,
+          unitPrice: fuel.pricePerGallon,
+        },
+      });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const result = await request(app.getHttpServer())
+          .post('/api/v1/authorizations')
+          .set('x-kiosk-key', key)
+          .send(body)
+          .expect(409);
+        expect(result.body.message).toContain('Pago no aprobado');
+      }
+      expect(
+        await db.fuelAuthorization.count({
+          where: { operationId: body.operationId },
+        }),
+      ).toBe(0);
+      expect(
+        await db.payment.count({
+          where: { operationId: body.operationId, status },
+        }),
+      ).toBe(1);
+    },
+  );
+
+  it('critical: intervention persists progress and blocks automation and closure', async () => {
+    await setBalance('100.00');
+    const res = await reserve('80.00').expect(201);
+    const id = res.body.authorization.id;
+    const fuel = await db.fuel.findUniqueOrThrow({ where: { id: fuelId } });
+    const progress = {
+      amount: '40.00',
+      gallons: (40 / Number(fuel.pricePerGallon)).toFixed(3),
+    };
+    await request(app.getHttpServer())
+      .post(`/api/v1/authorizations/${id}/progress`)
+      .set('x-kiosk-key', key)
+      .send(progress)
+      .expect(200);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await request(app.getHttpServer())
+        .post(`/api/v1/authorizations/${id}/intervention`)
+        .set('x-kiosk-key', key)
+        .expect(201);
+    }
+    for (const action of ['progress', 'release']) {
+      await request(app.getHttpServer())
+        .post(`/api/v1/authorizations/${id}/${action}`)
+        .set('x-kiosk-key', key)
+        .send(action === 'progress' ? progress : {})
+        .expect(409);
+    }
+    await request(app.getHttpServer())
+      .post('/api/v1/transactions')
+      .set('x-kiosk-key', key)
+      .send({
+        operationId: randomUUID(),
+        plate,
+        stationId,
+        fuelId,
+        membershipCode: number,
+        mode: 'POSTPAGO',
+        paymentMethod: 'SALDO_PRIME',
+        authorizationId: id,
+        ...progress,
+      })
+      .expect(409);
+    const stored = await db.fuelAuthorization.findUniqueOrThrow({
+      where: { id },
+    });
+    expect(stored.status).toBe('INTERVENTION_REQUIRED');
+    expect(stored.dispensedAmount.toFixed(2)).toBe(progress.amount);
+    expect(stored.dispensedGallons.toFixed(3)).toBe(progress.gallons);
+    expect(await balance()).toBe('20.00');
+    expect(await db.transaction.count({ where: { authorizationId: id } })).toBe(
+      0,
+    );
+  });
+
   it('E2E principal: Diego 5 - 12.60 => deuda 7.60; recarga 20 => saldo 12.40', async () => {
     const tx = await debt();
     expect(tx.status).toBe('PAYMENT_PENDING');

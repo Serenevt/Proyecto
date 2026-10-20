@@ -114,14 +114,14 @@ test('reconcile no crea operación nueva si falta información del payload', asy
     },
   });
   const result = await svc.reconcile();
-  assert.equal(result.action, 'discard');
+  assert.equal(result.action, 'blocked');
   assert.match(result.reason, /Falta información/);
   // Sin payload completo no se reenvía nada: no hay riesgo de operación nueva.
   assert.equal(enviado, false);
   assert.equal(svc.current().payload.operationId, 'op-incompleto');
 });
 
-test('reconcile descarta sin crear operación nueva cuando el reenvío falla', async () => {
+test('reconcile conserva la operación cuando el reenvío falla', async () => {
   const disk = storage();
   const svc = createTransactionsService({
     storage: disk,
@@ -132,8 +132,8 @@ test('reconcile descarta sin crear operación nueva cuando el reenvío falla', a
   });
   svc.prepare(payload, { placa: 'ABC-123' });
   const result = await svc.reconcile();
-  assert.equal(result.action, 'discard');
-  assert.match(result.reason, /No pudimos recuperar/);
+  assert.equal(result.action, 'blocked');
+  assert.match(result.reason, /operationId/);
   // La operación persistida sigue intacta hasta que el usuario la descarte.
   assert.equal(svc.current().payload.operationId, svc.current().operationId);
 });

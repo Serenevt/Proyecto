@@ -1,5 +1,10 @@
 import { Prisma } from '@prisma/client';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { CreateVehicleDto } from './create-vehicle.dto';
 import { Actor } from '../auth/access';
 import { PaginationDto } from '../common/pagination.dto';
 import { normalizePlate } from './plate.dto';
@@ -7,6 +12,12 @@ import { VehiclesRepository } from './vehicles.repository';
 @Injectable()
 export class VehiclesService {
   constructor(private readonly repo: VehiclesRepository) {}
+  async create(dto: CreateVehicleDto, actor: Actor) {
+    if (actor.kind !== 'member') throw new ForbiddenException();
+    const plate = normalizePlate(dto.plate) as string;
+    await this.repo.link(actor.userId, plate, dto.label);
+    return this.findByPlate(plate, actor);
+  }
   async findByPlate(plate: string, actor: Actor) {
     const vehicle = await this.repo.findByPlate(
       normalizePlate(plate) as string,

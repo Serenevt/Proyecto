@@ -1,4 +1,5 @@
 import '../src/config/load-env';
+import { recordedPurchase } from './recorded-purchase';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
@@ -38,10 +39,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     ...overrides,
   });
   const buy = (body: Record<string, unknown>) =>
-    request(app.getHttpServer())
-      .post('/api/v1/transactions')
-      .set('x-kiosk-key', key)
-      .send(body);
+    recordedPurchase(app, key, db, body);
   const getMember = (path: string) =>
     request(app.getHttpServer())
       .get(`/api/v1/${path}`)
@@ -261,7 +259,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     await buy(purchase({ fuelId: randomUUID() })).expect(404);
     expect(await db.transaction.count()).toBe(count);
   });
-  it('rollback de compra y pago si falla el movimiento en PostgreSQL', async () => {
+  it('rollback del cierre conserva el pago previo si falla el movimiento en PostgreSQL', async () => {
     // Force a real DB constraint failure after starting nested writes, then verify rollback.
     await db.$executeRawUnsafe(
       'ALTER TABLE "RewardMovement" ADD CONSTRAINT "e2e_force_failure" CHECK (points <> 17)',
@@ -275,7 +273,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
           where: { operationId: body.operationId as string },
         }),
       ).toBe(0);
-      expect(await db.payment.count()).toBe(paymentsBefore);
+      expect(await db.payment.count()).toBe(paymentsBefore + 1);
     } finally {
       await db.$executeRawUnsafe(
         'ALTER TABLE "RewardMovement" DROP CONSTRAINT "e2e_force_failure"',
@@ -839,7 +837,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
       await request(app.getHttpServer())
         .post(`/api/v1/authorizations/${reserved.id}/progress`)
         .set('x-kiosk-key', key)
-        .send({ amount, gallons: '1.000' })
+        .send({ amount, gallons: (Number(amount) / 23.5).toFixed(3) })
         .expect(200);
     // Los avances no crean transacción ni mueven saldo.
     expect(

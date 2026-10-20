@@ -26,7 +26,11 @@ export async function creditCapacity(
 ) {
   const pending = await pendingDebt(tx, membershipId);
   const reservations = await tx.fuelAuthorization.findMany({
-    where: { membershipId, status: { in: ['RESERVED', 'DISPENSING'] } },
+    where: {
+      membershipId,
+      mode: 'POSTPAGO',
+      status: { in: ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'] },
+    },
     select: { authorizedAmount: true, reservedAmount: true },
   });
   const committed = reservations.reduce(

@@ -59,6 +59,11 @@ describe('TransactionsService', () => {
   };
   const reservation = {
     id: 'auth-1',
+    vehicleId: 'vehicle',
+    mode: 'POSTPAGO',
+    unitPrice: new Prisma.Decimal('21.30'),
+    dispensedAmount: new Prisma.Decimal('100'),
+    dispensedGallons: new Prisma.Decimal('4.695'),
     membershipId: 'member',
     stationId: 'station',
     fuelId: 'fuel',
@@ -74,6 +79,8 @@ describe('TransactionsService', () => {
     stationId: 'station',
     fuelId: 'fuel',
     mode: 'PREPAGO',
+    gallons: '4.695',
+    authorizationId: 'auth-pre',
     paymentMethod: 'TARJETA',
     receiptType: 'BOLETA',
   };
@@ -84,6 +91,7 @@ describe('TransactionsService', () => {
     stationId: 'station',
     fuelId: 'fuel',
     mode: 'POSTPAGO',
+    gallons: '4.695',
     paymentMethod: 'SALDO_PRIME',
     receiptType: 'BOLETA',
     authorizationId: 'auth-1',
@@ -100,7 +108,21 @@ describe('TransactionsService', () => {
       pricePerGallon: new Prisma.Decimal('21.30'),
     });
     repo.station.mockResolvedValue({ id: 'station', active: true });
-    authorizations.byId.mockResolvedValue(reservation);
+    authorizations.byId.mockImplementation(async (id: string) =>
+      id === 'auth-pre'
+        ? { ...reservation, id, mode: 'PREPAGO', paymentId: 'paid' }
+        : reservation,
+    );
+    (tx as unknown as { payment: unknown }).payment = {
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({
+          id: 'paid',
+          status: 'CAPTURED',
+          method: 'TARJETA',
+          amount: new Prisma.Decimal('200'),
+        }),
+    };
     repo.create.mockImplementation(
       async (data: Prisma.TransactionUncheckedCreateInput) =>
         ({
@@ -124,7 +146,7 @@ describe('TransactionsService', () => {
     expect(result.transaction.amount).toBe('100.00');
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        payment: { create: expect.objectContaining({ status: 'CAPTURED' }) },
+        payment: { connect: { id: 'paid' } },
         rewardMovement: {
           create: { membershipId: 'member', points: 100, kind: 'EARN' },
         },
@@ -146,6 +168,12 @@ describe('TransactionsService', () => {
       'YAPE',
       'PLIN',
     ] as const) {
+      (tx.payment.findUnique as jest.Mock).mockResolvedValue({
+        id: 'paid',
+        status: 'CAPTURED',
+        method: paymentMethod,
+        amount: new Prisma.Decimal('200'),
+      });
       await expect(
         service.create({ ...prepago, paymentMethod }),
       ).resolves.toBeDefined();
@@ -255,8 +283,13 @@ describe('TransactionsService', () => {
   });
 
   it('POSTPAGO consume exactamente lo reservado sin liberar excedente', async () => {
+    authorizations.byId.mockResolvedValue({
+      ...reservation,
+      dispensedAmount: new Prisma.Decimal('200'),
+      dispensedGallons: new Prisma.Decimal('9.390'),
+    });
     await expect(
-      service.create({ ...postpago, amount: '200.00' }),
+      service.create({ ...postpago, amount: '200.00', gallons: '9.390' }),
     ).resolves.toBeDefined();
     expect(wallet.setBalance).not.toHaveBeenCalled();
   });
@@ -281,8 +314,16 @@ describe('TransactionsService', () => {
   // ---------- Importe vs galones ----------
 
   it('acepta el importe que coincide con el volumen despachado', async () => {
+    authorizations.byId.mockResolvedValue({
+      ...reservation,
+      id: 'auth-pre',
+      mode: 'PREPAGO',
+      paymentId: 'paid',
+      dispensedAmount: new Prisma.Decimal('199.99'),
+      dispensedGallons: new Prisma.Decimal('9.389'),
+    });
     await expect(
-      service.create({ ...prepago, amount: '199.99', gallons: '9.390' }),
+      service.create({ ...prepago, amount: '199.99', gallons: '9.389' }),
     ).resolves.toBeDefined();
   });
 

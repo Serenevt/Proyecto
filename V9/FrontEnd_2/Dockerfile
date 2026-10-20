@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN test "$(npm --version)" = "10.9.4" && npm ci --no-audit --no-fund
 COPY tools/build.cjs ./tools/build.cjs
+COPY tools/api-url.cjs ./tools/api-url.cjs
 COPY index.html ./
 COPY styles ./styles
 COPY js ./js

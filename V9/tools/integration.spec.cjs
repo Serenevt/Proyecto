@@ -23,7 +23,25 @@ test('compra desde FuelFlow actualiza Primax Prime y PostgreSQL sin duplicados',
   const response=await submitted;expect(response.status()).toBe(201);result=await response.json();const tx=result.transaction;
   expect(tx).toMatchObject({amount:'100.00',status:'PAID',mode:'PREPAGO',receiptType:'BOLETA',gallons:'4.255',pointsEarned:100,vehicle:{plate:'ABC-123'},membership:{number:'PRIME-0001',name:'Diego'},station:{name:'Primax Sur'},fuel:{name:'Premium'},payment:{method:'TARJETA',status:'CAPTURED'}});
   expect(result.pointsEarned).toBe(100);await expect(terminal.locator('#t-estado')).toContainText('+100 puntos');
-  await terminal.reload();await terminal.locator('#btn-iniciar').dblclick();await expect(terminal.locator('#t-total')).toHaveText('S/ 100.00');
+  // Inject transport faults around a real persisted purchase; then recover against the live API.
+  const authorizationRoute='**/api/v1/authorizations/*';
+  for(const status of [401,403,404,503,'timeout']){
+    await terminal.route(authorizationRoute,route=>status==='timeout'?undefined:route.fulfill({status,contentType:'application/json',body:JSON.stringify({message:'Injected recovery fault '+status})}));
+    const check=await terminal.evaluate(async()=>{
+      const {transactionsService}=await import('/src/js/transactionsService.js');
+      const before=transactionsService.current();
+      const recovery=await transactionsService.reconcile();
+      return {before,after:transactionsService.current(),recovery};
+    });
+    expect(check.after).toEqual(check.before);
+    expect(check.recovery.action).toBe(status===404?'discard':'blocked');
+    if(status!==404)expect(check.recovery.kind).toBe(status===503?'unavailable':status==='timeout'?'timeout':'authentication');
+    await terminal.unroute(authorizationRoute);
+  }
+  await terminal.reload();await terminal.locator('#btn-iniciar').dblclick();
+  await expect(terminal.getByRole('heading',{name:'Compra recuperada',exact:true})).toBeVisible();
+  await terminal.locator('#modal-ok').click();
+  await expect(terminal.locator('#t-total')).toHaveText('S/ 100.00');
   const replay=await terminal.evaluate(async()=>{const {transactionsService}=await import('/src/js/transactionsService.js');return transactionsService.submit();});expect(replay.transaction.id).toBe(tx.id);
   // Replay over HTTP too: the cached client response alone cannot prove server idempotency.
   const repeated=await terminal.evaluate(async()=>{const {transactionsService}=await import('/src/js/transactionsService.js');const {apiClient}=await import('/src/js/apiClient.js');return apiClient('/transactions',{method:'POST',body:transactionsService.current().payload});});expect(repeated.transaction.id).toBe(tx.id);

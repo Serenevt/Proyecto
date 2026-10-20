@@ -66,7 +66,11 @@ export class WalletRepository {
     db: Prisma.TransactionClient | PrismaClient,
   ) {
     const rows = await db.fuelAuthorization.findMany({
-      where: { membershipId, status: { in: ['RESERVED', 'DISPENSING'] } },
+      where: {
+        membershipId,
+        mode: 'POSTPAGO',
+        status: { in: ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'] },
+      },
       select: { reservedAmount: true },
     });
     return rows.reduce(
