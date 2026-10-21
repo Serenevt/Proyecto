@@ -1,0 +1,137 @@
+name: primax-v10
+
+services:
+  frontend1:
+    build:
+      context: ./FrontEnd_1
+    ports:
+      - "127.0.0.1:${FRONTEND1_PORT:-10081}:80"
+    environment:
+      KIOSK_API_KEY: ${KIOSK_SECRET:-${KIOSK_API_KEY:-LOCAL_DEMO_V10_KIOSK_CHANGE_ME_32_CHARS}}
+      PRIME_WEB_PORT: ${FRONTEND2_PORT:-10082}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [app]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  frontend2:
+    build:
+      context: ./FrontEnd_2
+      args:
+        # 1 = muestra la cuenta de demostración local en la pantalla de acceso.
+        # Ponlo en 0 (o quita el argumento) para un despliegue real: el bundle
+        # no contendrá ninguna contraseña.
+        FUELFLOW_DEMO: ${FUELFLOW_DEMO:-1}
+    ports:
+      - "127.0.0.1:${FRONTEND2_PORT:-10082}:80"
+    restart: unless-stopped
+    networks: [app]
+    security_opt:
+      - no-new-privileges:true
+
+  # Defaults are for local demo only. Production requires real secrets.
+  postgres:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-primax_v10}
+      POSTGRES_USER: ${POSTGRES_USER:-primax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-primax_demo_local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./Backend
+      target: build
+    environment: &backend-env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-primax}:${POSTGRES_PASSWORD:-primax_demo_local}@postgres:5432/${POSTGRES_DB:-primax_v10}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-LOCAL_DEMO_V10_JWT_CHANGE_ME_32_CHARS}
+      KIOSK_API_KEY: ${KIOSK_SECRET:-${KIOSK_API_KEY:-LOCAL_DEMO_V10_KIOSK_CHANGE_ME_32_CHARS}}
+      PRIME_DEBT_LIMIT: ${PRIME_DEBT_LIMIT:-200}
+      PLATE_CONFIDENCE_THRESHOLD: ${PLATE_CONFIDENCE_THRESHOLD:-0.75}
+      PLATE_RECOGNITION_URL: ${PLATE_RECOGNITION_URL:-http://plate-recognition:8000}
+      SOLES_PER_POINT: ${SOLES_PER_POINT:-9}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:10081,http://localhost:10082,http://localhost:5180,http://localhost,https://localhost}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-Prime123}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npm", "run", "prisma:migrate"]
+    networks: [data]
+    restart: "no"
+
+  seed:
+    build:
+      context: ./Backend
+      target: build
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["node", "dist/prisma/seed.js"]
+    networks: [data]
+    restart: "no"
+
+  backend:
+    build:
+      context: ./Backend
+      target: runtime
+    environment: *backend-env
+    networks: [app, data]
+    ports:
+      - "127.0.0.1:${PORT:-10000}:3000"
+    depends_on:
+      plate-recognition:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  plate-recognition:
+    build: ./PlateRecognition
+    networks: [data]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: ./Backend
+      target: test
+    environment: *backend-env
+    networks: [app, data]
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: ["sh", "-c", "npm test && KEEP_E2E_SCHEMA=1 npm run test:e2e && npm run lint && npm run build"]
+
+volumes:
+  postgres_data:
+
+networks:
+  app:
+  # Database and OCR have no published host ports.
+  data:
