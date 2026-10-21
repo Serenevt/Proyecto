@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-17T17:08:07.100060",
+  "checks": [
+    {
+      "check": "backend-tests",
+      "exitCode": 0,
+      "log": "critical-backend-tests.log"
+    },
+    {
+      "check": "backend-build",
+      "exitCode": 0,
+      "log": "critical-backend-build.log"
+    },
+    {
+      "check": "backend-types",
+      "exitCode": 0,
+      "log": "critical-backend-types.log"
+    },
+    {
+      "check": "backend-lint",
+      "exitCode": 0,
+      "log": "critical-backend-lint.log"
+    },
+    {
+      "check": "kiosk-tests",
+      "exitCode": 0,
+      "log": "critical-kiosk-tests.log"
+    },
+    {
+      "check": "kiosk-build",
+      "exitCode": 0,
+      "log": "critical-kiosk-build.log"
+    },
+    {
+      "check": "prime-tests",
+      "exitCode": 0,
+      "log": "critical-prime-tests.log"
+    },
+    {
+      "check": "prime-build",
+      "exitCode": 0,
+      "log": "critical-prime-build.log"
+    }
+  ]
+}
