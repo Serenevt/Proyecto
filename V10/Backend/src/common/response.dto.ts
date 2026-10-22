@@ -74,12 +74,21 @@ export class TransactionViewDto {
   @ApiProperty({ example: '100.00', type: String }) amount: string;
   @ApiProperty({ example: 'PEN' }) currency: string;
   @ApiProperty({ example: 11 }) pointsEarned: number;
-  @ApiProperty({ example: '0.1111', type: String, description: 'Legacy approximate snapshot; not used for calculation' }) pointsRate: string;
-  @ApiProperty({ example: '9', type: String, nullable: true }) solesPerPoint: string | null;
+  @ApiProperty({
+    example: '0.1111',
+    type: String,
+    description: 'Legacy approximate snapshot; not used for calculation',
+  })
+  pointsRate: string;
+  @ApiProperty({ example: '9', type: String, nullable: true }) solesPerPoint:
+    | string
+    | null;
   @ApiProperty({ enum: ['PAID'] }) status: string;
   @ApiProperty({ enum: ['PREPAGO', 'POSTPAGO'] }) mode: string;
   @ApiProperty({ enum: ['BOLETA', 'FACTURA'] }) receiptType: string;
-  @ApiProperty({ type: VehicleResponseDto }) vehicle: VehicleResponseDto;
+  @ApiProperty({ example: 'ABC-123' }) plate: string;
+  @ApiProperty({ type: VehicleResponseDto, nullable: true })
+  vehicle: VehicleResponseDto | null;
   @ApiProperty({ type: FuelResponseDto }) fuel: FuelResponseDto;
   @ApiProperty({ type: StationResponseDto }) station: StationResponseDto;
   @ApiProperty({

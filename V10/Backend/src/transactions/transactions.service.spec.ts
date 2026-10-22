@@ -59,6 +59,7 @@ describe('TransactionsService', () => {
   };
   const reservation = {
     id: 'auth-1',
+    plate: 'ABC-123',
     vehicleId: 'vehicle',
     mode: 'POSTPAGO',
     unitPrice: new Prisma.Decimal('21.30'),
@@ -114,14 +115,12 @@ describe('TransactionsService', () => {
         : reservation,
     );
     (tx as unknown as { payment: unknown }).payment = {
-      findUnique: jest
-        .fn()
-        .mockResolvedValue({
-          id: 'paid',
-          status: 'CAPTURED',
-          method: 'TARJETA',
-          amount: new Prisma.Decimal('200'),
-        }),
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'paid',
+        status: 'CAPTURED',
+        method: 'TARJETA',
+        amount: new Prisma.Decimal('200'),
+      }),
     };
     repo.create.mockImplementation(
       async (data: Prisma.TransactionUncheckedCreateInput) =>

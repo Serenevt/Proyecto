@@ -19,7 +19,7 @@ describe('Registration and vehicles: real PostgreSQL', () => {
     email: `${randomUUID()}@example.test`,
     password,
   });
-  const register = (data = body()) =>
+  const register = (data: Record<string, unknown> = body()) =>
     request(app.getHttpServer()).post('/api/v1/auth/register').send(data);
   const member = (token: string) =>
     request(app.getHttpServer())
@@ -51,6 +51,62 @@ describe('Registration and vehicles: real PostgreSQL', () => {
     await db?.$disconnect();
     process.env.DATABASE_URL = original;
     console.log('Registration evidence schema preserved:', schema);
+  });
+
+  it.each([
+    [1, 'PRIM001'],
+    [2, 'PRIM002'],
+    [999, 'PRIM999'],
+    [1000, 'PRIM001A'],
+    [1998, 'PRIM999A'],
+    [1999, 'PRIM001B'],
+  ])('persists sequential ordinal %s as %s', async (ordinal, expected) => {
+    await db.$executeRaw`UPDATE "MembershipNumberCounter" SET "value" = ${BigInt(Number(ordinal) - 1)} WHERE "id" = 1`;
+    const result = await register().expect(201);
+    expect(
+      (await member(result.body.accessToken).expect(200)).body.number,
+    ).toBe(expected);
+  });
+  it('preserves historical codes and skips an occupied sequential code', async () => {
+    const historic = await db.user.create({
+      data: {
+        name: 'Historical',
+        email: body().email,
+        passwordHash: 'fixture',
+        membership: { create: { number: 'PRIME-HISTORICAL' } },
+      },
+      include: { membership: true },
+    });
+    const existing = await db.membership.findUniqueOrThrow({
+      where: { number: 'PRIM001B' },
+    });
+    await db.$executeRaw`UPDATE "MembershipNumberCounter" SET "value" = 1998 WHERE "id" = 1`;
+    const result = await register().expect(201);
+    expect((await member(result.body.accessToken)).body.number).toBe(
+      'PRIM002B',
+    );
+    expect(
+      await db.membership.findUnique({ where: { id: existing.id } }),
+    ).toEqual(existing);
+    expect(
+      await db.membership.findUnique({
+        where: { id: historic.membership!.id },
+      }),
+    ).toEqual(historic.membership);
+  });
+  it('serializes concurrent registrations without duplicates or lost counter increments', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => register().expect(201)),
+    );
+    const profiles = await Promise.all(
+      results.map((r) => member(r.body.accessToken).expect(200)),
+    );
+    expect(profiles.map((r) => r.body.number).sort()).toEqual([
+      'PRIM003B',
+      'PRIM004B',
+      'PRIM005B',
+      'PRIM006B',
+    ]);
   });
 
   it('registers User, ACTIVE Membership, zero balance, no vehicle; JWT reads membership without hashes', async () => {
@@ -122,7 +178,7 @@ describe('Registration and vehicles: real PostgreSQL', () => {
       results.map((r) => member(r.body.accessToken).expect(200)),
     );
     expect(profiles[0].body.number).not.toBe(profiles[1].body.number);
-    expect(profiles[0].body.number).toMatch(/^PRIME-[A-F0-9]{24}$/);
+    expect(profiles[0].body.number).toMatch(/^PRIM[0-9]{3}[A-Z]*$/);
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: data[0].email, password })
@@ -181,6 +237,222 @@ describe('Registration and vehicles: real PostgreSQL', () => {
       .expect(401);
     expect((await member(a.accessToken)).body.vehicles).toHaveLength(1);
     expect((await member(b.accessToken)).body.vehicles).toHaveLength(0);
+  });
+  const update = (token: string, data: object) =>
+    request(app.getHttpServer())
+      .patch('/api/v1/memberships/me/profile')
+      .auth(token, { type: 'bearer' })
+      .send(data);
+  const documents = [
+    ['dni', '65000001', 'DNI'],
+    ['ruc', '24000000001', 'RUC'],
+  ] as const;
+  it.each(documents)(
+    'rejects duplicate %s with 409 and rolls back user, membership and counter',
+    async (field, value, label) => {
+      const owner = await register({ ...body(), [field]: value }).expect(201);
+      const before = await db.membershipNumberCounter.findUniqueOrThrow({
+        where: { id: 1 },
+      });
+      const original = (await member(owner.body.accessToken)).body;
+      const duplicate = { ...body(), [field]: value };
+      const response = await register(duplicate).expect(409);
+      expect(response.body.message).toBe(
+        `Este ${label} ya se encuentra registrado.`,
+      );
+      expect(
+        await db.user.findUnique({ where: { email: duplicate.email } }),
+      ).toBeNull();
+      expect(await db.membership.count({ where: { [field]: value } })).toBe(1);
+      expect(
+        await db.membershipNumberCounter.findUnique({ where: { id: 1 } }),
+      ).toEqual(before);
+      expect((await member(owner.body.accessToken)).body).toEqual(original);
+    },
+  );
+  it('allows multiple explicit null documents and omitted documents', async () => {
+    const results = await Promise.all([
+      register({ ...body(), dni: null, ruc: null }).expect(201),
+      register({ ...body(), dni: null, ruc: null }).expect(201),
+      register().expect(201),
+    ]);
+    for (const result of results)
+      expect((await member(result.body.accessToken)).body).toMatchObject({
+        dni: null,
+        ruc: null,
+        passport: null,
+      });
+  });
+  it.each(documents)(
+    'PostgreSQL enforces UNIQUE %s even without HTTP',
+    async (field, value) => {
+      const other = await register().expect(201);
+      const own = (await member(other.body.accessToken)).body;
+      await expect(
+        db.membership.update({
+          where: { id: own.id },
+          data: { [field]: value },
+        }),
+      ).rejects.toMatchObject({ code: 'P2002' });
+      expect((await member(other.body.accessToken)).body[field]).toBeNull();
+    },
+  );
+  it.each(documents)(
+    'concurrent registrations sharing %s create only one complete account',
+    async (field, value, label) => {
+      const document = String(BigInt(value) + 1n);
+      const inputs = [body(), body()];
+      const results = await Promise.all(
+        inputs.map((data) => register({ ...data, [field]: document })),
+      );
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      expect(results.find((r) => r.status === 409)!.body.message).toBe(
+        `Este ${label} ya se encuentra registrado.`,
+      );
+      expect(
+        await db.user.count({
+          where: { email: { in: inputs.map((d) => d.email) } },
+        }),
+      ).toBe(1);
+      expect(await db.membership.count({ where: { [field]: document } })).toBe(
+        1,
+      );
+    },
+  );
+  it.each(documents)(
+    'owner can save and clear their own %s',
+    async (field, value) => {
+      const document = String(BigInt(value) + 2n);
+      const result = await register({ ...body(), [field]: document }).expect(
+        201,
+      );
+      await update(result.body.accessToken, { [field]: document }).expect(200);
+      expect((await member(result.body.accessToken)).body[field]).toBe(
+        document,
+      );
+      await update(result.body.accessToken, { [field]: null }).expect(200);
+      expect((await member(result.body.accessToken)).body[field]).toBeNull();
+    },
+  );
+  it.each(documents)(
+    'editing another account cannot take occupied %s',
+    async (field, value, label) => {
+      const result = await register().expect(201);
+      const response = await update(result.body.accessToken, {
+        [field]: value,
+      }).expect(409);
+      expect(response.body.message).toBe(
+        `Este ${label} ya se encuentra registrado.`,
+      );
+      expect((await member(result.body.accessToken)).body[field]).toBeNull();
+    },
+  );
+  it.each(documents)(
+    'concurrent edits cannot claim the same %s',
+    async (field, value, label) => {
+      const document = String(BigInt(value) + 3n);
+      const users = await Promise.all([
+        register().expect(201),
+        register().expect(201),
+      ]);
+      const results = await Promise.all(
+        users.map((r) => update(r.body.accessToken, { [field]: document })),
+      );
+      expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+      expect(results.find((r) => r.status === 409)!.body.message).toBe(
+        `Este ${label} ya se encuentra registrado.`,
+      );
+      expect(await db.membership.count({ where: { [field]: document } })).toBe(
+        1,
+      );
+    },
+  );
+  it.each([
+    ['dni', ''],
+    ['dni', '123456789'],
+    ['dni', 'abcdefgh'],
+    ['ruc', ''],
+    ['ruc', '123456789012'],
+    ['ruc', 'abcdefghijk'],
+  ])('rejects invalid %s on profile edit: %s', async (field, value) => {
+    const result = await register().expect(201);
+    await update(result.body.accessToken, { [field]: value }).expect(400);
+    expect((await member(result.body.accessToken)).body[field]).toBeNull();
+  });
+
+  it('foreign user registers with normalized passport and no DNI, then logs in by email', async () => {
+    const data = { ...body(), passport: '  ab123456  ' };
+    const result = await register(data).expect(201);
+    expect((await member(result.body.accessToken)).body).toMatchObject({
+      dni: null,
+      passport: 'AB123456',
+    });
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ identifier: data.email, password })
+      .expect(200);
+  });
+  it('duplicate normalized passport returns 409 without orphaned account', async () => {
+    const data = { ...body(), passport: ' ab123456 ' };
+    const res = await register(data).expect(409);
+    expect(res.body.message).toBe('Este pasaporte ya se encuentra registrado.');
+    expect(await db.user.count({ where: { email: data.email } })).toBe(0);
+  });
+  it('concurrent passport registrations have one winner', async () => {
+    const inputs = [body(), body()];
+    const results = await Promise.all(
+      inputs.map((data) => register({ ...data, passport: 'CC987654' })),
+    );
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+    expect(
+      await db.user.count({
+        where: { email: { in: inputs.map((d) => d.email) } },
+      }),
+    ).toBe(1);
+  });
+  it.each(['AB-1234', 'A123', 'A'.repeat(21), '<script>'])(
+    'rejects invalid passport %s',
+    async (passport) => {
+      const data = { ...body(), passport };
+      await register(data).expect(400);
+      expect(await db.user.count({ where: { email: data.email } })).toBe(0);
+    },
+  );
+  it('rejects simultaneous DNI/passport without creating either row', async () => {
+    const data = { ...body(), dni: '76543210', passport: 'DD123456' };
+    await register(data).expect(400);
+    expect(await db.user.count({ where: { email: data.email } })).toBe(0);
+  });
+  it('passport owner can retain it and switch to DNI atomically, but cannot hold both', async () => {
+    const result = await register({ ...body(), passport: 'EE123456' }).expect(
+      201,
+    );
+    await update(result.body.accessToken, { passport: ' ee123456 ' }).expect(
+      200,
+    );
+    await update(result.body.accessToken, { dni: '76543211' }).expect(400);
+    await update(result.body.accessToken, {
+      dni: '76543211',
+      passport: null,
+    }).expect(200);
+    expect((await member(result.body.accessToken)).body).toMatchObject({
+      dni: '76543211',
+      passport: null,
+    });
+  });
+  it('profile cannot take another passport and database enforces uniqueness directly', async () => {
+    const result = await register().expect(201);
+    const res = await update(result.body.accessToken, {
+      passport: 'AB123456',
+    }).expect(409);
+    expect(res.body.message).toBe('Este pasaporte ya se encuentra registrado.');
+    const own = (await member(result.body.accessToken)).body;
+    await expect(
+      db.membership.update({
+        where: { id: own.id },
+        data: { passport: 'AB123456' },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
   });
   it('enforces register rate limit', async () => {
     for (let i = 0; i < 5; i++)

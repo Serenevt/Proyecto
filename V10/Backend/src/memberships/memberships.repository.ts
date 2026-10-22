@@ -1,4 +1,4 @@
-import { ProfileDto } from './profile.dto';
+import { ProfileDto, assertIdentity } from './profile.dto';
 import { pendingDebt } from '../wallet/debt';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -12,7 +12,17 @@ export class MembershipsRepository {
     return pendingDebt(this.db, membershipId);
   }
   updateProfile(userId: string, data: ProfileDto) {
-    return this.db.membership.update({ where: { userId }, data });
+    return this.db.atomic(async (tx) => {
+      const current = await tx.membership.findUniqueOrThrow({
+        where: { userId },
+      });
+      assertIdentity({
+        dni: data.dni === undefined ? current.dni : data.dni,
+        passport:
+          data.passport === undefined ? current.passport : data.passport,
+      });
+      return tx.membership.update({ where: { userId }, data });
+    });
   }
   findForUser(userId: string) {
     return this.db.membership.findUnique({

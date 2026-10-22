@@ -44,17 +44,19 @@ test('OCR loading y error permiten cancelar', async ({ page }) => {
   await expect(page.locator('.v9-dialog [role=status]')).toContainText('No pudimos');
   await page.locator('[data-cancel]').click();
 });
-for (const action of ['debt', 'other', 'recharge']) test('saldo insuficiente: opción ' + action, async ({ page }) => {
-  await page.evaluate(async () => { void (await import('/src/js/plateCamera.js')).insufficientBalance({ available: '5.00', amount: '12.60', amountPending: '7.60', code: 'INSUFFICIENT_BALANCE', canRegisterDebt: true }).then(value => { window.action = value; }); });
+for (const action of ['debt', 'cancel', 'recharge']) test('saldo insuficiente: opción ' + action, async ({ page }) => {
+  await page.evaluate(async () => { void (await import('/src/js/plateCamera.js')).insufficientBalance({ available: '5.00', amount: '12.60', amountPending: '7.60', code: 'INSUFFICIENT_BALANCE', canRegisterDebt: true }, async allowDebt => { window.allowDebt = allowDebt; }).then(value => { window.action = value; }); });
   await expect(page.locator('.v9-dialog')).toContainText('S/ 7.60');
-  await page.locator(`[data-action=${action}]`).click(); expect(await page.evaluate(() => window.action)).toBe(action);
+  if (action === 'cancel') await page.keyboard.press('Escape'); else await page.locator(`[data-action=${action}]`).click();
+  expect(await page.evaluate(() => window.action)).toBe(action === 'cancel' ? 'cancel' : 'authorized');
+  if (action !== 'cancel') expect(await page.evaluate(() => window.allowDebt)).toBe(action === 'debt');
   if (action === 'recharge') {
     const response = await page.request.get(kiosk + '/prime', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
     expect(response.headers().location).toBe('http://localhost:' + (process.env.FRONTEND2_PORT || 8082) + '/');
   }
 });
-test('límite excedido oculta registrar deuda', async ({ page }) => {
+test('límite excedido deshabilita registrar deuda', async ({ page }) => {
   await page.evaluate(async () => { void (await import('/src/js/plateCamera.js')).insufficientBalance({ available: '0.00', amount: '201.00', amountPending: '201.00', code: 'DEBT_LIMIT', canRegisterDebt: false }); });
-  await expect(page.locator('.v9-dialog')).toContainText('Has alcanzado el límite'); await expect(page.locator('[data-action=debt]')).toHaveCount(0);
+  await expect(page.locator('.v9-dialog')).toContainText('Has alcanzado el límite'); await expect(page.locator('[data-action=debt]')).toBeDisabled();
 });

@@ -12,6 +12,7 @@ import {
   PurchaseMode,
   WalletMovementKind,
 } from '@prisma/client';
+import { assertIdentity } from '../memberships/profile.dto';
 import { funding } from '../wallet/debt';
 import { createHash } from 'node:crypto';
 import { Actor } from '../auth/access';
@@ -84,9 +85,17 @@ export class TransactionsService {
           replayed: true,
         };
       }
-      const vehicle = await this.repo.vehicle(plate, tx);
-      if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
-      const membership = vehicle.membership;
+      if (!dto.authorizationId)
+        throw new BadRequestException('Se requiere autorización previa');
+      const auth = await this.authorizations.byId(dto.authorizationId, tx);
+      if (!auth) throw new NotFoundException('Autorización no encontrada');
+      // Keep a guest purchase unlinked even if the plate is registered mid-delivery.
+      const vehicle = auth.vehicleId
+        ? await this.repo.vehicle(plate, tx)
+        : null;
+      if (!vehicle && dto.mode === 'POSTPAGO')
+        throw new NotFoundException('Vehículo no encontrado');
+      const membership = vehicle?.membership;
       const eligible =
         membership?.status === 'ACTIVE' && membership.user.active;
 
@@ -115,12 +124,9 @@ export class TransactionsService {
       if (!station?.active)
         throw new NotFoundException('Estación no disponible');
 
-      if (!dto.authorizationId)
-        throw new BadRequestException('Se requiere autorización previa');
-      const auth = await this.authorizations.byId(dto.authorizationId, tx);
-      if (!auth) throw new NotFoundException('Autorización no encontrada');
       if (
-        auth.vehicleId !== vehicle.id ||
+        auth.plate !== plate ||
+        auth.vehicleId !== (vehicle?.id ?? null) ||
         auth.stationId !== dto.stationId ||
         auth.fuelId !== dto.fuelId ||
         auth.mode !== dto.mode
@@ -211,6 +217,10 @@ export class TransactionsService {
           throw new BadRequestException(
             'Identifica tu membresia para guardar datos',
           );
+        assertIdentity({
+          dni: receiptDni ?? membership?.dni,
+          passport: membership?.passport,
+        });
         await tx.membership.update({
           where: { id: membership!.id },
           data: {
@@ -227,7 +237,8 @@ export class TransactionsService {
         {
           operationId: dto.operationId,
           requestHash,
-          vehicleId: vehicle.id,
+          plate,
+          vehicleId: vehicle?.id,
           membershipId: membership?.id,
           membershipCode: code,
           stationId: station.id,

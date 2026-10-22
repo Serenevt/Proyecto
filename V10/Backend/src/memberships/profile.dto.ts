@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
@@ -18,7 +19,24 @@ export const cleanText = (value: unknown) =>
         .trim()
     : value;
 
+export function assertIdentity(value: {
+  dni?: string | null;
+  passport?: string | null;
+}) {
+  if (value.dni && value.passport)
+    throw new BadRequestException('Elige DNI o pasaporte, no ambos.');
+}
+
 export class ProfileDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsString()
+  @Matches(/^[A-Z0-9]{5,20}$/)
+  passport?: string | null;
+
   @ApiPropertyOptional() @IsOptional() @IsString() @Matches(/^\d{8}$/) dni?:
     | string
     | null;

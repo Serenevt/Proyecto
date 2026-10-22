@@ -1,27 +1,35 @@
 const {test,expect}=require('../FrontEnd_2/node_modules/@playwright/test');
 const {PrismaClient}=require('./database.cjs');
 const fs=require('node:fs'),path=require('node:path');
+const {randomUUID,randomInt}=require('node:crypto');
 require('./test-env.cjs');
 const kiosk=process.env.V6_DOCKER_TEST?'http://localhost:'+(process.env.FRONTEND1_PORT||8081):'http://127.0.0.1:5181';
 const prime=process.env.V6_DOCKER_TEST?'http://localhost:'+(process.env.FRONTEND2_PORT||8082):'http://127.0.0.1:5180';
-test('compra desde FuelFlow actualiza Primax Prime y PostgreSQL sin duplicados',async({browser})=>{
+test('compra desde FuelFlow actualiza Primax Prime y PostgreSQL sin duplicados',async({browser,request})=>{
  const db=new PrismaClient(),context=await browser.newContext();
+ // A separate synthetic account keeps the principal demo and its ledger intact.
+ const email=randomUUID()+'@example.test',password='IntegrationTest123!';
+ const registration=await request.post(prime+'/api/v1/auth/register',{data:{email,password,name:'Diego'}});expect(registration.status()).toBe(201);
+ const headers={Authorization:'Bearer '+(await registration.json()).accessToken};
+ const profile=await request.get(prime+'/api/v1/memberships/me',{headers});expect(profile.status()).toBe(200);const membership=await profile.json();
+ let plate;do{plate='I'+randomInt(0,1296).toString(36).padStart(2,'0').toUpperCase()+'-'+String(randomInt(1000)).padStart(3,'0');}while(await db.vehicle.findUnique({where:{plate}}));
+ expect((await request.post(prime+'/api/v1/vehicles',{headers,data:{plate,label:'Integration fixture'}})).status()).toBe(201);
  const member=await context.newPage(),terminal=await context.newPage();const errors=[];let result;
  member.on('pageerror',e=>errors.push(e.message));terminal.on('pageerror',e=>errors.push(e.message));
  terminal.on('request',req=>{expect(req.headers()['x-kiosk-key']).toBeUndefined();});
  try {
-  await member.goto(prime);await member.getByLabel('Correo',{exact:true}).fill('demo@primaxprime.pe');await member.getByLabel('Contraseña',{exact:true}).fill(process.env.DEMO_PASSWORD);await member.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
+  await member.goto(prime);await member.getByLabel(/^Correo(?: o DNI)?$/,{exact:true}).fill(email);await member.getByLabel('Contraseña',{exact:true}).fill(password);await member.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
   await expect(member.getByRole('heading',{name:'Hola, Diego'})).toBeVisible();
   const before=await member.evaluate(async()=>{const {memberService}=await import('/js/services/index.js');return memberService.get().points;});
-  await expect(member.locator('.member-number')).toContainText('PRIME-0001');
+  await expect(member.locator('.member-number')).toContainText(membership.number);
   await terminal.addInitScript(()=>localStorage.setItem('primax_idioma','es'));
   await terminal.goto(kiosk);await terminal.locator('#btn-voice-toggle').click();await terminal.locator('#btn-iniciar').click();
   await terminal.locator('[data-fuel="Premium"]').click();await terminal.locator('#btn-prepago').click();await terminal.locator('#prepago-panel [data-monto="100"]').click();await terminal.locator('#btn-confirmar-monto').click();await terminal.locator('#btn-boleta').click();
-  await terminal.locator('#input-dni').fill('70123456');await terminal.locator('#prep-input-placa').fill('ABC-123');await terminal.locator('#btn-continuar-datos').click();await terminal.locator('[data-metodo="TARJETA"]').click();
+  await terminal.locator('#input-dni').fill('70123456');await terminal.locator('#prep-input-placa').fill(plate);await terminal.locator('#btn-continuar-datos').click();await terminal.locator('[data-metodo="TARJETA"]').click();
   const submitted=terminal.waitForResponse(r=>r.url().endsWith('/api/v1/transactions')&&r.request().method()==='POST',{timeout:60000});
   await terminal.locator('#btn-nfc-tap').click();await terminal.locator('#modal-ok').click();
   const response=await submitted;expect(response.status()).toBe(201);result=await response.json();const tx=result.transaction;
-  expect(tx).toMatchObject({amount:'100.00',status:'PAID',mode:'PREPAGO',receiptType:'BOLETA',gallons:'4.255',pointsEarned:11,vehicle:{plate:'ABC-123'},membership:{number:'PRIME-0001',name:'Diego'},station:{name:'Primax Sur'},fuel:{name:'Premium'},payment:{method:'TARJETA',status:'CAPTURED'}});
+  expect(tx).toMatchObject({amount:'100.00',status:'PAID',mode:'PREPAGO',receiptType:'BOLETA',gallons:'4.255',pointsEarned:11,vehicle:{plate:plate},membership:{number:membership.number,name:'Diego'},station:{name:'Primax Sur'},fuel:{name:'Premium'},payment:{method:'TARJETA',status:'CAPTURED'}});
   expect(result.pointsEarned).toBe(11);await expect(terminal.locator('#t-estado')).toContainText('+11 puntos');
   // Inject transport faults around a real persisted purchase; then recover against the live API.
   const authorizationRoute='**/api/v1/authorizations/*';
@@ -49,7 +57,7 @@ test('compra desde FuelFlow actualiza Primax Prime y PostgreSQL sin duplicados',
   await expect.poll(()=>member.evaluate(async()=>{const {memberService}=await import('/js/services/index.js');return memberService.get().points;}),{timeout:20000}).toBe(before+11);
   await member.getByRole('navigation').getByRole('link',{name:'Consumos',exact:true}).click();
   await expect(member.locator('[data-detail="'+tx.id+'"]')).toBeVisible();
-  await member.locator('[data-detail="'+tx.id+'"]').click();await expect(member.getByRole('dialog')).toContainText('100.00');await expect(member.getByRole('dialog')).toContainText('ABC-123');await member.getByRole('button',{name:'Cerrar',exact:true}).click();
+  await member.locator('[data-detail="'+tx.id+'"]').click();await expect(member.getByRole('dialog')).toContainText('100.00');await expect(member.getByRole('dialog')).toContainText(plate);await member.getByRole('button',{name:'Cerrar',exact:true}).click();
   const rewards=await member.evaluate(async()=>{const {rewardsService}=await import('/js/services/rewardsService.js');return rewardsService.list();});expect(rewards.filter(r=>r.transactionId===tx.id)).toMatchObject([{points:11,kind:'EARN'}]);
   expect(await db.transaction.count({where:{operationId:tx.operationId}})).toBe(1);
   expect(await db.payment.count({where:{transactionId:tx.id,status:'CAPTURED'}})).toBe(1);

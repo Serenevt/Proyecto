@@ -1,12 +1,12 @@
 const {test,expect}=require('@playwright/test');
-async function signIn(page){await page.getByLabel('Correo',{exact:true}).fill('demo@primaxprime.pe');await page.getByLabel('Contraseña',{exact:true}).fill('FixtureOnly123');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.getByRole('heading',{name:'Hola, Diego'})).toBeVisible();}
+async function signIn(page){await page.getByLabel(/^Correo(?: o DNI)?$/,{exact:true}).fill('demo@primaxprime.pe');await page.getByLabel('Contraseña',{exact:true}).fill('FixtureOnly123');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.getByRole('heading',{name:'Hola, Diego'})).toBeVisible();}
 test('login inicial, contraseña visible y credenciales exactas sin recarga',async({page})=>{
   await page.goto('/#beneficios');
   await expect(page.getByRole('heading',{name:'Bienvenido a Primax Prime'})).toBeVisible();
   await expect(page.getByRole('navigation')).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   const marker=await page.evaluate(()=>window.__loginMarker=Math.random());
-  await page.getByLabel('Correo',{exact:true}).fill('demo@primaxprime.pe');
+  await page.getByLabel(/^Correo(?: o DNI)?$/,{exact:true}).fill('demo@primaxprime.pe');
   await page.getByLabel('Contraseña',{exact:true}).fill('incorrecta');
   await page.getByRole('button',{name:'Mostrar',exact:true}).click();
   await expect(page.getByLabel('Contraseña',{exact:true})).toHaveAttribute('type','text');
@@ -40,7 +40,7 @@ test('cerrar sesión conserva saldo, puntos, historial, vehículo, perfil, canje
   expect(await page.evaluate(()=>localStorage.getItem('prime_session:v2'))).toBeNull();
   expect(await page.evaluate(()=>localStorage.getItem('prime:local:fixture-user'))).toBe(data);
   await page.goto('/#membresia');await expect(page.getByRole('navigation')).toBeHidden();
-  await page.getByLabel('Correo',{exact:true}).fill('demo@primaxprime.pe');await page.getByLabel('Contraseña',{exact:true}).fill('FixtureOnly123');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
+  await page.getByLabel(/^Correo(?: o DNI)?$/,{exact:true}).fill('demo@primaxprime.pe');await page.getByLabel('Contraseña',{exact:true}).fill('FixtureOnly123');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Hola, Diego'})).toBeVisible();await expect(page.locator('.balance')).toContainText('50.00');await expect(page.getByLabel('Seleccionar vehículo')).toHaveValue('DEF-456');
   expect(await page.evaluate(()=>localStorage.getItem('prime:local:fixture-user'))).toBe(data);
 });

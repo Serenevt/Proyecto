@@ -82,9 +82,16 @@ model User {
   name         String      @db.VarChar(80)
   passwordHash String      @db.VarChar(100)
   active       Boolean     @default(true)
+  authVersion  Int         @default(0)
+  passwordReset PasswordReset?
   membership   Membership?
   createdAt    DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+}
+
+model MembershipNumberCounter {
+  id    Int    @id
+  value BigInt @default(0)
 }
 
 model Membership {
@@ -95,8 +102,9 @@ model Membership {
   status       MembershipStatus @default(ACTIVE)
   // Saldo disponible en soles. Es la única fuente de verdad del postpago.
   balance      Decimal          @default(0) @db.Decimal(12, 2)
-  dni String? @db.VarChar(8)
-  ruc String? @db.VarChar(11)
+  passport String? @unique @db.VarChar(20)
+  dni String? @unique @db.VarChar(8)
+  ruc String? @unique @db.VarChar(11)
   businessName String? @db.VarChar(160)
   debts MembershipDebt[]
   vehicles     Vehicle[]
@@ -151,8 +159,9 @@ model Transaction {
   id             String            @id @default(uuid()) @db.Uuid
   operationId    String            @unique @db.Uuid
   requestHash    String            @db.Char(64)
-  vehicleId      String            @db.Uuid
-  vehicle        Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  plate          String            @db.VarChar(7)
+  vehicleId      String?           @db.Uuid
+  vehicle        Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   // Código de membresía capturado en el terminal. Se valida contra la placa
   // antes de autorizar; queda como evidencia auditable de la operación.
   membershipCode String?           @db.VarChar(30)
@@ -198,8 +207,9 @@ model FuelAuthorization {
   requestHash      String             @db.Char(64)
   membershipId     String?            @db.Uuid
   membership       Membership?        @relation(fields: [membershipId], references: [id], onDelete: Restrict)
-  vehicleId        String             @db.Uuid
-  vehicle          Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  plate            String             @db.VarChar(7)
+  vehicleId        String?            @db.Uuid
+  vehicle          Vehicle?           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   stationId        String             @db.Uuid
   station          Station            @relation(fields: [stationId], references: [id], onDelete: Restrict)
   fuelId           String             @db.Uuid
@@ -334,4 +344,17 @@ model MembershipDebt {
   settledAt DateTime? @db.Timestamptz(3)
   movements WalletMovement[]
   @@index([membershipId, createdAt, id])
+}
+
+model PasswordReset {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String @db.Char(64)
+  tokenHash String? @unique @db.Char(64)
+  attempts Int @default(0)
+  expiresAt DateTime @db.Timestamptz(3)
+  verifiedAt DateTime? @db.Timestamptz(3)
+  usedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }

@@ -8,9 +8,12 @@ import {
   MinLength,
 } from 'class-validator';
 import { ProfileDto, cleanText } from '../memberships/profile.dto';
-import { LoginDto } from './login.dto';
+import { EmailCredentialsDto } from './login.dto';
 
-export class RegisterDto extends IntersectionType(LoginDto, ProfileDto) {
+export class RegisterDto extends IntersectionType(
+  EmailCredentialsDto,
+  ProfileDto,
+) {
   @ApiProperty({ minLength: 1, maxLength: 80 })
   @Transform(({ value }: { value: unknown }) => cleanText(value))
   @IsString()

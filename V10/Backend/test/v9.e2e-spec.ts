@@ -20,6 +20,7 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     fuelId: string,
     stationId: string;
   let counter = 0;
+  let fixtureDni: string, fixtureRuc: string;
   const original = process.env.DATABASE_URL!;
   const schema = 'e2e_v9_' + randomUUID().replaceAll('-', '');
   const key = process.env.KIOSK_API_KEY!;
@@ -74,14 +75,16 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     number = counter === 1 ? 'PRIME-0001' : `PRIME-V9-${counter}`;
     plate =
       counter === 1 ? 'ABC-123' : `V${String(counter).padStart(2, '0')}-123`;
+    fixtureDni = counter === 1 ? '12345678' : String(10000000 + counter);
+    fixtureRuc = counter === 1 ? '20123456789' : String(20000000000 + counter);
     const member = await db.membership.upsert({
       where: { userId: user.id },
       update: {},
       create: {
         userId: user.id,
         number,
-        dni: '12345678',
-        ruc: '20123456789',
+        dni: fixtureDni,
+        ruc: fixtureRuc,
         businessName: 'Empresa Demo SAC',
       },
     });
@@ -247,7 +250,9 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
         data: {
           operationId: body.operationId,
           requestHash: createHash('sha256')
-            .update(JSON.stringify(plainToInstance(CreateAuthorizationDto, body)))
+            .update(
+              JSON.stringify(plainToInstance(CreateAuthorizationDto, body)),
+            )
             .digest('hex'),
           amount: body.amount,
           method: 'TARJETA',
@@ -336,7 +341,13 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     expect(tx.status).toBe('PAYMENT_PENDING');
     expect(tx.payment.status).toBe('PARTIAL');
     expect(tx.pointsEarned).toBe(1);
-    expect((await db.rewardMovement.findUniqueOrThrow({where: {transactionId: tx.id}})).points).toBe(1);
+    expect(
+      (
+        await db.rewardMovement.findUniqueOrThrow({
+          where: { transactionId: tx.id },
+        })
+      ).points,
+    ).toBe(1);
     expect(tx.debt.amountPending).toBe('7.6');
     expect(await balance()).toBe('0.00');
     expect((await me()).body.pendingBalance).toBe('7.60');
@@ -353,6 +364,81 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     expect(
       await db.walletMovement.count({ where: { debtId: saved.debt!.id } }),
     ).toBe(1);
+  });
+  it('Ya recargue rechecks PostgreSQL: insufficient, still insufficient, then sufficient with same operationId', async () => {
+    await setBalance('5.00');
+    const operationId = randomUUID();
+    const first = await reserve('12.60', false, operationId).expect(400);
+    expect(first.body).toMatchObject({
+      available: '5.00',
+      amount: '12.60',
+      amountPending: '7.60',
+    });
+    await recharge('2.00').expect(201);
+    const again = await reserve('12.60', false, operationId).expect(400);
+    expect(again.body).toMatchObject({
+      available: '7.00',
+      amountPending: '5.60',
+    });
+    expect(await db.fuelAuthorization.count({ where: { operationId } })).toBe(
+      0,
+    );
+    await recharge('20.00').expect(201);
+    const [a, b] = await Promise.all([
+      reserve('12.60', false, operationId),
+      reserve('12.60', false, operationId),
+    ]);
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.authorization.id).toBe(b.body.authorization.id);
+    expect(await balance()).toBe('14.40');
+    const tx = (await buy(a.body.authorization.id, '12.60').expect(201)).body
+      .transaction;
+    expect(tx.status).toBe('PAID');
+    expect(tx.payment.status).toBe('CAPTURED');
+  });
+  it('explicit debt after rejection reuses operationId, covers only missing money and settles FIFO', async () => {
+    await setBalance('5.00');
+    const operationId = randomUUID();
+    await reserve('12.60', false, operationId).expect(400);
+    const [a, b] = await Promise.all([
+      reserve('12.60', true, operationId),
+      reserve('12.60', true, operationId),
+    ]);
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.authorization.id).toBe(b.body.authorization.id);
+    const purchaseId = randomUUID();
+    const tx = (
+      await buy(a.body.authorization.id, '12.60', {
+        operationId: purchaseId,
+      }).expect(201)
+    ).body.transaction;
+    const replay = (
+      await buy(a.body.authorization.id, '12.60', {
+        operationId: purchaseId,
+      }).expect(201)
+    ).body.transaction;
+    expect(replay.id).toBe(tx.id);
+    expect(Number(tx.debt.amountPending)).toBe(7.6);
+    expect(tx).toMatchObject({
+      status: 'PAYMENT_PENDING',
+      payment: { status: 'PARTIAL' },
+    });
+    const second = await reserve('3.00', true).expect(201);
+    const secondTx = (
+      await buy(second.body.authorization.id, '3.00').expect(201)
+    ).body.transaction;
+    await recharge('20.00').expect(201);
+    expect(await balance()).toBe('9.40');
+    for (const id of [tx.id, secondTx.id]) {
+      const paid = await db.transaction.findUniqueOrThrow({
+        where: { id },
+        include: { payment: true },
+      });
+      expect(paid.status).toBe('PAID');
+      expect(paid.payment?.status).toBe('CAPTURED');
+    }
   });
   it('saldo suficiente conserva PAID/CAPTURED y no crea deuda', async () => {
     const tx = await debt('12.60', '20');
@@ -477,8 +563,8 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     ).toBe(1);
   });
   it.each([
-    { dni: '12345678' },
-    { ruc: '20123456789' },
+    { dni: '87650001' },
+    { ruc: '20987650001' },
     { businessName: ' <b>Demo</b> SAC ' },
   ])('perfil válido %j', async (value) => {
     await profile(value).expect(200);
@@ -508,17 +594,17 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
         await buy(res.body.authorization.id, '1', { receiptType }).expect(201)
       ).body.transaction;
       await profile({
-        dni: '87654321',
-        ruc: '20987654321',
+        dni: String(30000000 + counter),
+        ruc: String(21000000000 + counter),
         businessName: 'Otra Demo',
       }).expect(200);
       const historical = await db.transaction.findUniqueOrThrow({
         where: { id: saved.id },
       });
       if (receiptType === 'BOLETA')
-        expect(historical.receiptDni).toBe('12345678');
+        expect(historical.receiptDni).toBe(fixtureDni);
       else {
-        expect(historical.receiptRuc).toBe('20123456789');
+        expect(historical.receiptRuc).toBe(fixtureRuc);
         expect(historical.receiptBusinessName).toBe('Empresa Demo SAC');
       }
       expect(tx.status).toBe('PAID');

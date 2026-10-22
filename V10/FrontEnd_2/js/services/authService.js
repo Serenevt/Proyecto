@@ -2,8 +2,8 @@ import { apiClient } from './apiClient.js';
 import { session, clearSession, SESSION_KEY } from './session.js';
 export const authService = {
   isAuthenticated: () => Boolean(session()),
-  async login(email, password) {
-    return authenticate('/auth/login', { email, password });
+  async login(identifier, password) {
+    return authenticate('/auth/login', { identifier, password });
   },
   async register(data) {
     return authenticate('/auth/register', data);

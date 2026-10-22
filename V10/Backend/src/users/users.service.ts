@@ -10,6 +10,9 @@ export class UsersService {
   findByEmail(email: string) {
     return this.repo.findByEmail(email.trim().toLowerCase());
   }
+  findByDni(dni: string) {
+    return this.repo.findByDni(dni);
+  }
   findById(id: string) {
     return this.repo.findById(id);
   }

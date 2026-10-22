@@ -1,0 +1,27 @@
+const {test,expect}=require('../FrontEnd_2/node_modules/@playwright/test');
+const {randomUUID,randomInt}=require('node:crypto');
+const {execFileSync}=require('node:child_process');
+require('./test-env.cjs');
+const prime='http://localhost:'+process.env.FRONTEND2_PORT;
+const api='http://localhost:'+(process.env.PORT||10000)+'/api/v1';
+test('real DNI login and foreign passport registration with demo password recovery',async({browser,request})=>{
+ const password='IdentityPassword123!',next='ChangedPassword456!';
+ const dni=String(randomInt(60000000,69999999));
+ const email=randomUUID()+'@example.test';
+ const reg=await request.post(api+'/auth/register',{data:{name:'DNI Test',email,password,dni}});expect(reg.status()).toBe(201);
+ const context=await browser.newContext({viewport:{width:390,height:844}});const page=await context.newPage();
+ await page.goto(prime);await page.getByLabel('Correo o DNI',{exact:true}).fill(dni);await page.getByLabel('Contraseña',{exact:true}).fill(password);await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.getByRole('heading',{name:'Hola, DNI Test'})).toBeVisible();
+ await context.close();
+ const foreign=await browser.newContext({viewport:{width:390,height:844}});const view=await foreign.newPage();const foreignEmail=randomUUID()+'@example.test',passport='P'+randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
+ await view.goto(prime+'/#registro');await view.getByLabel('Nombre',{exact:true}).fill('Foreign Test');await view.getByLabel('Correo',{exact:true}).fill(foreignEmail);await view.getByLabel('Contraseña',{exact:true}).fill(password);await view.getByLabel('Tipo de documento (opcional)').selectOption('passport');await view.getByLabel('Pasaporte',{exact:true}).fill(passport.toLowerCase());await view.getByRole('button',{name:'Crear cuenta',exact:true}).click();await expect(view.getByRole('heading',{name:'Hola, Foreign Test'})).toBeVisible();
+ const oldToken=await view.evaluate(()=>JSON.parse(localStorage.getItem('prime_session:v2')).token);
+ const member=await (await request.get(api+'/memberships/me',{headers:{Authorization:'Bearer '+oldToken}})).json();expect(member.passport).toBe(passport);expect(member.dni).toBeNull();
+ await foreign.close();
+ const recovering=await browser.newContext({viewport:{width:390,height:844}});const resetPage=await recovering.newPage();await resetPage.goto(prime);await resetPage.getByRole('link',{name:'¿Olvidaste tu contraseña?'}).click();await resetPage.getByLabel('Correo',{exact:true}).fill(foreignEmail);await resetPage.getByRole('button',{name:'Solicitar código'}).click();await expect(resetPage.locator('#main')).toContainText('Modo DEMO local');
+ const mailbox=JSON.parse(execFileSync('docker',['compose','exec','-T','backend','node','scripts/read-reset-demo.cjs',foreignEmail],{cwd:require('node:path').resolve(__dirname,'..'),encoding:'utf8',stdio:['pipe','pipe','pipe']}));
+ await resetPage.getByLabel('Código de recuperación').fill(mailbox.code);await resetPage.getByRole('button',{name:'Verificar código'}).click();await resetPage.getByLabel('Nueva contraseña').fill(next);await resetPage.getByRole('button',{name:'Guardar contraseña'}).click();await expect(resetPage.locator('#main').getByRole('status')).toContainText('actualizada');
+ expect((await request.get(api+'/memberships/me',{headers:{Authorization:'Bearer '+oldToken}})).status()).toBe(401);
+ expect((await request.post(api+'/auth/login',{data:{email:foreignEmail,password}})).status()).toBe(401);
+ await resetPage.getByRole('link',{name:'Volver a iniciar sesión'}).click();await resetPage.getByLabel('Correo o DNI',{exact:true}).fill(foreignEmail);await resetPage.getByLabel('Contraseña',{exact:true}).fill(next);await resetPage.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(resetPage.getByRole('heading',{name:'Hola, Foreign Test'})).toBeVisible();
+ await recovering.close();
+});

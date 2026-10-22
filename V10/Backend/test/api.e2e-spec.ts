@@ -62,7 +62,9 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     app = module.createNestApplication();
     app.useLogger(['error', 'warn']);
     setupApp(app);
-    await app.init();
+    // Keep one server open across concurrent Supertest requests; temporary
+    // per-request listeners can close while another retry is connecting.
+    await app.listen(0, '127.0.0.1');
     fuelId = (await db.fuel.findUniqueOrThrow({ where: { code: 'PREMIUM' } }))
       .id;
     stationId = (
@@ -253,11 +255,27 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
       .send({ email: 'invalid', password: 'x' })
       .expect(400);
   });
-  it('vehículo desconocido y combustible inexistente no producen escrituras parciales', async () => {
+  it('prepago libre conserva placa y combustible inexistente no produce escrituras parciales', async () => {
     const count = await db.transaction.count();
-    await buy(purchase({ plate: 'ZZZ-111' })).expect(404);
-    await buy(purchase({ fuelId: randomUUID() })).expect(404);
-    expect(await db.transaction.count()).toBe(count);
+    const guest = await buy(purchase({ plate: 'ZZZ-111' })).expect(201);
+    expect(guest.body.transaction).toMatchObject({
+      plate: 'ZZZ-111',
+      vehicle: null,
+      membership: null,
+      pointsEarned: 0,
+    });
+    const invalidFuel = purchase({ fuelId: randomUUID() });
+    await request(app.getHttpServer())
+      .post('/api/v1/authorizations')
+      .set('x-kiosk-key', key)
+      .send(invalidFuel)
+      .expect(404);
+    expect(
+      await db.payment.count({
+        where: { operationId: invalidFuel.operationId as string },
+      }),
+    ).toBe(0);
+    expect(await db.transaction.count()).toBe(count + 1);
   });
   it('rollback del cierre conserva el pago previo si falla el movimiento en PostgreSQL', async () => {
     // Force a real DB constraint failure after starting nested writes, then verify rollback.
@@ -899,24 +917,45 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
       .expect(200);
     expect(member.body.points).toBe(0);
   });
-  it.each([['8.99', 0], ['9.00', 1], ['17.99', 1], ['18.00', 2], ['89.99', 9], ['90.00', 10], ['100.00', 11]])('V10: S/%s persists %i points and an exact divisor', async (amount, points) => {
-    const before = await getMember('memberships/me');
-    const result = await buy(purchase({ amount })).expect(201);
-    const row = await db.transaction.findUniqueOrThrow({where: {id: result.body.transaction.id}, include: {rewardMovement: true}});
-    expect(row.pointsEarned).toBe(points);
-    expect(row.solesPerPoint?.toString()).toBe('9');
-    expect(row.rewardMovement?.points ?? 0).toBe(points);
-    expect((await getMember('memberships/me')).body.points).toBe(before.body.points + Number(points));
-  });
+  it.each([
+    ['8.99', 0],
+    ['9.00', 1],
+    ['17.99', 1],
+    ['18.00', 2],
+    ['89.99', 9],
+    ['90.00', 10],
+    ['100.00', 11],
+  ])(
+    'V10: S/%s persists %i points and an exact divisor',
+    async (amount, points) => {
+      const before = await getMember('memberships/me');
+      const result = await buy(purchase({ amount })).expect(201);
+      const row = await db.transaction.findUniqueOrThrow({
+        where: { id: result.body.transaction.id },
+        include: { rewardMovement: true },
+      });
+      expect(row.pointsEarned).toBe(points);
+      expect(row.solesPerPoint?.toString()).toBe('9');
+      expect(row.rewardMovement?.points ?? 0).toBe(points);
+      expect((await getMember('memberships/me')).body.points).toBe(
+        before.body.points + Number(points),
+      );
+    },
+  );
   it('V10: concurrent purchase and retry award exactly ten points once', async () => {
     const before = await getMember('memberships/me');
-    const body = purchase({amount: '90.00'});
+    const body = purchase({ amount: '90.00' });
     const results = await Promise.all([buy(body), buy(body)]);
-    expect(results.map(r => r.status)).toEqual([201, 201]);
+    expect(results.map((r) => r.status)).toEqual([201, 201]);
     expect(results[0].body.transaction.id).toBe(results[1].body.transaction.id);
     expect((await buy(body).expect(201)).body.replayed).toBe(true);
-    expect(await db.rewardMovement.count({where: {transactionId: results[0].body.transaction.id}})).toBe(1);
-    expect((await getMember('memberships/me')).body.points).toBe(before.body.points + 10);
+    expect(
+      await db.rewardMovement.count({
+        where: { transactionId: results[0].body.transaction.id },
+      }),
+    ).toBe(1);
+    expect((await getMember('memberships/me')).body.points).toBe(
+      before.body.points + 10,
+    );
   });
-
 });
