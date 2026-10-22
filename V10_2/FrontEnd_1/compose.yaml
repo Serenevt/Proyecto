@@ -1,0 +1,5 @@
+# Compatibility entrypoint: both channels always share the root Backend/PostgreSQL.
+# Recommended: run docker compose up -d from V10.
+name: primax-v10
+include:
+  - ../compose.yaml

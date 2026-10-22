@@ -1,0 +1,46 @@
+﻿{
+  "scope": "Source-level probes with isolated dependencies; no HTTP, PostgreSQL, hardware or external payment validation",
+  "results": [
+    {
+      "probe": "recovery-error-503",
+      "observed": {
+        "action": "discard",
+        "reason": "La reserva de saldo ya no existe."
+      }
+    },
+    {
+      "probe": "recovery-error-401",
+      "observed": {
+        "action": "discard",
+        "reason": "La reserva de saldo ya no existe."
+      }
+    },
+    {
+      "probe": "RN-06-same-response",
+      "backendStatus": "PAYMENT_PENDING",
+      "ticket": "Pendiente S/ 7.60 · +12 puntos",
+      "localHistory": "Pagado"
+    },
+    {
+      "probe": "prepago-before-server",
+      "paymentAuthorized": true,
+      "dispatchStarted": true,
+      "networkAvailableInProbe": false
+    },
+    {
+      "probe": "postpago-lower-than-recorded",
+      "recordedProgress": "80.00",
+      "acceptedFinalAmount": "1.00",
+      "gallons": null,
+      "reservationVehicle": "vehicle-original",
+      "acceptedVehicle": "vehicle-other",
+      "status": "PAID"
+    },
+    {
+      "probe": "price-change-during-operation",
+      "selectedPrice": "23.50",
+      "currentPrice": "24.00",
+      "observed": "El importe no coincide con el volumen despachado"
+    }
+  ]
+}

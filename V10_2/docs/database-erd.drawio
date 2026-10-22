@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><mxfile host="app.diagrams.net"><diagram name="V10 Prisma"><mxGraphModel grid="1" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="User" value="User
+id: String PK
+email: String UK
+name: String
+passwordHash: String
+active: Boolean
+authVersion: Int
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="360" height="216" as="geometry"/></mxCell><mxCell id="MembershipNumberCounter" value="MembershipNumberCounter
+id: Int PK
+value: BigInt" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="430" y="0" width="360" height="84" as="geometry"/></mxCell><mxCell id="Membership" value="Membership
+id: String PK
+number: String UK
+userId: String FK UK
+status: MembershipStatus
+balance: Decimal
+passport: String? UK
+dni: String? UK
+ruc: String? UK
+businessName: String?
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="860" y="0" width="360" height="282" as="geometry"/></mxCell><mxCell id="edge0" value="userId (1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Membership" target="User"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="Vehicle" value="Vehicle
+id: String PK
+plate: String UK
+label: String
+membershipId: String? FK
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="1290" y="0" width="360" height="172" as="geometry"/></mxCell><mxCell id="edge1" value="membershipId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Vehicle" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="Station" value="Station
+id: String PK
+code: String UK
+name: String
+address: String
+active: Boolean
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="0" y="850" width="360" height="194" as="geometry"/></mxCell><mxCell id="Fuel" value="Fuel
+id: String PK
+code: String UK
+name: String
+pricePerGallon: Decimal
+active: Boolean
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="430" y="850" width="360" height="194" as="geometry"/></mxCell><mxCell id="Transaction" value="Transaction
+id: String PK
+operationId: String UK
+requestHash: String
+plate: String
+vehicleId: String? FK
+membershipCode: String?
+membershipId: String? FK
+stationId: String FK
+fuelId: String FK
+amount: Decimal
+currency: String
+unitPrice: Decimal
+gallons: Decimal?
+solesPerPoint: Decimal?
+pointsRate: Decimal
+pointsEarned: Int
+mode: PurchaseMode
+receiptType: ReceiptType
+status: TransactionStatus
+receiptDni: String?
+receiptRuc: String?
+receiptBusinessName: String?
+authorizationId: String? FK UK
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="860" y="850" width="360" height="590" as="geometry"/></mxCell><mxCell id="edge2" value="vehicleId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Transaction" target="Vehicle"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge3" value="membershipId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Transaction" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge4" value="stationId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Transaction" target="Station"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge5" value="fuelId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Transaction" target="Fuel"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge6" value="authorizationId (0..1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Transaction" target="FuelAuthorization"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="FuelAuthorization" value="FuelAuthorization
+id: String PK
+operationId: String UK
+requestHash: String
+membershipId: String? FK
+plate: String
+vehicleId: String? FK
+stationId: String FK
+fuelId: String FK
+unitPrice: Decimal?
+paymentId: String? FK UK
+interventionReason: String?
+authorizedAmount: Decimal
+reservedAmount: Decimal
+consumedAmount: Decimal?
+releasedAmount: Decimal
+balanceAfter: Decimal
+dispensedAmount: Decimal
+dispensedGallons: Decimal
+mode: PurchaseMode
+status: AuthorizationStatus
+outcome: AuthorizationOutcome?
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="1290" y="850" width="360" height="546" as="geometry"/></mxCell><mxCell id="edge7" value="membershipId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="FuelAuthorization" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge8" value="vehicleId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="FuelAuthorization" target="Vehicle"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge9" value="stationId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="FuelAuthorization" target="Station"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge10" value="fuelId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="FuelAuthorization" target="Fuel"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge11" value="paymentId (0..1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="FuelAuthorization" target="Payment"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="WalletMovement" value="WalletMovement
+id: String PK
+membershipId: String? FK
+debtId: String? FK
+kind: WalletMovementKind
+amount: Decimal
+balanceAfter: Decimal
+operationId: String?
+authorizationId: String? FK
+transactionId: String?
+note: String?
+createdAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="0" y="1700" width="360" height="282" as="geometry"/></mxCell><mxCell id="edge12" value="membershipId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="WalletMovement" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge13" value="debtId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="WalletMovement" target="MembershipDebt"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge14" value="authorizationId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="WalletMovement" target="FuelAuthorization"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="Payment" value="Payment
+id: String PK
+operationId: String? UK
+requestHash: String?
+unitPrice: Decimal?
+transactionId: String? FK UK
+amount: Decimal
+method: PaymentMethod
+status: PaymentStatus
+provider: String
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="430" y="1700" width="360" height="282" as="geometry"/></mxCell><mxCell id="edge15" value="transactionId (0..1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Payment" target="Transaction"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="RewardMovement" value="RewardMovement
+id: String PK
+membershipId: String FK
+kind: RewardKind
+points: Int
+transactionId: String? FK UK
+redemptionId: String? FK UK
+createdAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="860" y="1700" width="360" height="194" as="geometry"/></mxCell><mxCell id="edge16" value="membershipId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="RewardMovement" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge17" value="transactionId (0..1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="RewardMovement" target="Transaction"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge18" value="redemptionId (0..1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="RewardMovement" target="Redemption"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="Benefit" value="Benefit
+id: String PK
+code: String UK
+title: String
+description: String
+category: String
+pointsCost: Int
+active: Boolean
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="1290" y="1700" width="360" height="238" as="geometry"/></mxCell><mxCell id="Redemption" value="Redemption
+id: String PK
+operationId: String UK
+membershipId: String FK
+benefitId: String FK
+pointsSpent: Int
+status: RedemptionStatus
+createdAt: DateTime
+updatedAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="0" y="2550" width="360" height="216" as="geometry"/></mxCell><mxCell id="edge19" value="membershipId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Redemption" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge20" value="benefitId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="Redemption" target="Benefit"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="MembershipDebt" value="MembershipDebt
+id: String PK
+membershipId: String FK
+transactionId: String FK UK
+amountOriginal: Decimal
+amountPaid: Decimal
+amountPending: Decimal
+status: DebtStatus
+createdAt: DateTime
+updatedAt: DateTime
+settledAt: DateTime?" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="430" y="2550" width="360" height="260" as="geometry"/></mxCell><mxCell id="edge21" value="membershipId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="MembershipDebt" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge22" value="transactionId (1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="MembershipDebt" target="Transaction"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="PasswordReset" value="PasswordReset
+id: String PK
+userId: String FK UK
+codeHash: String
+tokenHash: String? UK
+attempts: Int
+expiresAt: DateTime
+verifiedAt: DateTime?
+usedAt: DateTime?
+createdAt: DateTime" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="860" y="2550" width="360" height="238" as="geometry"/></mxCell><mxCell id="edge23" value="userId (1 : 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="PasswordReset" target="User"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="BusinessAlert" value="BusinessAlert
+id: String PK
+eventKey: String UK
+type: AlertType
+status: AlertStatus
+plate: String
+expectedPlates: String[]
+userName: String
+description: String
+operationId: String
+membershipId: String FK
+transactionId: String? FK
+debtId: String? FK
+amountPending: Decimal?
+occurredAt: DateTime
+createdAt: DateTime
+resolvedAt: DateTime?
+resolvedBy: String?" style="rounded=1;whiteSpace=wrap;html=0;align=left;verticalAlign=top;spacing=10;fillColor=#fff2cc;" vertex="1" parent="1"><mxGeometry x="1290" y="2550" width="360" height="414" as="geometry"/></mxCell><mxCell id="edge24" value="membershipId (1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="BusinessAlert" target="Membership"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge25" value="transactionId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="BusinessAlert" target="Transaction"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="edge26" value="debtId (0..1 : 0..N)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;html=0;" edge="1" parent="1" source="BusinessAlert" target="MembershipDebt"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>

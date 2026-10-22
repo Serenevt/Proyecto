@@ -1,0 +1,10 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+const api = require('./api-url.cjs').validateApiUrl(process.env.PRIME_API_BASE_URL, true);
+execFileSync(process.execPath, [path.join(__dirname, 'build.cjs')], { cwd: root, stdio: 'inherit' });
+const config = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8'));
+config.android = { ...config.android, allowMixedContent: api.startsWith('http:') };
+fs.writeFileSync(path.join(root, 'capacitor.config.json'), JSON.stringify(config, null, 2) + '\n');
+execFileSync(process.execPath, [path.join(root, 'node_modules/@capacitor/cli/bin/capacitor'), 'sync', 'android'], { cwd: root, stdio: 'inherit' });
