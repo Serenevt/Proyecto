@@ -7,6 +7,12 @@ export function validateEnvironment(env: Record<string, unknown>) {
     if (String(env[key]).length < 32 || String(env[key]).includes('REPLACE_'))
       throw new Error(`${key} must be a random secret (32+ characters)`);
   }
+  if (
+    !['demo', 'disabled'].includes(
+      String(env.PASSWORD_RESET_DELIVERY ?? 'disabled'),
+    )
+  )
+    throw new Error('Invalid PASSWORD_RESET_DELIVERY');
   const port = Number(env.PORT ?? 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw new Error('Invalid PORT');

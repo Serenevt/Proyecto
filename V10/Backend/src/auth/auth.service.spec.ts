@@ -26,7 +26,7 @@ describe('AuthService', () => {
     });
     expect(result.accessToken).toBe('signed-token');
     expect(result.user).not.toHaveProperty('passwordHash');
-    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'user' });
+    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'user', ver: 0 });
   });
   it('rechaza contraseña incorrecta', async () => {
     await expect(

@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { documentConflict } from '../common/document-conflict';
 
 @Injectable()
 export class PrismaService
@@ -32,6 +33,8 @@ export class PrismaService
           timeout: 10000,
         });
       } catch (error) {
+        // Identity conflicts are definitive, unlike operationId races.
+        if (documentConflict(error)) throw error;
         if (
           !(error instanceof Prisma.PrismaClientKnownRequestError) ||
           !(

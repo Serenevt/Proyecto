@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 async function login(page) {
-  await page.goto('/'); await page.getByLabel('Correo', { exact: true }).fill('demo@primaxprime.pe');
+  await page.goto('/'); await page.getByLabel(/^Correo(?: o DNI)?$/, { exact: true }).fill('demo@primaxprime.pe');
   await page.getByLabel('Contraseña', { exact: true }).fill('FixtureOnly123'); await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Hola, Diego' })).toBeVisible();
 }
@@ -33,7 +33,7 @@ test('deuda e historial pendiente se actualizan después de recargar sin doble e
 });
 test('error Backend muestra recuperación y permite cerrar sesión', async ({ page, context }) => {
   await context.route('**/memberships/me', route => route.fulfill({ status: 503, json: { message: 'unavailable' } }));
-  await page.goto('/'); await page.getByLabel('Correo', { exact: true }).fill('demo@primaxprime.pe'); await page.getByLabel('Contraseña', { exact: true }).fill('FixtureOnly123');
+  await page.goto('/'); await page.getByLabel(/^Correo(?: o DNI)?$/, { exact: true }).fill('demo@primaxprime.pe'); await page.getByLabel('Contraseña', { exact: true }).fill('FixtureOnly123');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click(); await expect(page.getByRole('button', { name: 'Cargar nuevamente' })).toBeVisible();
   await page.getByRole('button', { name: 'Cerrar sesión' }).click(); await expect(page.getByRole('heading', { name: 'Bienvenido a Primax Prime' })).toBeVisible();
 });

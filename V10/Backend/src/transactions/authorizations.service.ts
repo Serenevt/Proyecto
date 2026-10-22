@@ -183,6 +183,7 @@ export class AuthorizationsService {
           operationId: dto.operationId,
           requestHash,
           membershipId: membership.id,
+          plate,
           vehicleId: vehicle.id,
           stationId: station.id,
           fuelId: fuel.id,
@@ -436,6 +437,7 @@ export class AuthorizationsService {
 
   /** DEMO: el pago se confirma en una transacción ANTERIOR a la autorización. */
   private async createPrepaid(dto: CreateAuthorizationDto) {
+    const plate = normalizePlate(dto.plate) as string;
     const amount = new Prisma.Decimal(dto.amount);
     if (amount.lte(0) || amount.gt('999999.99'))
       throw new BadRequestException('Monto inválido');
@@ -504,10 +506,9 @@ export class AuthorizationsService {
         where: { plate: normalizePlate(dto.plate) as string },
         include: { membership: true },
       });
-      if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
       if (
         dto.membershipCode &&
-        vehicle.membership?.number !== dto.membershipCode
+        vehicle?.membership?.number !== dto.membershipCode
       )
         throw new BadRequestException(
           'El código de membresía no corresponde al vehículo',
@@ -524,8 +525,9 @@ export class AuthorizationsService {
         {
           operationId: dto.operationId,
           requestHash,
-          vehicleId: vehicle.id,
-          membershipId: vehicle.membershipId,
+          plate,
+          vehicleId: vehicle?.id,
+          membershipId: vehicle?.membershipId,
           stationId: station.id,
           fuelId: fuel.id,
           mode: 'PREPAGO',

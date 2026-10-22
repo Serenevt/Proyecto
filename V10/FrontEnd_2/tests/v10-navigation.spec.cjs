@@ -1,7 +1,7 @@
 const {test,expect}=require('@playwright/test');
 test('V10: barra Primax, activo blanco, contraste y límites de pantalla',async({page},info)=>{
   await page.goto('/');
-  await page.getByLabel('Correo',{exact:true}).fill('demo@primaxprime.pe');
+  await page.getByLabel(/^Correo(?: o DNI)?$/,{exact:true}).fill('demo@primaxprime.pe');
   await page.getByLabel('Contraseña',{exact:true}).fill('FixtureOnly123');
   await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
   await expect(page.locator('#navigation')).toBeVisible();

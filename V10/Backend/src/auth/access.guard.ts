@@ -46,9 +46,11 @@ export class AccessGuard implements CanActivate {
       throw new UnauthorizedException('Se requiere credencial de terminal');
     const token = req.header('authorization')?.match(/^Bearer (\S+)$/i)?.[1];
     if (!token) throw new UnauthorizedException('Se requiere un token Bearer');
-    let payload: { sub?: string };
+    let payload: { sub?: string; ver?: number };
     try {
-      payload = await this.jwt.verifyAsync<{ sub?: string }>(token);
+      payload = await this.jwt.verifyAsync<{ sub?: string; ver?: number }>(
+        token,
+      );
     } catch {
       throw new UnauthorizedException('Token inválido o vencido');
     }
@@ -59,6 +61,10 @@ export class AccessGuard implements CanActivate {
       throw new UnauthorizedException('Token inválido');
     const user = await this.users.findById(payload.sub);
     if (!user?.active) throw new ForbiddenException('Usuario inactivo');
+    if ((payload.ver ?? 0) !== user.authVersion)
+      throw new UnauthorizedException(
+        'Sesión invalidada. Inicia sesión nuevamente.',
+      );
     req.actor = { kind: 'member', userId: user.id };
     return true;
   }

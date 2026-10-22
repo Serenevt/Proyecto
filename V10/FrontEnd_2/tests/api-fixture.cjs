@@ -6,7 +6,7 @@ exports.installApi=async context=>{
   const req=route.request(),url=new URL(req.url()),body=req.postDataJSON();
   let status=200,data;
   if(url.pathname.endsWith('/auth/login')){
-   if(body.email!=='demo@primaxprime.pe'||body.password!=='FixtureOnly123'){status=401;data={message:'Incorrecto'};}
+   if((body.identifier??body.email)!=='demo@primaxprime.pe'||body.password!=='FixtureOnly123'){status=401;data={message:'Incorrecto'};}
    else data={accessToken:'fixture-jwt',expiresIn:3600,user:{id:'fixture-user',name:'Diego'}};
   }else if(url.pathname.endsWith('/memberships/me/profile')){profile={...profile,...body};data=profile;}
   else if(url.pathname.endsWith('/memberships/me'))data={...profile,user:{name:'Diego'},number:'PRIME-0001',status:'ACTIVE',points,vehicles:[{plate:'ABC-123',label:'Mi auto'},{plate:'DEF-456',label:'Auto familiar'}]};

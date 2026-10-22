@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { documentConflict } from './document-conflict';
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
@@ -43,7 +44,7 @@ export class HttpErrorFilter implements ExceptionFilter {
       error.code === 'P2002'
     ) {
       status = 409;
-      message = 'El registro ya existe';
+      message = documentConflict(error) ?? 'El registro ya existe';
     } else {
       // Do not log credentials, bodies or SQL parameters.
       this.logger.error(

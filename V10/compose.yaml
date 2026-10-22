@@ -60,6 +60,8 @@ services:
       PRIME_DEBT_LIMIT: ${PRIME_DEBT_LIMIT:-200}
       PLATE_CONFIDENCE_THRESHOLD: ${PLATE_CONFIDENCE_THRESHOLD:-0.75}
       PLATE_RECOGNITION_URL: ${PLATE_RECOGNITION_URL:-http://plate-recognition:8000}
+      # Local encrypted demo mailbox only; no real email/SMS provider.
+      PASSWORD_RESET_DELIVERY: ${PASSWORD_RESET_DELIVERY:-demo}
       SOLES_PER_POINT: ${SOLES_PER_POINT:-9}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:10081,http://localhost:10082,http://localhost:5180,http://localhost,https://localhost}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-Prime123}

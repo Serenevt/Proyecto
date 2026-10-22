@@ -15,7 +15,7 @@ export async function apiClient(path, { method = 'GET', body, authenticated = tr
       clearSession(); globalThis.dispatchEvent?.(new Event('prime-session-expired'));
     }
     const message = response.status === 401
-      ? (authenticated ? 'Tu sesión venció. Vuelve a ingresar.' : 'El correo o la contraseña no son correctos.')
+      ? (authenticated ? 'Tu sesión venció. Vuelve a ingresar.' : 'El correo, DNI o la contraseña no son correctos.')
       : response.status >= 500 ? 'El servicio no está disponible. Inténtalo nuevamente.'
       : (Array.isArray(data?.message) ? data.message.join('. ') : data?.message) || 'No pudimos completar la operación.';
     throw Object.assign(Error(message), { status: response.status });

@@ -2287,7 +2287,7 @@ async function continuarDatosOnce() {
   if (!valido) return;
 
   state.placa = formatearPlaca(placaRaw);
-  try{const vehicle=await catalogService.vehicle(state.placa); if(vehicle.membership) { state.codigoCliente=vehicle.membership.number; state.esMiembro=true; }}catch(error){err('prep-placa-error',error.message);return;}
+  try{const vehicle=await catalogService.vehicle(state.placa); if(vehicle.membership) { state.codigoCliente=vehicle.membership.number; state.esMiembro=true; }}catch(error){if(esPost || error.status !== 404){err('prep-placa-error',error.message);return;} state.membresiaVerificada=null;}
 
   if (esPost) {
     // Antes de abastecer hay que comprometer saldo: el backend valida placa,
@@ -2331,13 +2331,9 @@ async function reservarSaldoPostpago() {
     return await ejecutarReserva(monto);
   } catch (error) {
     if (['INSUFFICIENT_BALANCE', 'DEBT_LIMIT'].includes(error.details?.code)) {
-      const action = await insufficientBalance(error.details);
-      if (action === 'debt') {
-        try { return await ejecutarReserva(monto, true); }
-        catch (next) { mostrarModal('No pudimos autorizar', next.message); mostrarPantalla('pantalla-datos'); return false; }
-      }
-      if (action === 'other') { state.modalidad = 'PREPAGO'; state.montoPrepago = monto; irAMetodoPago(); }
-      else { mostrarPantalla('pantalla-datos'); if (action === 'recharge') mostrarModal('Recargar Primax Prime', 'Abre Primax Prime en tu dispositivo, recarga y vuelve a pulsar Continuar. La recarga regulariza primero tus consumos pendientes.'); }
+      const action = await insufficientBalance(error.details, allowDebt => ejecutarReserva(monto, allowDebt));
+      if (action === 'authorized') return true;
+      mostrarPantalla('pantalla-datos');
       return false;
     }
     // El backend es la única autoridad sobre el saldo. Si dice que no alcanza,
@@ -2942,6 +2938,11 @@ function init() {
 document.addEventListener('DOMContentLoaded', init);
 
 $('prep-input-placa').addEventListener('change', async () => {
-  try { applyVehicle(await catalogService.vehicle(formatearPlaca($('prep-input-placa').value))); }
-  catch { state.membresiaVerificada = null; }
+  const plate = formatearPlaca($('prep-input-placa').value);
+  try {
+    const vehicle = await catalogService.vehicle(plate);
+    if (formatearPlaca($('prep-input-placa').value) === plate) applyVehicle(vehicle);
+  } catch {
+    if (formatearPlaca($('prep-input-placa').value) === plate) state.membresiaVerificada = null;
+  }
 });
