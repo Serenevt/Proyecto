@@ -1,0 +1,11 @@
+# Compose 2.24.4+ supports !override. Database remains loopback-only.
+services:
+  frontend1:
+    ports: !override
+      - "0.0.0.0:${FRONTEND1_PORT:-21081}:80"
+  frontend2:
+    ports: !override
+      - "0.0.0.0:${FRONTEND2_PORT:-21082}:80"
+  backend:
+    ports: !override
+      - "${LAN_BACKEND_BIND:-0.0.0.0}:${LAN_BACKEND_PORT:-21000}:3000"

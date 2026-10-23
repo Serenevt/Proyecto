@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Primax Prime</string>
+    <string name="title_activity_main">Primax Prime</string>
+    <string name="package_name">com.primax.prime</string>
+    <string name="custom_url_scheme">com.primax.prime</string>
+</resources>
