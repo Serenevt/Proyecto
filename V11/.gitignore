@@ -49,3 +49,7 @@ PlateRecognition/.venv/
 **/*.dump
 
 **/.gradle-v11/
+**/.vercel/
+**/*.p12
+**/*.pfx
+**/*.pem

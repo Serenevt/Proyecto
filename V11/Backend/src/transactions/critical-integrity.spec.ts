@@ -44,7 +44,9 @@ function harness(status: PaymentStatus = 'CAPTURED') {
   const vehicle = { id: 'v', membershipId: 'm', membership: member };
   const db = {
     fuelInventory: { findUnique: jest.fn().mockResolvedValue({liters:new Prisma.Decimal(5000)}) },
+    paymentEvent: { create: jest.fn() },
     payment: {
+      update: jest.fn(async ({data}) => (paid = {...paid, ...data})),
       findUnique: jest.fn(async () => paid ?? null),
       create: jest.fn(
         async ({ data }: { data: Prisma.PaymentUncheckedCreateInput }) =>

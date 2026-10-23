@@ -1874,10 +1874,11 @@ function finDeCarga() {
  * el excedente lo libera el backend al confirmar la compra.
  */
 function calcularTotales() {
-  const subtotal = state.total;
-  const descuento = 0;
-  const total = Math.round(subtotal * 100) / 100;
-  return { subtotal, descuento, total, aplica_descuento: false };
+  const transaction = backendResult?.transaction;
+  const total = Number(transaction?.amount ?? state.total);
+  const descuento = Number(transaction?.discountAmount ?? 0);
+  const subtotal = Number(transaction?.originalAmount ?? total);
+  return { subtotal, descuento, total, aplica_descuento: descuento > 0 };
 }
 
 async function mostrarResumen() {
@@ -1965,7 +1966,7 @@ function pintarResumen(){
   $('t-galones').textContent = state.galones.toFixed(2) + ' gal';
   $('t-precio').textContent = 'S/ ' + state.combustible.precio.toFixed(2);
   $('t-subtotal').textContent = 'S/ ' + subtotal.toFixed(2);
-  // La fila de descuento solo se muestra en postpago (miembro verificado)
+  // Descuento confirmado por PostgreSQL en ambas modalidades.
   $('row-descuento').classList.toggle('hidden', !aplicaDescuento);
   $('t-descuento').textContent = '- S/ ' + descuento.toFixed(2);
   $('t-total').textContent = 'S/ ' + backendResult.transaction.amount;
@@ -2945,5 +2946,5 @@ setInterval(()=>{if(state.onlineOrderId&&['YAPE','PLIN'].includes(state.metodoPa
 setInterval(async()=>{
  const result=transactionsService.current?.()?.result;
  if(!result?.transaction?.id||result.transaction.status!=='PAYMENT_PENDING'||document.hidden)return;
- try{const fresh=await apiClient('/transactions/'+result.transaction.id);if(fresh.status==='PAID'){actualizarEstado('PAGADO ? confirmado por Backend');}}catch{/* retry next cycle */}
+ try{const fresh=await apiClient('/transactions/'+result.transaction.id);if(fresh.status==='PAID'){backendResult={...result,transaction:fresh};marcarEstadoOperacion('COBRADO');if($('t-estado'))$('t-estado').textContent=paymentState(fresh).label;actualizarEstado('PAGADO - confirmado por Backend');}}catch{/* retry next cycle */}
 },5000);

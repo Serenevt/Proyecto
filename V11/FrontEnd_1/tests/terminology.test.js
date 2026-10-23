@@ -1,3 +1,4 @@
+import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -27,9 +28,13 @@ test('postpago usa SALDO_PRIME y prepago mantiene medios externos', () => {
   assert.match(script, /paymentMethod:state\.modalidad==='POSTPAGO'\?'SALDO_PRIME':state\.metodoPago/);
 });
 
-test('el descuento de membresía ya no se aplica en el importe', () => {
+test('el descuento proviene del backend sin recalculo local', () => {
   assert.match(script, /const DESCUENTO = 0;/);
-  assert.match(script, /aplica_descuento: false/);
+  const source = script.slice(script.indexOf('function calcularTotales()'), script.indexOf('async function mostrarResumen()'));
+  for (const [transaction, expected] of [[null, [100, 0, 100]], [{originalAmount:'100.00',discountAmount:'10.00',amount:'90.00'},[100,10,90]]]) {
+    const result = vm.runInNewContext(source + '; calcularTotales()', {state:{total:100},backendResult:transaction ? {transaction} : null});
+    assert.deepEqual([result.subtotal,result.descuento,result.total], expected);
+  }
 });
 
 test('el postpago reserva saldo antes de abastecer', () => {

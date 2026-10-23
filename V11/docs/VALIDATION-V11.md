@@ -1,53 +1,60 @@
-# Validaci?n V11 ? 2026-10-22 (America/Lima)
+# Validacion V11 ? 2026-10-23 (America/Lima)
 
-**V11 NO LISTA PARA VALIDACI?N FINAL**
+**V11 LISTA INTERNAMENTE PARA DEPLOY**
 
-## Estado de los 22 puntos solicitados
-1. V11 creada exclusivamente desde V10_2 local; ninguna fuente V8/V9/V10 se us? para construirla.
-2. V10_2: 1356 archivos del manifiesto inicial verificados SHA-256, cero cambios. Ver source-verification-v11.json y tools/verify-v10_2.cjs.
-3. Estructura: FrontEnd_1, FrontEnd_2, Backend, PostgreSQL, compose.yaml, docs; PlateRecognition y tools conservados como servicios/herramientas necesarios.
-4. Backend NestJS preparado para Vercel; no desplegado ni probado p?blicamente. Ambos proxies admiten BACKEND_UPSTREAM HTTPS; APK/static Prime admite PRIME_API_BASE_URL.
-5. PostgreSQL local operativo en volumen propio V11; DATABASE_URL gestionada y override preparados, no conectados a una BD online real. Migraciones aditivas aplicadas; no reset ni borrado.
-6. Recuperaci?n: SMTP configurable heredado, cuenta inexistente devuelve mensaje solicitado, hashes/expiraci?n/intentos/uso ?nico/bcrypt. Mailpit SMTP probado; Gmail/Hotmail reales no probados.
-7. OCR placa y membres?a: API valida Membership y Vehicle; OCR ofrecido solo en postpago. PRIM001/PRIM999/PRIM001A soportados; ingreso manual conservado.
-8. OCR: ROI de texto, grayscale, CLAHE, bilateral denoise, sharpening, threshold adaptativo, perspectiva, variantes de rotaci?n, escalado, tres frames y consenso. Fixtures sint?ticas pasan; no se afirma validaci?n con tarjetas f?sicas o tel?fonos reales.
-9. Efectivo sigue simulado.
-10. Tarjeta sigue simulada NFC/POS.
-11. Yape: adaptador Culqi, intent persistido y confirmaci?n por API; pruebas con proveedor simulado, no sandbox comercial.
-12. Plin: mismo contrato de proveedor e idempotencia; sin validaci?n comercial.
-13. QR exclusivamente para Yape/Plin; QR decorativo eliminado; bot?n consulta estado, no acredita dinero.
-14. Postpago web?Prime: deuda persistida, tarjeta PAGO PENDIENTE FUELFLOW, monto/estaci?n/veh?culo/combustible/fecha; pago y polling. Liquidaci?n proveedor?PostgreSQL probada con mock. APK f?sica y servicio p?blico no probados.
-15. Bono S/10: disponible para registros nuevos, >50 estricto, persistente/concurrente en POSTPAGO. **PREPAGO pendiente**; no se afirma completitud de este requisito.
-16. Puntos: 1 cada S/9 netos cuando se aplica bono; historial existente sin recalcular.
-17. Inventario: FuelInventory por estaci?n/combustible, panel desde API, d?bito por delta de galones?litros, CHECK+UPDATE transaccional; insuficiencia y concurrencia probadas.
-18. Docker: seis servicios saludables. Puertos 21081/21082/21000/21025; vol?menes aislados V11. No se detuvieron/eliminaron servicios de versiones previas.
-19. Android: APK debug compilado (93 tareas Gradle). URL marcador https://api.example.invalid/api/v1; **no usar como APK de producci?n**. Falta reconstruir/probar con API p?blica real y dispositivo.
-20. Tests: **476 heredados adaptados a reglas V11 + 36 nuevos = 512 aprobados**, sin contar reejecuciones como tests nuevos. Desglose abajo.
-21. Fallos/limitaciones restantes: bono en prepago, recuperaci?n autom?tica de intentos CREATING tras timeout externo, expiraci?n/cancelaci?n/reembolso de pagos, adaptaci?n/registro de webhook comercial y validaci?n p?blica/dispositivo. La instalaci?n heredada report? vulnerabilidades npm (Backend: 36 high); no se realiz? una actualizaci?n mayor sin validaci?n. No es correcto reducir todos los pendientes a credenciales.
-22. Pendientes externos: cuenta/credenciales Culqi sandbox y producci?n con billeteras habilitadas, SMTP real/remitente verificado, proyecto/dominio backend HTTPS, PostgreSQL gestionado y hosting OCR si se quiere despliegue online. No se probaron pagos reales ni correo externo.
+Este estado certifica el alcance local y los contratos internos probados. No certifica despliegue publico, dinero bancario, correo externo, camara fisica ni APK en telefono. No se hizo commit, push, merge ni deployment.
 
-## Evidencia de pruebas (sin doble conteo)
-| Grupo | Heredados | Nuevos | Total aprobado |
+## IMPLEMENTADO Y PROBADO LOCALMENTE
+
+1. **Continuidad:** se continuo V11 existente; no se recreo ni se revirtio trabajo valido. V10_2: 1356 archivos cotejados SHA-256 con `v10_2-baseline.json`, cero diferencias al inicio y al cierre. No se modificaron V8, V9, V10 ni V10_2. Los cambios/untracked anteriores siguen presentes.
+2. **Bono S/10 PREPAGO y POSTPAGO:** solo cuentas nuevas con elegibilidad persistida; condicion estricta sobre compra original >S/50. S/50 y compras menores no consumen. Prepago reserva elegibilidad antes del pago y la consume solo al cierre valido; cancelacion sin despacho libera reserva. Transaccion fallida revierte el consumo del beneficio. Serializacion PostgreSQL y actualizacion condicional impiden doble aplicacion, incluso cruzando modalidades. Puntos sobre neto. Ticket muestra original, descuento y neto recibidos del backend. Ajustes parciales efectivo/tarjeta son expresamente simulados y auditados.
+3. **Recovery:** cuenta inexistente responde exactamente `No existe una cuenta registrada con este correo.` Codigo con hash, expiracion, limite de intentos, verificacion unica, token de un uso, bcrypt y revocacion de sesiones. Concurrencia verificada. Fallo SMTP devuelve 503 e invalida codigo emitido. Mailpit SMTP probado; bandeja demo ficticia retirada (incluido lector heredado).
+4. **Cancelaciones y reembolsos:** estados financieros persistidos y transiciones controladas; cancelacion repetida rechazada o replay sin efecto, reembolso duplicado sin segunda devolucion. Pago inexistente/pendiente no reembolsable. `PaymentEvent` conserva auditoria idempotente; `RewardMovement.REFUND` referencia Payment y compensa puntos sin modificar su movimiento original. Reembolso no devuelve combustible ya entregado al inventario. Postpago reabre deuda solo por la parte efectivamente revertida; recargas FIFO/sobrepagos no producen saldo negativo ni movimientos de importe cero.
+5. **PaymentProvider/webhook:** token DI `PAYMENT_PROVIDER`, contrato de creacion/consulta/reconciliacion/cancelacion/reembolso. `POST /api/v1/payments/webhook`, DTO estricto y secreto servidor; consulta autoritativa al adapter y validacion de referencia, importe, PEN, estado y fecha. EventId duplicado no duplica captura; reutilizacion con otros datos se rechaza. Estados rechazado, expirado y cancelado liberan reserva del bono. CREATING se recupera por referencia sin crear otro cargo. Sin configuracion comercial no se persiste un intento ni se reserva bono. Las pruebas comerciales son mocks explicitos, no sandbox Culqi real.
+6. **FuelFlow ? backend ? PostgreSQL ? Prime:** cobro con monto, estacion, vehiculo, combustible, fecha y estado; ambas vistas consultan la misma Transaction/Payment. Polling conserva API como fuente de verdad. Pago confirmado actualiza PAID; no hay conexion frontend-frontend ni duplicacion. E2E comprueba dos actores sobre el mismo ID; navegador prueba registro/compra/historial real entre interfaces.
+7. **Inventario:** fuente PostgreSQL por estacion/combustible; FrontEnd_1 consulta panel API. Delta de volumen confirmado, CHECK y bloqueo transaccional; stock insuficiente bloquea y no puede quedar negativo con concurrencia. Rollback/replay no descuentan dos veces. No se hardcodea stock en frontend. El seed local solo inicializa filas faltantes.
+8. **OCR:** preprocessing, placa y Membership PRIM, perspectiva, contraste/rotaciones, frames/consenso y fallback conservados. 11 pruebas Tesseract/OpenCV y pruebas UI de baja confianza/cancelacion aprobadas; umbral no reducido. Fixtures sinteticas no equivalen a una prueba fisica.
+9. **Vercel preparado sin desplegar:** NestJS, health, Prisma generate/build, DATABASE_URL y CORS configurables; build Vercel conservado. Proxies aceptan BACKEND_UPSTREAM; Prime/APK usan PRIME_API_BASE_URL. Build productivo rechaza API localhost/LAN/HTTP. No se invento dominio Vercel. Ver DEPLOYMENT-V11.md.
+10. **PostgreSQL online preparado:** URL PostgreSQL estandar, sin dependencia del hostname Docker en el backend. 18 migraciones aplicadas y status al dia en local, incluidas dos migraciones aditivas nuevas; no reset ni borrado de datos. `PostgreSQL/README.md` documenta migrate deploy, TLS/pool, backup y restauracion ensayada, sin seed demo productivo.
+11. **SMTP preparado:** SMTP_HOST/PORT/SECURE/USER/PASSWORD/FROM configurables; STARTTLS/TLS, Mailpit local, sin credenciales hardcodeadas. Produccion rechaza modo demo/Mailpit. No se afirma entrega a Gmail/Hotmail.
+12. **QR:** solo Yape/Plin y solo QR recibido del proveedor. Efectivo y tarjeta/NFC simulados sin QR. Ningun boton, imagen ni temporizador acredita pagos; solo consulta confirmacion externa.
+13. **Seguridad:** `tools/audit-secrets.cjs` revisa archivos versionados y nuevos no ignorados sin imprimir secretos; cero hallazgos. `.env`, `.env.local`, keystores, local.properties, .vercel, certificados privados, APK y dumps ignorados; ejemplos con placeholders. APK inspeccionado sin claves de servidor ni .env. `npm audit --omit=dev` actual: **0 vulnerabilidades reportadas** (no se extrapola a dependencias dev ni a ausencia absoluta de vulnerabilidades).
+14. **Builds y herramientas:** backend, FuelFlow, Prime y APK debug compilados; lint backend y git diff --check aprobados. Compose valido, seis servicios saludables. APK: Gradle 93 tareas; marcador no funcional `https://api.example.invalid/api/v1`, no artefacto productivo. No se eliminaron volumenes ni datos para validar.
+
+## Evidencia de regresion final (sin contar reejecuciones)
+
+| Grupo | Heredadas | Nuevas V11 | Aprobadas |
 |---|---:|---:|---:|
-| Backend unitarios | 126 | 9 | 135 |
-| Backend E2E PostgreSQL | 193 | 6 | 199 |
-| FuelFlow unitarios | 54 | 2 | 56 |
-| Prime unitarios | 26 | 0 | 26 |
-| Prime UI responsive | 45 | 0 | 45 |
-| Browser V9/V10 adaptados V11 | 22 | 0 | 22 |
+| Backend unitarias | 126 | 9 | 135 |
+| Backend E2E PostgreSQL | 193 | 36 | 229 |
+| FuelFlow unitarias | 54 | 2 | 56 |
+| Prime unitarias | 26 | 0 | 26 |
+| Prime responsive | 45 | 0 | 45 |
+| Browser V9/V10 adaptado V11 | 22 | 0 | 22 |
 | Registro/compra entre interfaces | 3 | 0 | 3 |
 | OCR Tesseract/OpenCV | 7 | 4 | 11 |
-| Smoke V11 sobre API/PostgreSQL | 0 | 15 | 15 |
-| **Total** | **476** | **36** | **512** |
+| Smoke V11 API/PostgreSQL | 0 | 15 | 15 |
+| **Total** | **476** | **66** | **542** |
 
-La ejecuci?n E2E completa aprob? 198 tests; posteriormente se a?adi? y ejecut? la sexta prueba de proveedor en una ejecuci?n focalizada de 6/6. El total ?nico E2E es 199. Las pruebas de proveedor usan un mock expl?cito, no una cuenta Culqi sandbox.
-Pruebas heredadas actualizadas: Yape/Plin ya no se esperan capturados por simulaci?n; correo inexistente ahora debe informar el error requerido; fixtures agregan stock real; OCR prepago ahora est? oculto; fixture identidad elimina pasaporte al asignar DNI. No se eliminaron suites v?lidas.
-Logs locales (ignorados por git): Backend/test-v11.log, docker-tests-v11.log, e2e-final-v11.log, provider-tests-v11.log, FrontEnd_1/test-v11.log, FrontEnd_2/test-v11.log, FrontEnd_2/ui-v11.log, browser-integrated-v11.log, browser-e2e-v11.log, ocr-tests-v11.log, smoke-v11.log, FrontEnd_2/android-v11.log.
-Builds Backend/FuelFlow/Prime, lint Backend, migraciones y docker compose ps comprobados. git diff --check ejecutado sin errores (avisos CRLF de cambios previos en V10).
+Baseline previo: 476 +36 =512. Esta continuacion agrega **30** pruebas: 29 en `v11-closure.e2e-spec.ts` y 1 de fallo SMTP en `auth-recovery.e2e-spec.ts`. Final: **542 passed, 0 failed, 0 skipped**. No se borraron/deshabilitaron pruebas. Se adaptaron fixtures a los campos de pago nuevos y expectativas antiguas que prohibian el bono prepago: S/100 ahora neto S/90, 10 puntos. La prueba de bandeja demo se sustituyo por rechazo de almacenamiento ficticio, conservando cobertura.
 
-## Incidencia de aislamiento de pruebas
-La primera ejecuci?n de navegador heredada conserv? el fallback API :10000 mientras las interfaces apuntaban a V11. Dos pruebas crearon cuentas/veh?culos sint?ticos en la instancia Docker V10 antes de fallar. Se detuvo la ejecuci?n y se fijaron PORT=21000 y MAILPIT_PORT=21025, adem?s de los puertos V11 de interfaces; la nueva ejecuci?n aprob? 22/22. No se borraron esos registros. Los archivos V10 y V10_2 no fueron modificados por este trabajo. Esta incidencia impide afirmar que no hubo ning?n efecto sobre datos de una versi?n anterior.
+Logs locales ignorados: `closure-final-backend-v11.log`, `browser-closure-v11.log`, `integration-closure-v11.log`, `smoke-closure-v11.log`, `build-verified-v11.log`, `FrontEnd_1/test-closure-v11.log`, `FrontEnd_2/test-closure-v11.log`, `FrontEnd_2/ui-closure-v11.log`, `Backend/audit-production-v11.log`. Los esquemas E2E se conservaron como evidencia. Los errores HTTP intencionales de pruebas negativas no son fallos de suite.
 
-## Seguridad y alcance
-No .env con credenciales creado ni incluido; solo ejemplos. Claves de backend no se incluyen en los bundles web. APK, keystores, caches y backups ignorados. No commit, push ni merge. No publicaci?n. Los reportes V8/V9/V10 copiados son evidencia hist?rica y no certifican V11.
-Ver DEPLOYMENT-V11.md para instalaci?n, l?mites del proveedor y referencias oficiales.
+## IMPLEMENTADO PERO PENDIENTE DE PRUEBA REAL / PENDIENTE MANUAL
+
+- OCR con placa y Membership fisicas, pantalla de telefono, iluminacion/inclinacion real y camara: **PENDIENTE MANUAL**, no aprobado por las fixtures.
+- APK en telefono real contra API HTTPS definitiva: **PENDIENTE MANUAL**; solo compilacion y auditoria del APK verificadas.
+- Backend Vercel/DB gestionada, SMTP externo y firma/eventos/pagos comerciales: implementacion interna preparada; prueba real requiere las dependencias siguientes. No se cuentan como skipped de las 542 pruebas automaticas.
+
+## PENDIENTE EXTERNO
+
+- Autorizacion GitHub/Vercel para Serenevt/Proyecto, despliegue Vercel y URL HTTPS definitiva.
+- Provisionar/conectar PostgreSQL Neon o gestionado y verificar migracion/backup en ese entorno.
+- SMTP real, credenciales y remitente verificado; entrega externa real.
+- Comercio/proveedor Yape/Plin habilitado, credenciales, contrato y registro de firma/webhook. El adapter Culqi incluido crea/consulta ordenes; las capacidades comerciales de busqueda, cancelacion y reembolso de billetera deben vincularse/certificarse con el contrato habilitado. El contrato interno de esas capacidades ya se prueba con mock y falla cerrado si falta adapter. No se afirma reembolso bancario ni compatibilidad de una API de cargos con ordenes de billetera. Los ajustes parciales de billetera real que requieran devolucion/cobro adicional no se confirman ficticiamente.
+- Hosting HTTPS OCR y validacion con camara/tarjetas/telefono fisicos.
+- Recompilar APK con URL publica real y probarlo en dispositivo.
+
+## Incidencia historica conservada
+
+La validacion anterior de V11 documento que dos pruebas iniciales de navegador alcanzaron la API V10 por fallback :10000 y crearon cuentas/vehiculos sinteticos. Es evidencia historica, no se borro ni se oculta. En esta continuacion todos los tests de API/browser usaron los puertos V11 21000/21081/21082/21025; no se limpiaron esos datos ni archivos antiguos. No se uso git clean, reset --hard, migrate reset ni compose down -v.

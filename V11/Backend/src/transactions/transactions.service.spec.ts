@@ -115,8 +115,12 @@ describe('TransactionsService', () => {
         ? { ...reservation, id, mode: 'PREPAGO', paymentId: 'paid' }
         : reservation,
     );
+    (tx as unknown as { paymentEvent: unknown }).paymentEvent = { create: jest.fn() };
     (tx as unknown as { payment: unknown }).payment = {
+      update: jest.fn(),
       findUnique: jest.fn().mockResolvedValue({
+        discountAmount: new Prisma.Decimal(0),
+        provider: 'DEMO',
         id: 'paid',
         status: 'CAPTURED',
         method: 'TARJETA',
@@ -169,6 +173,8 @@ describe('TransactionsService', () => {
       'PLIN',
     ] as const) {
       (tx.payment.findUnique as jest.Mock).mockResolvedValue({
+        discountAmount: new Prisma.Decimal(0),
+        provider: 'DEMO',
         id: 'paid',
         status: 'CAPTURED',
         method: paymentMethod,

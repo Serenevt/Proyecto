@@ -27,8 +27,8 @@ test('registro → login → vehículo → FuelFlow → Prime comparten PostgreS
     const submitted=terminal.waitForResponse(r=>r.url().endsWith('/transactions')&&r.request().method()==='POST');await terminal.locator('#btn-nfc-tap').click();await terminal.locator('#modal-ok').click();const response=await submitted;expect(response.status()).toBe(201);const tx=(await response.json()).transaction;
     expect(tx.membership.number).toBe(stored.membership.number);expect(tx.vehicle.plate).toBe(plate);
     await member.reload();await member.getByRole('navigation').getByRole('link',{name:'Consumos',exact:true}).click();await expect(member.locator(`[data-detail="${tx.id}"]`)).toBeVisible();
-    const profile=await member.evaluate(async()=>{const {memberService}=await import('/js/services/index.js');return memberService.get();});expect(profile.points).toBe(11);expect(profile.number).toBe(stored.membership.number);
+    const profile=await member.evaluate(async()=>{const {memberService}=await import('/js/services/index.js');return memberService.get();});expect(profile.points).toBe(10);expect(profile.number).toBe(stored.membership.number);
     expect(await db.transaction.count({where:{id:tx.id,membershipId:stored.membership.id}})).toBe(1);
-    fs.mkdirSync(path.join(__dirname,'evidence'),{recursive:true});fs.writeFileSync(path.join(__dirname,'evidence/registration.json'),JSON.stringify({email,userId:stored.id,membershipId:stored.membership.id,number:stored.membership.number,plate,transactionId:tx.id,points:11},null,2));
+    fs.mkdirSync(path.join(__dirname,'evidence'),{recursive:true});fs.writeFileSync(path.join(__dirname,'evidence/registration.json'),JSON.stringify({email,userId:stored.id,membershipId:stored.membership.id,number:stored.membership.number,plate,transactionId:tx.id,points:10},null,2));
   }finally{await context.close();await db.$disconnect();}
 });

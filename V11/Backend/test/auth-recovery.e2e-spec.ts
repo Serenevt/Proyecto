@@ -176,6 +176,12 @@ describe('Single authentication and password recovery: PostgreSQL', () => {
     });
     await verify().expect(400);
   });
+  it('SMTP failure invalidates the issued code and reports delivery failure', async () => {
+    delivery.send.mockRejectedValueOnce(new Error('SMTP unavailable'));
+    await forgot().expect(503);
+    expect((await row()).usedAt).not.toBeNull();
+    await verify('12345678').expect(400);
+  });
   it('five wrong attempts permanently invalidate this code', async () => {
     await forgot().expect(200);
     const wrong = code === '00000000' ? '11111111' : '00000000';

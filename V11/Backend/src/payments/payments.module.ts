@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { CulqiProvider } from './payment-provider';
+import { CulqiProvider, PAYMENT_PROVIDER } from './payment-provider';
+import { PaymentLifecycleController, PaymentLifecycleService } from './payment-lifecycle';
+import { PaymentWebhookController } from './webhook';
 import { OnlineOrdersController, OnlineOrdersService } from './online-orders';
-@Module({ controllers:[OnlineOrdersController],providers: [PaymentsService,CulqiProvider,OnlineOrdersService], exports: [PaymentsService] })
+@Module({ controllers:[OnlineOrdersController,PaymentWebhookController,PaymentLifecycleController],providers: [PaymentsService,CulqiProvider,{provide:PAYMENT_PROVIDER,useExisting:CulqiProvider},OnlineOrdersService,PaymentLifecycleService], exports: [PaymentsService] })
 export class PaymentsModule {}

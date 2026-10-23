@@ -29,8 +29,8 @@ test('compra desde FuelFlow actualiza Primax Prime y PostgreSQL sin duplicados',
   const submitted=terminal.waitForResponse(r=>r.url().endsWith('/api/v1/transactions')&&r.request().method()==='POST',{timeout:60000});
   await terminal.locator('#btn-nfc-tap').click();await terminal.locator('#modal-ok').click();
   const response=await submitted;expect(response.status()).toBe(201);result=await response.json();const tx=result.transaction;
-  expect(tx).toMatchObject({amount:'100.00',status:'PAID',mode:'PREPAGO',receiptType:'BOLETA',gallons:'4.255',pointsEarned:11,vehicle:{plate:plate},membership:{number:membership.number,name:'Diego'},station:{name:'Primax Sur'},fuel:{name:'Premium'},payment:{method:'TARJETA',status:'CAPTURED'}});
-  expect(result.pointsEarned).toBe(11);await expect(terminal.locator('#t-estado')).toContainText('+11 puntos');
+  expect(tx).toMatchObject({amount:'90.00',status:'PAID',mode:'PREPAGO',receiptType:'BOLETA',gallons:'4.255',pointsEarned:10,vehicle:{plate:plate},membership:{number:membership.number,name:'Diego'},station:{name:'Primax Sur'},fuel:{name:'Premium'},payment:{method:'TARJETA',status:'CAPTURED'}});
+  expect(result.pointsEarned).toBe(10);await expect(terminal.locator('#t-estado')).toContainText('+10 puntos');
   // Inject transport faults around a real persisted purchase; then recover against the live API.
   const authorizationRoute='**/api/v1/authorizations/*';
   for(const status of [401,403,404,503,'timeout']){
@@ -49,21 +49,21 @@ test('compra desde FuelFlow actualiza Primax Prime y PostgreSQL sin duplicados',
   await terminal.reload();await terminal.locator('#btn-iniciar').dblclick();
   await expect(terminal.getByRole('heading',{name:'Compra recuperada',exact:true})).toBeVisible();
   await terminal.locator('#modal-ok').click();
-  await expect(terminal.locator('#t-total')).toHaveText('S/ 100.00');
+  await expect(terminal.locator('#t-total')).toHaveText('S/ 90.00');
   const replay=await terminal.evaluate(async()=>{const {transactionsService}=await import('/src/js/transactionsService.js');return transactionsService.submit();});expect(replay.transaction.id).toBe(tx.id);
   // Replay over HTTP too: the cached client response alone cannot prove server idempotency.
   const repeated=await terminal.evaluate(async()=>{const {transactionsService}=await import('/src/js/transactionsService.js');const {apiClient}=await import('/src/js/apiClient.js');return apiClient('/transactions',{method:'POST',body:transactionsService.current().payload});});expect(repeated.transaction.id).toBe(tx.id);
   await member.bringToFront();
-  await expect.poll(()=>member.evaluate(async()=>{const {memberService}=await import('/js/services/index.js');return memberService.get().points;}),{timeout:20000}).toBe(before+11);
+  await expect.poll(()=>member.evaluate(async()=>{const {memberService}=await import('/js/services/index.js');return memberService.get().points;}),{timeout:20000}).toBe(before+10);
   await member.getByRole('navigation').getByRole('link',{name:'Consumos',exact:true}).click();
   await expect(member.locator('[data-detail="'+tx.id+'"]')).toBeVisible();
-  await member.locator('[data-detail="'+tx.id+'"]').click();await expect(member.getByRole('dialog')).toContainText('100.00');await expect(member.getByRole('dialog')).toContainText(plate);await member.getByRole('button',{name:'Cerrar',exact:true}).click();
-  const rewards=await member.evaluate(async()=>{const {rewardsService}=await import('/js/services/rewardsService.js');return rewardsService.list();});expect(rewards.filter(r=>r.transactionId===tx.id)).toMatchObject([{points:11,kind:'EARN'}]);
+  await member.locator('[data-detail="'+tx.id+'"]').click();await expect(member.getByRole('dialog')).toContainText('90.00');await expect(member.getByRole('dialog')).toContainText(plate);await member.getByRole('button',{name:'Cerrar',exact:true}).click();
+  const rewards=await member.evaluate(async()=>{const {rewardsService}=await import('/js/services/rewardsService.js');return rewardsService.list();});expect(rewards.filter(r=>r.transactionId===tx.id)).toMatchObject([{points:10,kind:'EARN'}]);
   expect(await db.transaction.count({where:{operationId:tx.operationId}})).toBe(1);
   expect(await db.payment.count({where:{transactionId:tx.id,status:'CAPTURED'}})).toBe(1);
-  expect(await db.rewardMovement.count({where:{transactionId:tx.id,points:11,kind:'EARN'}})).toBe(1);
+  expect(await db.rewardMovement.count({where:{transactionId:tx.id,points:10,kind:'EARN'}})).toBe(1);
   expect(errors).toEqual([]);
-  const evidence={transactionId:tx.id,operationId:tx.operationId,amount:tx.amount,pointsEarned:11,pointsBefore:before,pointsAfter:before+11,historyVisible:true,paymentCount:1,rewardCount:1,transport:process.env.V6_DOCKER_TEST?'Docker Nginx':'local development proxies'};
+  const evidence={transactionId:tx.id,operationId:tx.operationId,amount:tx.amount,pointsEarned:10,pointsBefore:before,pointsAfter:before+10,historyVisible:true,paymentCount:1,rewardCount:1,transport:process.env.V6_DOCKER_TEST?'Docker Nginx':'local development proxies'};
   fs.mkdirSync(path.join(__dirname,'test-results'),{recursive:true});fs.writeFileSync(path.join(__dirname,'test-results/integration.json'),JSON.stringify(evidence,null,2));console.log(JSON.stringify(evidence));
  }finally{await context.close();await db.$disconnect();}
 });

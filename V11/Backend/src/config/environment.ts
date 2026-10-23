@@ -3,12 +3,14 @@ export function validateEnvironment(env: Record<string, unknown>) {
     if (typeof env[key] !== 'string' || !env[key])
       throw new Error(`${key} is required`);
   }
+  const database = new URL(String(env.DATABASE_URL));
+  if (!['postgres:', 'postgresql:'].includes(database.protocol)) throw new Error('DATABASE_URL must be PostgreSQL');
   for (const key of ['JWT_SECRET', 'KIOSK_API_KEY']) {
     if (String(env[key]).length < 32 || String(env[key]).includes('REPLACE_'))
       throw new Error(`${key} must be a random secret (32+ characters)`);
   }
   if (
-    !['demo', 'disabled', 'smtp', 'mailpit'].includes(
+    !['disabled', 'smtp', 'mailpit'].includes(
       String(env.PASSWORD_RESET_DELIVERY ?? 'disabled'),
     )
   )
@@ -53,6 +55,8 @@ export function validateEnvironment(env: Record<string, unknown>) {
       if (String(env[key]).includes('LOCAL_DEMO')) throw new Error('Production cannot use demo secrets');
     if (env.PAYMENT_ENV !== 'production' || !String(env.CULQI_SECRET_KEY ?? '').startsWith('sk_live_'))
       throw new Error('Production requires Culqi live configuration');
+    if (String(env.PAYMENT_WEBHOOK_SECRET ?? '').length < 32) throw new Error('Production requires a webhook secret of 32+ characters');
+    if (['mailpit','localhost','127.0.0.1'].includes(String(env.SMTP_HOST))) throw new Error('Production SMTP cannot use local Mailpit');
     if (!env.CORS_ORIGINS) throw new Error('Explicit production origins required');
     if (!String(env.PLATE_RECOGNITION_URL ?? '').startsWith('https://')) throw new Error('Production OCR requires HTTPS');
   }

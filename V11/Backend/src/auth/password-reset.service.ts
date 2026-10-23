@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   createHash,
@@ -73,6 +73,8 @@ export class PasswordResetService {
         await this.delivery.send(email, code, expiresAt);
       } catch {
         this.logger.warn('Recovery delivery failed; no sensitive data logged');
+        await this.db.passwordReset.updateMany({where:{id},data:{usedAt:new Date(),tokenHash:null}});
+        throw new ServiceUnavailableException('No se pudo enviar el correo. Intenta nuevamente en un minuto.');
       }
     }
     return response;

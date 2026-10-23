@@ -1,32 +1,50 @@
-# V11 deployment preparation
+# Preparacion de produccion V11 (sin despliegue)
 
-No public deployment was performed. `Backend/vercel.json` configures the build; Vercel supports NestJS entrypoint `src/main.ts`.
-1. Create a Vercel project with root V11/Backend. Use Node 22. Build: npx prisma generate && npm run build.
-2. Configure DATABASE_URL (managed PostgreSQL TLS, serverless pooling), JWT_SECRET, KIOSK_API_KEY, APP_MODE=production, CORS_ORIGINS, SMTP variables, PAYMENT_ENV=production, CULQI_SECRET_KEY and PAYMENT_WEBHOOK_SECRET. Never ship these to browser/APK.
-3. Apply `npx prisma migrate deploy` to the intended database from a controlled environment after backup. Never reset. Do not seed demo accounts into production.
-4. Host PlateRecognition separately as a container with HTTPS; Tesseract/OpenCV is not deployed as part of the NestJS function. Set PLATE_RECOGNITION_URL.
-5. Set BACKEND_UPSTREAM=https://your-api.vercel.app for BOTH nginx frontends. Host FuelFlow behind a trusted station network or authenticated gateway: its reverse proxy injects the kiosk key. Do not expose this privileged kiosk proxy as an unrestricted public website.
-6. Build static Prime or APK with PRIME_API_BASE_URL=https://your-api.vercel.app/api/v1. Capacitor requires an absolute API URL. Backend CORS must allow the real web origins and Capacitor origin. No localhost is hardcoded for public use.
-7. Run health, registration, recovery email delivery, live-provider reconciliation and Android device validation before release.
+## Backend / Vercel
+Root del proyecto: `V11/Backend`. Node 22; `vercel.json` prepara `npx prisma generate && npm run build`; entrada NestJS `src/main.ts`. Health: `GET /api/v1/health`. No se conecto GitHub/Vercel ni se creo una URL publica.
 
-Local development: `docker compose up -d`, FuelFlow http://127.0.0.1:21081, Prime http://127.0.0.1:21082, backend http://127.0.0.1:21000/api/v1. Mailpit is development-only, port 21025. Local DB uses the V11 volume exclusively.
-Optional managed development database: `docker compose -f compose.yaml -f compose.database-managed.yaml up -d` with DATABASE_URL set. Do not run the inherited test profile against a production database.
+Configurar en el hosting, nunca en Git: DATABASE_URL, JWT_SECRET, KIOSK_API_KEY, APP_MODE=production, CORS_ORIGINS, PLATE_RECOGNITION_URL, SOLES_PER_POINT, PAYMENT_ENV, CULQI_SECRET_KEY, PAYMENT_WEBHOOK_SECRET, ADMIN_USER y ADMIN_PASSWORD_HASH. La validacion rechaza secretos demo, SMTP local en produccion y webhook sin secreto suficiente. Las variables SMTP se detallan abajo.
 
-## Payment truth and limitations
-OnlineOrdersService persists the intent/payment before contacting Culqi. Yape/Plin use provider QR only. Status polling queries Culqi with the secret API key and checks provider ID, merchant order number, amount, currency, paid state and payment timestamp. Duplicate notifications are serialized and cannot settle twice. The UI cannot mark a payment paid. Cash and card/NFC are still simulated.
-`POST /api/v1/online-orders/:id/notify` requires x-webhook-secret and re-fetches provider state; a deployment adapter must map the commercial provider event to the internal intent ID and supply this header. This adapter/registration has NOT been verified against Culqi. Polling works independently of webhook delivery when credentials are configured.
-An ambiguous create timeout stays CREATING and must be reconciled against the merchant order number. Automatic recovery of such intents, expiry/cancellation and provider refunds are not complete. Never create a replacement payment blindly.
-No Culqi sandbox credentials or live credentials were available. Local tests use an explicitly mocked provider, NOT Culqi sandbox. No actual money was collected.
-The welcome discount currently applies at POSTPAGO settlement only; PREPAGO welcome discount remains unfinished. A cancelled/failed postpay settlement rolls back the claim. Existing users remain ineligible; only new registrations receive eligibility.
+Aplicar `npx prisma migrate deploy` desde Backend contra la base correcta, despues de backup y ensayo. No ejecutar seed demo en produccion. OCR requiere hosting separado compatible con Tesseract/OpenCV; no forma parte de la funcion NestJS.
+
+Referencia de plataforma: https://vercel.com/docs/frameworks/backend/nestjs
+
+## Interfaces y APK
+FuelFlow/Prime Docker: `BACKEND_UPSTREAM` recibe el origen HTTPS real del backend. Ambos navegadores usan `/api/v1` a traves de nginx. FuelFlow requiere una red de estacion o gateway autenticado: su proxy contiene la credencial de kiosk. No exponer ese proxy privilegiado sin control de acceso.
+
+Prime web estatica y Android: establecer `PRIME_API_BASE_URL` antes de `npm run build` o `npm run android:debug`; debe ser la URL publica real terminada en `/api/v1`. Se inyecta en `FrontEnd_2/www/js/config.js` y, mediante Capacitor, en `android/app/src/main/assets/public/js/config.js`. No editar esos archivos generados a mano.
+
+Para un build productivo usar tambien NODE_ENV=production: se rechazan HTTP, localhost e IP LAN. Android rechaza localhost incluso en desarrollo. `api.example.invalid` es exclusivamente el marcador NO FUNCIONAL del APK debug de validacion, nunca una URL de despliegue. Recompilar con la URL HTTPS definitiva y validar en telefono real. CORS debe incluir los origenes web definitivos y el origen Capacitor correspondiente (`https://localhost` o `capacitor://localhost` no son direcciones del backend).
+
+## PostgreSQL
+Ver `../PostgreSQL/README.md`. DATABASE_URL admite PostgreSQL estandar. El nombre `postgres` pertenece solo al compose local; el backend no lo exige. No se conecto Neon.
 
 ## SMTP
-PASSWORD_RESET_DELIVERY=smtp uses SMTP_HOST/PORT/SECURE/USER/PASSWORD/FROM. Use a verified sender and server credentials/app password. Production refuses Mailpit/demo modes. Recovery storage uses hashes, expiry, limited attempts, single use and bcrypt password hashing. Missing email gets the exact requested message. Real external Gmail/Hotmail delivery was not tested; SMTP was exercised with Mailpit.
+PASSWORD_RESET_DELIVERY=smtp con SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD, SMTP_FROM. Usuario y clave se configuran juntos; STARTTLS cuando SMTP_SECURE=false, TLS directo cuando true. Usar remitente verificado. Mailpit solo local/dev; no existe bandeja ficticia de recovery. Una falla de envio devuelve 503 e invalida el codigo emitido, conservando cooldown. No se afirma entrega real a Gmail/Hotmail.
 
-## Android validation
-A debug APK compiled using https://api.example.invalid/api/v1 as an explicit nonfunctional build marker. Rebuild with the actual public URL before installation/user acceptance. No device-to-public-API validation was performed. The test APK is not a production deliverable.
+## Contrato de pagos
+`PAYMENT_PROVIDER` es el token de inyeccion. Contrato en `Backend/src/payments/payment-provider.ts`; las pruebas usan un adapter mock explicito, nunca un sandbox comercial.
+- `create` y `get`: intent persistido antes del efecto externo; QR solo Yape/Plin; boton/polling solo consultan evidencia autoritativa.
+- `findByReference`: reconcilia un CREATING ambiguo sin volver a crear un cargo.
+- `cancel`: misma clave idempotente; se exige confirmacion del estado remoto.
+- `refund`: misma clave idempotente; REFUNDING persiste la incertidumbre y bloquea despacho; REFUNDED exige identidad, moneda, importe y evidencia remota de devolucion.
 
-## Official integration references
-- https://vercel.com/docs/frameworks/backend/nestjs
-- https://docs.culqi.com/es/documentacion/pagos-online/ordenes-de-pago/billetera-moviles/
-- https://docs.culqi.com/es/documentacion/pagos-online/ordenes-de-pago/ordenes/
-- https://apidocs.culqi.com/
+El adapter Culqi incluido implementa creacion/consulta. La vinculacion comercial de busqueda por referencia, cancelacion y devolucion de ordenes de billetera requiere confirmar las capacidades habilitadas para el comercio; esas capacidades opcionales fallan de forma cerrada si no estan disponibles. No se inventan endpoints ni se equipara una devolucion de cargos de tarjeta con una de ordenes Yape/Plin. Un cierre parcial de billetera que requiere devolver/cobrar diferencia queda bloqueado hasta confirmacion del proveedor; nunca se registra como reembolso bancario simulado. El ciclo completo interno se prueba con adapter mock; efectivo/tarjeta usan contabilidad DEMO.
+
+Referencia de ordenes: https://docs.culqi.com/es/documentacion/pagos-online/ordenes-de-pago/ordenes/
+Referencia de devoluciones sobre cargos: https://docs.culqi.com/es/documentacion/librerias/backend/sdk_java
+
+## Webhook publico-ready
+`POST /api/v1/payments/webhook`
+Header de servidor: `x-webhook-secret: <PAYMENT_WEBHOOK_SECRET>`
+Body normalizado: `{ "eventId": "identificador-unico", "orderId": "UUID-interno", "type": "PAID" }`.
+Tipos: PAID, FAILED, CANCELLED, REFUNDED. DTO estricto; evento reutilizado con otro contenido se rechaza. Se consulta al proveedor, se valida referencia/importe/moneda y se aplica la transicion serializable. PaymentEvent conserva auditoria e idempotencia; un reintento no duplica cobros.
+
+El receptor es un contrato de adapter, no una afirmacion de compatibilidad con una firma nativa Culqi aun no verificada. Al conectar el comercio se debe validar su firma y normalizar su evento antes de invocar este contrato. El secreto no va en frontend/APK. La ruta heredada `POST /api/v1/online-orders/:id/notify` sigue protegida y solo reconcilia por API.
+
+## Operaciones internas
+- `POST /api/v1/authorizations/:id/release`: cancela sin despacho; devuelve reserva postpago o pago prepago DEMO y libera reserva del bono. Segunda cancelacion rechazada.
+- `POST /api/v1/payments/:id/refund`: kiosk, devolucion interna efectivo/tarjeta DEMO; replay sin segundo efecto. Revierte puntos mediante movimiento REFUND con FK al Payment. No restaura combustible ya despachado.
+- `POST /api/v1/online-orders/:id/cancel` y `/:id/refund`: propietario/kiosk segun orden; consultan confirmacion del adapter. Reembolso del pago de deuda reabre el saldo pendiente correspondiente en la misma Transaction/Payment; los sobrepagos y recargas FIFO se concilian sin saldo negativo.
+
+El bono se reserva en prepago, se consume solo al cerrar una compra original >50, y no modifica elegibilidad de cuentas antiguas. En postpago se aplica al cierre. Los puntos se calculan sobre el importe neto. Transaction conserva originalAmount/discountAmount; Payment conserva la cotizacion prepago, importe neto y devoluciones, con auditoria de ajustes parciales simulados.

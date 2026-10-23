@@ -1,13 +1,24 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-export interface ProviderOrder { id: string; order_number: string; amount: number; currency_code: string; state: string; paid_at?: number | null; qr?: string | null }
+export interface ProviderOrder { id: string; order_number: string; amount: number; currency_code: string; state: string; paid_at?: number | null; refunded_at?: number | null; qr?: string | null }
 export interface PaymentProvider {
+ assertConfigured?(): void;
  create(id: string, cents: number, customer: Customer): Promise<ProviderOrder>;
  get(id: string): Promise<ProviderOrder>;
+ findByReference?(reference: string): Promise<ProviderOrder | null>;
+ cancel?(id: string, operationId: string): Promise<void>;
+ refund?(id: string, operationId: string): Promise<void>;
 }
+export const PAYMENT_PROVIDER = Symbol('PAYMENT_PROVIDER');
 export interface Customer { first_name: string; last_name: string; email: string; phone_number: string }
 @Injectable()
 export class CulqiProvider implements PaymentProvider {
+ assertConfigured() {
+  const key=process.env.CULQI_SECRET_KEY;
+  const mode=process.env.PAYMENT_ENV || 'sandbox';
+  if (!key || !key.startsWith(mode==='production'?'sk_live_':'sk_test_')) throw new ServiceUnavailableException('Configura credenciales Culqi del entorno seleccionado');
+ }
  private async request(path: string, body?: unknown): Promise<ProviderOrder> {
+  this.assertConfigured();
   const key=process.env.CULQI_SECRET_KEY;
   const mode=process.env.PAYMENT_ENV || 'sandbox';
   if (!key || !key.startsWith(mode==='production'?'sk_live_':'sk_test_'))

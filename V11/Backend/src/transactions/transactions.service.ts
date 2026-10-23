@@ -7,6 +7,7 @@ import {
 import {
   AuthorizationOutcome,
   AuthorizationStatus,
+  Payment,
   PaymentMethod,
   Prisma,
   PurchaseMode,
@@ -164,6 +165,7 @@ export class TransactionsService {
           'El precio no coincide con el autorizado',
         );
       let prepaidPaymentId: string | null = null;
+      let prepaidPayment: Payment | null = null;
       if (dto.mode === 'PREPAGO') {
         const prepaid = auth.paymentId
           ? await tx.payment.findUnique({ where: { id: auth.paymentId } })
@@ -172,10 +174,11 @@ export class TransactionsService {
           !prepaid ||
           prepaid.status !== 'CAPTURED' ||
           prepaid.method !== dto.paymentMethod ||
-          prepaid.amount.lt(amount)
+          prepaid.amount.plus(prepaid.discountAmount).lt(amount)
         )
           throw new BadRequestException('Pago previo no aprobado');
         prepaidPaymentId = prepaid.id;
+        prepaidPayment = prepaid;
         await this.authorizations.settle(
           auth.id,
           {
@@ -188,15 +191,31 @@ export class TransactionsService {
       }
 
       let discount = new Prisma.Decimal(0);
-      if (eligible && amount.gt(50) && dto.mode === 'POSTPAGO') {
+      if (eligible && amount.gt(50)) {
         await this.wallet.lockMembership(membership!.id, tx);
         const claimed = await tx.membership.updateMany({
-          where: { id: membership!.id, welcomeAvailable: true },
-          data: { welcomeAvailable: false, welcomeTransactionId: dto.operationId },
+          where: { id: membership!.id, welcomeAvailable: true, welcomeReservedOperationId: dto.mode === 'PREPAGO' ? auth.operationId : null },
+          data: { welcomeAvailable: false, welcomeTransactionId: dto.operationId, welcomeReservedOperationId: null },
         });
         if (claimed.count === 1) discount = new Prisma.Decimal(10);
       }
       const netAmount = amount.minus(discount);
+      if (prepaidPayment) {
+        const paid = prepaidPayment;
+        if (paid.amount.lt(netAmount)) {
+          if (paid.provider !== 'DEMO') throw new ConflictException('Requiere confirmar pago adicional con el proveedor');
+          const extra = netAmount.minus(paid.amount);
+          await tx.payment.update({ where: { id: paid.id }, data: { amount: netAmount } });
+          await tx.paymentEvent.create({ data: { eventKey: 'adjust:' + auth.id, paymentId: paid.id, kind: 'CAPTURE_ADJUSTMENT', detail: 'Ajuste simulado dentro del importe original autorizado: ' + extra.toFixed(2) } });
+        }
+        const refund = paid.amount.minus(netAmount);
+        if (refund.gt(0) && paid.provider !== 'DEMO') throw new ConflictException('Reembolso externo pendiente de confirmaci?n del proveedor');
+        if (refund.gt(0)) {
+          await tx.payment.update({ where: { id: paid.id }, data: { amount: netAmount, refundedAmount: { increment: refund } } });
+          await tx.paymentEvent.create({ data: { eventKey: 'partial:' + auth.id, paymentId: paid.id, kind: 'PARTIAL_REFUND', detail: 'Devoluci?n interna simulada del excedente: ' + refund.toFixed(2) } });
+        }
+        await tx.membership.updateMany({ where: { welcomeReservedOperationId: auth.operationId }, data: { welcomeReservedOperationId: null } });
+      }
       let authorizationId: string | null = auth.id;
       let pending = new Prisma.Decimal(0);
       if (dto.mode === PurchaseMode.POSTPAGO) {
