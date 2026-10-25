@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+# Historical source manifest: these exact 64-hex values are file checksums.
+[[allowlists]]
+description = "SHA-256 digests in the reviewed source integrity manifests"
+condition = "AND"
+paths = ['''(^|/)docs/(v10_2-baseline|PUBLICATION-CONTENT)\.json$''']
+regexTarget = "secret"
+regexes = ['''^[a-fA-F0-9]{64}$''']
