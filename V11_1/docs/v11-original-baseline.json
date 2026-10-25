@@ -1,0 +1,1494 @@
+[
+    {
+        "Path":  ".env.example",
+        "Hash":  "B2873668BBAB4AB1D9F53CF8E16AAFEA211BFEC5F06CF2D4D54EDFA3F7FAC016"
+    },
+    {
+        "Path":  ".gitattributes",
+        "Hash":  "6547C3AA157EBF28BF42D7FB6258C1DD64092BAA6F016CC05E96D24A20F78FC2"
+    },
+    {
+        "Path":  ".gitignore",
+        "Hash":  "B4419FDCB37F1617846C9F6FC97F02152DBC2239905AC0A0F0C208B3BD66663B"
+    },
+    {
+        "Path":  "CHANGES.md",
+        "Hash":  "F2F586F99E243CDE7C5F232E99C089C796B9CED433060423DC1E6A0992C8D571"
+    },
+    {
+        "Path":  "compose.database-local.yaml",
+        "Hash":  "C2A6AA2CFCF8B7C68F96D61DCED60B199564B4E64F96CBEA6596710E2BE793B9"
+    },
+    {
+        "Path":  "compose.database-managed.yaml",
+        "Hash":  "4FE3226B89CC3B0866E446EC6748D98B6CE9992290E03E3E4BC12F11A9EFAD1F"
+    },
+    {
+        "Path":  "compose.lan.yaml",
+        "Hash":  "B54E3327DAFD538A8E5EFB9662EDC9FBFBF4E999296BBD9964D6C058E873117D"
+    },
+    {
+        "Path":  "compose.yaml",
+        "Hash":  "E5C5F86A4C5B3D3581C585867BB7F6BDECBB5A9432AB645A6E2D904B31230A62"
+    },
+    {
+        "Path":  "DOCKER-RESULTS.md",
+        "Hash":  "F83A3B4415960A6A5477163B0F1ACB079BF0EBCFB2C6A8F49881E09CA072238E"
+    },
+    {
+        "Path":  "INTEGRATION-RESULTS.md",
+        "Hash":  "3E5ABCEC5454C7045121D474089D0AEC61ECE427880258ED2FD310746BF95E1E"
+    },
+    {
+        "Path":  "README.md",
+        "Hash":  "7390B401D2327899110583C2991077233C7EC4A3BED5B019E6679F6A9DF431D5"
+    },
+    {
+        "Path":  "REQUIREMENTS-COMPLIANCE.md",
+        "Hash":  "733FB21065252840D802021F9AD6DF5E4D44F50DA19F1239BBC159649023D87D"
+    },
+    {
+        "Path":  "VALIDATION.md",
+        "Hash":  "36585C56AA5552B7FA28946C6E22A65CF7D5AC6A5B6254BCD054327B1398135D"
+    },
+    {
+        "Path":  "Backend\\.dockerignore",
+        "Hash":  "017796C37E2DB38CCAA8387D9E124DFF89F572E280CBE7AA4064C0D624CE4C67"
+    },
+    {
+        "Path":  "Backend\\.env.example",
+        "Hash":  "B2873668BBAB4AB1D9F53CF8E16AAFEA211BFEC5F06CF2D4D54EDFA3F7FAC016"
+    },
+    {
+        "Path":  "Backend\\.gitignore",
+        "Hash":  "5342D590B785DFCA844CF341379D0556A23225F09DBDCBC9FA5879544897A1BB"
+    },
+    {
+        "Path":  "Backend\\.prettierrc.json",
+        "Hash":  "6E94842E4DBCCD5A7BD7ED039F0C7AB07A49BBACB041934E19888366EFF977E6"
+    },
+    {
+        "Path":  "Backend\\Dockerfile",
+        "Hash":  "E94949D5A379DCFAF4161F36F82576BD90CE6E58C68BA941AD20BA0839FB6723"
+    },
+    {
+        "Path":  "Backend\\eslint.config.cjs",
+        "Hash":  "F9B45581312D042D0CB38C661DFC028156CD76EA274E0C0C5C4B11A151874D4B"
+    },
+    {
+        "Path":  "Backend\\jest.config.cjs",
+        "Hash":  "5EAB0C9194C34EC7C553CD723EA4A83D6E70AFAF5AF04B1CB73ED48560863457"
+    },
+    {
+        "Path":  "Backend\\package-lock.json",
+        "Hash":  "75AF041F270ED2CA1F1A5F4CEF676B9B651692BC0453BFD51442F08D6089823C"
+    },
+    {
+        "Path":  "Backend\\package.json",
+        "Hash":  "E3C32FD4EE0B5EA854ECA00B735F695F73D93AC19A69AADC58AF65266269ED00"
+    },
+    {
+        "Path":  "Backend\\README.md",
+        "Hash":  "8905BC1525BBB00612761BA16E9B8F03A9288C145F03F9E780559DB12A0ABCCF"
+    },
+    {
+        "Path":  "Backend\\tsconfig.build.json",
+        "Hash":  "44E82CF32B2BD7CFDB7C4D9CA48AB13101F6FF66349578545D2C229EF55CBCA6"
+    },
+    {
+        "Path":  "Backend\\tsconfig.json",
+        "Hash":  "4F653109247F8799503F1DDA3209E99A20B7EC79E557DAF8F5ABA7D1F3F5E18B"
+    },
+    {
+        "Path":  "Backend\\vercel.json",
+        "Hash":  "CCAD98ABEC9007A38AC0C5FED06F0F0FD27FC2F6A0AE4BF0FBFFB66A96BC992C"
+    },
+    {
+        "Path":  "Backend\\VERIFICATION.md",
+        "Hash":  "12C1133F596BA35149DAFEE752BE28957E32E9558AFCCBB2547AA669FE27F277"
+    },
+    {
+        "Path":  "Backend\\prisma\\demo-query.sql",
+        "Hash":  "AC5ADD9C90284675D2757A8A181EE8D9988ADCE563AE6D194BC6E20A67000A98"
+    },
+    {
+        "Path":  "Backend\\prisma\\schema.prisma",
+        "Hash":  "BF9536CEC2DBBE5EDB78D0EDAD7DD72778C34F1B66619A1A670B7B6765391831"
+    },
+    {
+        "Path":  "Backend\\prisma\\seed.ts",
+        "Hash":  "1385D0A837453ABCEE867D49686AFEECB4BB65B6362357363526E38194DD3F2F"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\migration_lock.toml",
+        "Hash":  "BC487C02C71AD9CAE8694647129E3EA7F32B1FE7007D0A6CED064E51022CD3FB"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261008235020_init\\migration.sql",
+        "Hash":  "4C79E1F930B4F898B7962801897C5582252E7F99AEC7CBA838A1CD96E827AEF6"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261008235100_constraints\\migration.sql",
+        "Hash":  "F824645ABC9AF03C3272F74AB8A611124FA733FC9036F07E9937737E24AABC13"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261009120000_postpago_wallet\\migration.sql",
+        "Hash":  "CC2F121FA4305213CD56B65F9F5002F7BC15DAFB0AF8E375C950788A711529AA"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261009130000_authorization_dispensing\\migration.sql",
+        "Hash":  "90AABCD8270CB497E04447219D407F3A56079815D1E2C8C30A4B61024F18D668"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261009131000_dispense_progress\\migration.sql",
+        "Hash":  "676F0A296AB871C288A8F23259FE464B0990C4BA1F0C1E05FFBC4884973D884C"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\202610120001_v9_debt_profile\\migration.sql",
+        "Hash":  "2C4D6A0FDACFC4BE12E9B7057A5A9B3FB56B0D3073BF8027B5EFB5DC48B1A521"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\202610120002_v9_credit_constraints\\migration.sql",
+        "Hash":  "11784A8A8AEBCFB77B7D420CEED12D912D30E59C24C9AB4BB92DCD385BC780D4"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261017000000_critical_transaction_integrity\\migration.sql",
+        "Hash":  "D2D332209469313E2EB79253C68DDE357C3D0C25D1A7782F48A47CA862BFA7DF"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261020000000_points_divisor\\migration.sql",
+        "Hash":  "101A1F87679A4B5FB232E6A3EBA5386B650B5D5EAF9792A42B1B2D5AFA54DB55"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261021000000_membership_number_counter\\migration.sql",
+        "Hash":  "0F28360624B0F99CF4DA0FE9CF752C5F7A1AC9B141DF33C81A107276453F4C9E"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261022000000_business_alerts\\migration.sql",
+        "Hash":  "6AF8A97229BD5550048061E8C5094D071F239B49AB7B5EEE44B4A312585AFAEF"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261022000000_guest_prepay_unique_documents\\migration.sql",
+        "Hash":  "676772B05034F5607DCCB8B596D3447D0D4EF2F346D9893F8202924095A35DB7"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261022010000_align_prisma_constraints\\migration.sql",
+        "Hash":  "B5E38BDA185C74BC97F73B94EB931A5BFD0EB6A080691C8E8C773B8388A4CD6B"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261022010000_identity_and_recovery\\migration.sql",
+        "Hash":  "32641813EAC024F667C7AD71222320A4B0640CDA88AA582F34D02B1B2374F69D"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261023000000_payment_lifecycle\\migration.sql",
+        "Hash":  "4F05FC02BB5501613AD694A75A87385EEE2AF3A9BE9581048F6B082D31E97690"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261023000000_v11_inventory_welcome\\migration.sql",
+        "Hash":  "A77B9C9A53B6A26C3921A00CFC63B1FB8FA20E35E1C42756F85E295506EEFC33"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261023010000_online_orders\\migration.sql",
+        "Hash":  "1F8B586D983959E3BD05DE3372B35A96E74B0AB7FE32197B50E18FECBA1B613D"
+    },
+    {
+        "Path":  "Backend\\prisma\\migrations\\20261023010000_refund_reward_trace\\migration.sql",
+        "Hash":  "1A23DEB48CBC1FB1DE3FC0945DB4721303DFE90097BAA51631B56EB670A36034"
+    },
+    {
+        "Path":  "Backend\\scripts\\demo.cjs",
+        "Hash":  "86676C39003A8F563E1E653C3B56A3F28C3699975297F8C8A7E3824FF9ADE319"
+    },
+    {
+        "Path":  "Backend\\scripts\\init-env.cjs",
+        "Hash":  "9A7FDC5AA7131334028180544E3E7C090DAD33907CF43E161D45FB37332520D9"
+    },
+    {
+        "Path":  "Backend\\scripts\\read-reset-demo.cjs",
+        "Hash":  "8FC80FBFBC7C73C1735A52A595CC6B14874D68D728E35422470832ED8376B500"
+    },
+    {
+        "Path":  "Backend\\scripts\\v9-demo.cjs",
+        "Hash":  "B9CDA7EB074B69EAE620613A83120BEEDFE6BCB94F48618D39F6A87007C314AF"
+    },
+    {
+        "Path":  "Backend\\src\\app.module.ts",
+        "Hash":  "38C0FAF1ABF696DE098782F7335E2C0C2E551E347F00A0FA060C8287E81F9629"
+    },
+    {
+        "Path":  "Backend\\src\\main.ts",
+        "Hash":  "4FA6FD73AEA0952BDAAEB51A29127475A8A4FD579F7A0B1C6E53A8BCF6597134"
+    },
+    {
+        "Path":  "Backend\\src\\setup-app.ts",
+        "Hash":  "5FD30B3FB2C29D119D03F0534E9096340D438BC8A9D53625BD6999C7FA563CC5"
+    },
+    {
+        "Path":  "Backend\\src\\alerts\\alerts.module.ts",
+        "Hash":  "3C155DA3B5299E89D04A90A00935F0C75FF3644292D4D8EE2CBAF8347CDB4D70"
+    },
+    {
+        "Path":  "Backend\\src\\alerts\\alerts.service.ts",
+        "Hash":  "200CF6E5AAB05A45EF6D57352E46C9685C248CDE2112865D93F36937EDBC69E3"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\access.guard.ts",
+        "Hash":  "E2B7A2BC7C63EED310DDE27CB4E52A3C695C43A29CE4FDD2A662FA9F64588D0C"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\access.ts",
+        "Hash":  "18F9A6153AA5EC2B2DA67137DF6A32C2A87B97BD5AB8DF3BD43861B543747516"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\admin.controller.ts",
+        "Hash":  "A043BF1BFC20AE9471B5125C70FBED389A89A9AB1585E9056E82C287E71433DD"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\auth.controller.ts",
+        "Hash":  "3B69CBC0756F1B990AE9FED26BCAE195DD5F833B22288CC4A928BEC465B59BCD"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\auth.module.ts",
+        "Hash":  "AC46F5F78849ABC05693F840919F5BAF239B4C846F93BC30A9DBF30D1E7D3244"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\auth.service.spec.ts",
+        "Hash":  "B7BD27B95B05F4D095BC2D6AFED6F89C6B15B1A825059FF90D358D0BDAF3D437"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\auth.service.ts",
+        "Hash":  "D8907B6B10CC9CBB6D5AF97EE50F2EC07E284CD91C790C5912234BA0A94521A7"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\login.dto.ts",
+        "Hash":  "6EADCDB60C40D1BECC5BF0265719EA51E3FE2B72A17127A793DD11240E2D7A42"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\password-reset.dto.ts",
+        "Hash":  "409D0DF89B5A0BC0B8DCCDA1F854A04AE2FEAD334ED360DB2E66422D800A1439"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\password-reset.service.ts",
+        "Hash":  "1A1BB08132FC94EDD64481AAB04EF04FBE8B84D69B25F5DDF7526AEC924AD129"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\recovery-delivery.spec.ts",
+        "Hash":  "54D33AC824E92937827642D65599356EA65F95F59A2FE235447A566A4CAEDDBB"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\recovery-delivery.ts",
+        "Hash":  "DC964CCD0ADBA5906C56599F2E24DB064C3E62AEEC0BE82A6D5672E89D6B9319"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\register.dto.ts",
+        "Hash":  "AAB23C7F459B0AB66AC95E2F61C53556D29AD0B1F1A285FE4DAD47534A31E511"
+    },
+    {
+        "Path":  "Backend\\src\\auth\\smtp-delivery.spec.ts",
+        "Hash":  "1439CB29DFF7F0FA47A9091078F559A25AAC2A3DAC8898E9A7D2F098C3EB0487"
+    },
+    {
+        "Path":  "Backend\\src\\benefits\\benefits.controller.ts",
+        "Hash":  "9CB91345720FBF0C01B8F7BDB15DEA6F96E93B46020702367E27B58707387807"
+    },
+    {
+        "Path":  "Backend\\src\\benefits\\benefits.module.ts",
+        "Hash":  "BD7B5444217D46121D9556DDB4B513BBF230DA2E70F39C9D47E3FF7030D8FE36"
+    },
+    {
+        "Path":  "Backend\\src\\benefits\\benefits.repository.ts",
+        "Hash":  "783474E7109F0504C3C6C2EB5F1C54B5DF331E44C7B0AB00538AA85A44D39F2A"
+    },
+    {
+        "Path":  "Backend\\src\\benefits\\benefits.service.ts",
+        "Hash":  "3C84F24900A980775794521928849D9C3394FB49BA83540DDB3A93F484EF8574"
+    },
+    {
+        "Path":  "Backend\\src\\common\\document-conflict.ts",
+        "Hash":  "107881EDD49796564D949457571F945525E866706687EC006AE2913BD653F781"
+    },
+    {
+        "Path":  "Backend\\src\\common\\http-error.filter.ts",
+        "Hash":  "1B72E652F119ED1C6FF6EAB9F6916DE51845BA7365BDC0FEEB04ED209D34D14B"
+    },
+    {
+        "Path":  "Backend\\src\\common\\pagination.dto.ts",
+        "Hash":  "546C604FFF2B0A9D7063F02903DE514D753E834C48FD2A0DA07D183571AB21B6"
+    },
+    {
+        "Path":  "Backend\\src\\common\\response.dto.ts",
+        "Hash":  "0DFD4C97355BD645953976598D1F6BBD36F76BD4189DD5E2DC49D4ECFF8E9E6E"
+    },
+    {
+        "Path":  "Backend\\src\\config\\environment.ts",
+        "Hash":  "E76141A73A7C5D7FE4D06F688B7829C0C22D0D0805F13EA1CE2494DD2CF9DF44"
+    },
+    {
+        "Path":  "Backend\\src\\config\\load-env.ts",
+        "Hash":  "077886E8C61B7903522BEE18C84F04B998319A937F9B63DAECC4357DF124EB14"
+    },
+    {
+        "Path":  "Backend\\src\\fuels\\fuels.controller.ts",
+        "Hash":  "52C2A0F63B64DA8EA9CC138F6F2EB91D1B2BFAD5A971D0ECC8C0DBF636B0337E"
+    },
+    {
+        "Path":  "Backend\\src\\fuels\\fuels.module.ts",
+        "Hash":  "38E5EA176E0103429475704BD6CD14ACD00ED6F45203C484FF3948AAC801E984"
+    },
+    {
+        "Path":  "Backend\\src\\fuels\\fuels.repository.ts",
+        "Hash":  "D36B3FADBD74660CBE001CE175FBCEE36A01DFB0BE2EB030830E327368C4159C"
+    },
+    {
+        "Path":  "Backend\\src\\fuels\\fuels.service.ts",
+        "Hash":  "694EA7045928A1DA6585E7C99DD12C78D97D02F1B5B3346098269AD99B8E7741"
+    },
+    {
+        "Path":  "Backend\\src\\health\\health.controller.ts",
+        "Hash":  "198F2A46C001ED87E61A4F866C5700299C9874E8AF13B8FFCA23812E01A04FAA"
+    },
+    {
+        "Path":  "Backend\\src\\health\\health.module.ts",
+        "Hash":  "5DB4A90312D839B8179FBB8B18D3FA5C610FA50AA7B4FC38162D11732A8D7D16"
+    },
+    {
+        "Path":  "Backend\\src\\health\\health.service.ts",
+        "Hash":  "195F92D7744DC7F38CA5AA781CFE0648B201BEEDF8D7AD00FEC02861F89E561A"
+    },
+    {
+        "Path":  "Backend\\src\\memberships\\memberships.controller.ts",
+        "Hash":  "018C655C7BC2DAD66855914230043E94EC726092AE1ED10CFB7A8B2B45C5339F"
+    },
+    {
+        "Path":  "Backend\\src\\memberships\\memberships.module.ts",
+        "Hash":  "5539C1628CFB8ECF5F11D9A199A672C245A1E5B168CBEEBC568161F4F66C2C4B"
+    },
+    {
+        "Path":  "Backend\\src\\memberships\\memberships.repository.ts",
+        "Hash":  "BCEDA65AA6C2A91A2AEE1926864D516921A1CEA8BA978F97782A0BF258C5C3C6"
+    },
+    {
+        "Path":  "Backend\\src\\memberships\\memberships.service.ts",
+        "Hash":  "34789E9060C0B37FD5260E233E059D653E155C964C1AD8A97E3C494F03EA543B"
+    },
+    {
+        "Path":  "Backend\\src\\memberships\\profile.dto.ts",
+        "Hash":  "5620E1D995D4DAD1B68AD936561994B05F44D68027EDD7052774A10AE950C13A"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\online-orders.ts",
+        "Hash":  "BA54FFF58DBC7C23901383B03D9DDF26E853455A248BC4BDADD9ADF0B7B294A0"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\payment-lifecycle.ts",
+        "Hash":  "F2BB5B189B9B91793EFAED7CA6ABF1AB23E6A6DF5F5791214D600D2A031CB5AA"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\payment-provider.spec.ts",
+        "Hash":  "D65F9420EE7458E2A168667B3AB618C394E3AA4A67629EE38E8D31E0C1804EB8"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\payment-provider.ts",
+        "Hash":  "4106B74A1E8A863B7C27CE66E48A7108C2E74E15A12B1EB3DB3DC10D228FE560"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\payments.module.ts",
+        "Hash":  "4798F7D6600D9CE61504894625A97BE9344D0C65B6F7CA72FBB0ADA66B93E587"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\payments.service.spec.ts",
+        "Hash":  "A2CA9CF1BAD58F413FFB29E192A7D8E11DB05D0279FA97D6A778382713EFEB19"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\payments.service.ts",
+        "Hash":  "6C775BA247ECBF5D8599DE10175A10D6C3F5E6C275CC159BDD6C329504F9BAC2"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\webhook.ts",
+        "Hash":  "AE787E84AE034EEC4DD5F88C7ADCEF362CF982E79DCA47006941A2C7D7394CEB"
+    },
+    {
+        "Path":  "Backend\\src\\payments\\welcome.ts",
+        "Hash":  "7B126A9E307C7A27180FBA3AA3C12D4D3CCED3DF80136DD481D87B130F26C29B"
+    },
+    {
+        "Path":  "Backend\\src\\prisma\\prisma.module.ts",
+        "Hash":  "EE4FD29F1711BC925F92B2AF0DD10620C524414FFE7C58D60EBBF4813C72FD8A"
+    },
+    {
+        "Path":  "Backend\\src\\prisma\\prisma.service.ts",
+        "Hash":  "A0D506322838F46F85E0AAB20EDE64AC88A1D4723DCCF6AC9D6D30680302179C"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\points-policy.service.spec.ts",
+        "Hash":  "E00EB133BD26B2F1F10ECC1FAE8861AFD7E5CDB3CF5F8E9325B01BCF29CFE66D"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\points-policy.service.ts",
+        "Hash":  "89F76D8627CDA8EF728F380F73939D51FDCBC697FC935B88741447C6E34A00F6"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\redeem.dto.ts",
+        "Hash":  "A113970BE056899D344176499B3CDFFABB4654C785C2E3386C311C4027E85EC7"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\rewards.controller.ts",
+        "Hash":  "791C8278E62D8EF3160B9A7C8CBF21F82A62F737FA15D22FA982B959499BA1CA"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\rewards.module.ts",
+        "Hash":  "30CBB98AC89B41F6F5BF56DF47B09AFE942BEF8C9DA72740E0EE4B9E3F43DC52"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\rewards.repository.ts",
+        "Hash":  "214852AFAF79E2FDA0D241F97CC7830D272363CFE440E41AF80A52AC100357A9"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\rewards.service.spec.ts",
+        "Hash":  "BD3CAED21D5DF45BD0F9D7E5C3405AD66D14FF95C2D8ACE6DDAA1598F6AC3D13"
+    },
+    {
+        "Path":  "Backend\\src\\rewards\\rewards.service.ts",
+        "Hash":  "2CFC1A5385B0EF22724FA70DA8A5407DED57D7B378252897D13014945F443E55"
+    },
+    {
+        "Path":  "Backend\\src\\stations\\stations.controller.ts",
+        "Hash":  "E8B4A774FBC16A25B35294E18847043E1950152F72F02BCF7BE3B0C6005AA18C"
+    },
+    {
+        "Path":  "Backend\\src\\stations\\stations.module.ts",
+        "Hash":  "4F82FEC94BB3AB3E1B254F5984E39578C3795ADC92D7A6128FC5198083BB3A31"
+    },
+    {
+        "Path":  "Backend\\src\\stations\\stations.repository.ts",
+        "Hash":  "6E179E520927567EBFDF19C37AEA7B4393561278FBA15F11EA314E3B122393B8"
+    },
+    {
+        "Path":  "Backend\\src\\stations\\stations.service.ts",
+        "Hash":  "208F2D9A0A206E964AB4C34B0914B9151C925C3813731164B85929607994B9AE"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\authorizations.controller.ts",
+        "Hash":  "1F1AA6D97EB5C1D89E723D00FFA1D111F4C4CFA8378EF8A4DA76D85E933FA13C"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\authorizations.repository.ts",
+        "Hash":  "B73D66F1885A8F3892D93C4CE8B264034053E5712CB4115BE029A8D09BAFE76C"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\authorizations.service.spec.ts",
+        "Hash":  "B603DE31B78D67EC54F7D47F9CB01A813666CF3B9490B0AC785F7F927ADB2E0B"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\authorizations.service.ts",
+        "Hash":  "243687EBD3613B105E04A36395D2AEC1C1744586F07F4D27FCCBF0F03AF028DF"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\create-authorization.dto.ts",
+        "Hash":  "7316BFCD26B04C4F3118D3851B122FE2AE11895704A5D9010EE6723841B8B615"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\create-transaction.dto.ts",
+        "Hash":  "5F57ECD736FCAFCFB97F2A870F2D8C12B9455CAA07A43483671CB67101667813"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\critical-integrity.spec.ts",
+        "Hash":  "7E0B083B50350295669AD6FBBC360E5514642CCF0E673DEFB52898A73C401156"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\dispense-progress.dto.ts",
+        "Hash":  "6841AB3D3BE7A82F28D6763BC930603EAF8DA8838131E243A2CADB16D3876F50"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transaction-response.dto.ts",
+        "Hash":  "ABF2771406D525E89D09D3E38ECC094C1F128246AFF04FBB246CF3339A6F6E3A"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transaction.model.ts",
+        "Hash":  "27C2E470BBBE9E05FB1BE1F4FCE4EF510377988B93C1933C6FF485658D2AE22C"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transactions.controller.ts",
+        "Hash":  "6AE4D1D8DE631F48C1D3D5414A53621236D9B2C8249ADF71105964AB84D405A3"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transactions.module.ts",
+        "Hash":  "F24E3F64734FFD2D2971FD17C3A485C917266113CA562F0BB823C082989425E8"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transactions.repository.ts",
+        "Hash":  "C018FA7815BF7EEF8A69B17DE86D2A52BF65D2B4D0A953E478A2CCD051AFCD35"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transactions.service.spec.ts",
+        "Hash":  "1F3F8142EE194352139F5425D26EB44FDB80D2C3D8F5F6862181C4DA33A999BB"
+    },
+    {
+        "Path":  "Backend\\src\\transactions\\transactions.service.ts",
+        "Hash":  "348693F35088466968EA797E7FF01C3491E71B794CF35BCFA7E3FA6F2DB78654"
+    },
+    {
+        "Path":  "Backend\\src\\users\\membership-number.spec.ts",
+        "Hash":  "39F9B7F0250F6377B44A5356300CE8EBA6159BF42E08B908342D0597C397BEF4"
+    },
+    {
+        "Path":  "Backend\\src\\users\\membership-number.ts",
+        "Hash":  "1B01C62568ED29FE8FE2D7F65E1598F7FB9170E6407628D7BED707A28BF3FBBD"
+    },
+    {
+        "Path":  "Backend\\src\\users\\users.module.ts",
+        "Hash":  "50CBDD1C1BF5E479BEF694DBFBCA81864EE2614D99651EC064AA6084ABC5B96D"
+    },
+    {
+        "Path":  "Backend\\src\\users\\users.repository.ts",
+        "Hash":  "1CF2AEA8FE31859F58170F0984F381DD187EC0BD94665AFB2267BA1574C66510"
+    },
+    {
+        "Path":  "Backend\\src\\users\\users.service.ts",
+        "Hash":  "9A167A9521CD913AB9303DDEFE5BD2FB663D5768F64C9EDF1578AC3478801BC5"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\create-vehicle.dto.ts",
+        "Hash":  "5F26F7F3185B0CEEE36F22F43CD4F2AAB9E04B1D5E688E6C3B211D86F557977C"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\plate.dto.ts",
+        "Hash":  "C12B01E64042E7B364A6E68EAEFE4059CEC9643DBC298E9F889DB8A40311C17F"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\recognition.controller.ts",
+        "Hash":  "A99BED778CFB97D4A0E6810C50BACFC95CDF86CAB18A772F6BB47F5767754D86"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\recognition.service.spec.ts",
+        "Hash":  "EE83A3B9DAFA79584708F82D70259D977648B4DA015E1960CE6DFF13872E710F"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\recognition.service.ts",
+        "Hash":  "60CFE87E648D073135B2B26711AEA9B768B417559270150E36DB9C44B58CA5A3"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\vehicles.controller.ts",
+        "Hash":  "6178B9F8840C9288665ACBE59F28E1570816E13615DA20758A84B5F4CAB82DDF"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\vehicles.module.ts",
+        "Hash":  "7F8E128159072E4861D1FA7BE23229D5AE77300038B180C3D97DD53E9BB3F29A"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\vehicles.repository.ts",
+        "Hash":  "08CC38410EA10EEB7E479D6813BE7B6E18EC54495E708755434728275AB02D46"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\vehicles.service.spec.ts",
+        "Hash":  "B4013073EC68D677E83FB51D53793B25E09FCC53D21CB1F74B03FA4372A0FA00"
+    },
+    {
+        "Path":  "Backend\\src\\vehicles\\vehicles.service.ts",
+        "Hash":  "FBA6B18442EA9CC571A91D19B72286007C84F7C0BD48DB02B9111C0006105180"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\debt.ts",
+        "Hash":  "91F26438F72938766FC2C110DC4FAAD9957C50415279706715DA9BCB40E06347"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\recharge.dto.ts",
+        "Hash":  "E014ED0926DEB2FBBD746168D9355624D9C305F3A34B683A1FB3397C47C41619"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\wallet.controller.ts",
+        "Hash":  "41E53141EF308906DFBF78B727F221F626DB17C8753DC17BECF1634472850426"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\wallet.module.ts",
+        "Hash":  "6BDE2DF7E5E03B580A51FC34CEC763BBDF995E3850F193537016823948651C89"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\wallet.repository.ts",
+        "Hash":  "1BB24F5BB12EF4F45FFE6027D37BB8BAC48B83C0FDEB03EAA54B89BA3C42296F"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\wallet.service.spec.ts",
+        "Hash":  "EE3F24B37FD861011138F411D24146072856613400CBF8EA77A998F2B6E6F8E3"
+    },
+    {
+        "Path":  "Backend\\src\\wallet\\wallet.service.ts",
+        "Hash":  "B95A4404D3803DA77DB08DB4C87FFFF1B6C53A37F7C6ED75633713976D3D9863"
+    },
+    {
+        "Path":  "Backend\\test\\admin-mail.e2e-spec.ts",
+        "Hash":  "A397AC3F12F851C9B16D425FEC24EDE01A018D0FCB8909819A60C47D0C849D10"
+    },
+    {
+        "Path":  "Backend\\test\\api.e2e-spec.ts",
+        "Hash":  "66D4B228C25249DB088FE9646D378612E9F2F7A0355BBAF3835ECF01764510DD"
+    },
+    {
+        "Path":  "Backend\\test\\auth-recovery.e2e-spec.ts",
+        "Hash":  "A0577C70AD4F81B24A8D20D022B4627CC3449275E41EEB4BA66E8FDE1460AEF2"
+    },
+    {
+        "Path":  "Backend\\test\\jest-e2e.config.cjs",
+        "Hash":  "B0EC03AE39F94BEB6A31DCD59E3BA86EBBD74C26EA9BBC309B7A28337D5C65BD"
+    },
+    {
+        "Path":  "Backend\\test\\prepaid-guest.e2e-spec.ts",
+        "Hash":  "CF28641644BE285C23A554CDA6F066AE0B9E6415EE2B3049F9D99BF901472714"
+    },
+    {
+        "Path":  "Backend\\test\\recorded-purchase.ts",
+        "Hash":  "EB5D80447DE0528EF7D98DD390778B0BF6D89F48F537B2E01ACBA5124AFBE432"
+    },
+    {
+        "Path":  "Backend\\test\\registration.e2e-spec.ts",
+        "Hash":  "651D4A8B71F7C84BA7C5FC6395A52F116724A34B0BDC884822AC4DFB749BD56C"
+    },
+    {
+        "Path":  "Backend\\test\\v11-closure.e2e-spec.ts",
+        "Hash":  "128D8B28784732F059700877A2C7A4EFBEEBBF989576DA65012D628F73B73797"
+    },
+    {
+        "Path":  "Backend\\test\\v11-provider.e2e-spec.ts",
+        "Hash":  "D7A323B205E419819390D4D27840995176527295953BBB4A29B49302AC85F2B5"
+    },
+    {
+        "Path":  "Backend\\test\\v9.e2e-spec.ts",
+        "Hash":  "F1A808A382B95C62366D0605130306EDC54618189F476B09D42A2CB34F56133D"
+    },
+    {
+        "Path":  "docs\\ADMIN-ALERTS.md",
+        "Hash":  "73BE3FC2DA2FD310685811725BDE3AA303A8AC0FDBADEBA197D94EE68AB2D7A5"
+    },
+    {
+        "Path":  "docs\\clean-source-manifest.json",
+        "Hash":  "36C8CCD1CAB8E4D99ADAC446542677647BCC9170528F5299AED56F5492884B9C"
+    },
+    {
+        "Path":  "docs\\DATABASE-ACCESS.md",
+        "Hash":  "7D5032334CB20B874EFBC4B079AC42F06F225D31C2D1B4EDA3BACC086F4315BA"
+    },
+    {
+        "Path":  "docs\\database-erd.drawio",
+        "Hash":  "0B32AA8FFD97B6DFE4597BD6B39047335914078CF421CA71DD196A5B6DE3EC74"
+    },
+    {
+        "Path":  "docs\\DATABASE-ERD.md",
+        "Hash":  "AD18BD8CFE47B0E021C5B3D4DCCD6F586855C22B94B062791401E58A62C2FBC1"
+    },
+    {
+        "Path":  "docs\\DEPLOYMENT-V11.md",
+        "Hash":  "1E546BD0EEBB1B1B2B812EA4BEA1ECD9E42DBE75EE2ACC7145D6DD43481E05BF"
+    },
+    {
+        "Path":  "docs\\IDENTITY-RECOVERY.md",
+        "Hash":  "885064D3CFB64FE75D5AC37723199B5EBCFAE3BDC1982E283EE97AB126257207"
+    },
+    {
+        "Path":  "docs\\Proyecto Software (1).pdf",
+        "Hash":  "0FAF3FD369EDFE4627403F0627DECF2CB22A2B1B930E2167F0849DE1FB8AB93E"
+    },
+    {
+        "Path":  "docs\\SMTP-RECOVERY.md",
+        "Hash":  "ACC06B1D9A646D1A8E2B0720BFDBECFF3DEF4C9C511653A1EB4AB4F7E1BC4C51"
+    },
+    {
+        "Path":  "docs\\source-integrity.json",
+        "Hash":  "58DAB036F96106AD78BB5EA978DCE264D6CF9E62DF40A2D3F468736F292A54C3"
+    },
+    {
+        "Path":  "docs\\source-verification-v11.json",
+        "Hash":  "369BE70319661A8A3009523B80DBEF167C7D1CE4F58E130329B753C341B8C889"
+    },
+    {
+        "Path":  "docs\\v10_2-baseline.json",
+        "Hash":  "83D6BBD0FFF086984F2EF19662A9010AC87AEE1BAFDDB6DDE64A21149A3DC8F2"
+    },
+    {
+        "Path":  "docs\\V9-LOCAL-CHANGES.md",
+        "Hash":  "FFC948A6F4E1E43C77AEA813FCA309FF45E6C6BD7D866BA81B5CBBDC74A62CF8"
+    },
+    {
+        "Path":  "docs\\V9-LOCAL-RUNBOOK.md",
+        "Hash":  "4209E82E8F51D20969FE1F628D1B0E17BCFABCF28A79FB9B546F212B7FB335C8"
+    },
+    {
+        "Path":  "docs\\V9-LOCAL-VALIDATION.md",
+        "Hash":  "7604B795970FA61AB50B34D110CEE6C0E862846C6F39D9406AF994CA058647E6"
+    },
+    {
+        "Path":  "docs\\VALIDATION-V10-ADJUSTMENTS.md",
+        "Hash":  "1DD94AEC28E6008C24C2337B81836E265FC8495F0FE5CB42795571340CA8E216"
+    },
+    {
+        "Path":  "docs\\VALIDATION-V10-ADMIN-MAIL.md",
+        "Hash":  "9F45BF88C13DCF78E4025554D6A119E725CA68A7B495C0EF1AA16E4513A1BB3B"
+    },
+    {
+        "Path":  "docs\\VALIDATION-V10-IDENTITY.md",
+        "Hash":  "FBC99D616F34E463AAC791DDC842180BDCB102E47AAF31BE8E28857C0E29BD34"
+    },
+    {
+        "Path":  "docs\\VALIDATION-V10.md",
+        "Hash":  "F8731EE20A885332E1ABA8DABF28B5F7646499A464E055576043D6E437D24274"
+    },
+    {
+        "Path":  "docs\\VALIDATION-V11.md",
+        "Hash":  "327FDFC0BF5E2A6CB5182313EF63531207FA631EEAE6533A8109D460C558AF67"
+    },
+    {
+        "Path":  "docs\\audit-v9\\critical-checks.json",
+        "Hash":  "89129BE381FCE9FF2E8DBC1126EBB4B9E9121C1E6975F20D36354DDBEDFDF830"
+    },
+    {
+        "Path":  "docs\\audit-v9\\integrated-git-diff-check.txt",
+        "Hash":  "8E5B409D765199ED944314AD328EF78C48E8714BE741B1853EFA857C8BB55E4D"
+    },
+    {
+        "Path":  "docs\\audit-v9\\integrated-git-diff-stat.txt",
+        "Hash":  "006B70D6CE4394A10408B5E43F25D085223DE9E838C3EFCD518DC493093BEDDC"
+    },
+    {
+        "Path":  "docs\\audit-v9\\integrated-git-status.txt",
+        "Hash":  "BA5F637B89BA28A14AAB602D6753DA6AED360B62286563DAFCAC15AEF4D797B3"
+    },
+    {
+        "Path":  "docs\\audit-v9\\integrated-results.json",
+        "Hash":  "0B7EA50CDED3E9E99D3D34A707B9F88F1CD3C5E2609C24759155C67814441372"
+    },
+    {
+        "Path":  "docs\\audit-v9\\performance-results.json",
+        "Hash":  "BD6BB16C7642B61CAC5AC1CE1605BA03F32AE6BE56E2F39B042C1901720B8C96"
+    },
+    {
+        "Path":  "docs\\audit-v9\\performance.cjs",
+        "Hash":  "42E43D61A48FE919BE20215B563EB27B7D9D2A6FA4DB6B6AEFDE359025478B67"
+    },
+    {
+        "Path":  "docs\\audit-v9\\probes-results.json",
+        "Hash":  "C2F28E78750ABF87A4F15B6830EFDE96B0D2E224280A277AA5855A429E56D46D"
+    },
+    {
+        "Path":  "docs\\audit-v9\\probes.cjs",
+        "Hash":  "F9D3FAD38ABC868B3606E4EB961333FF9B24B04119A4D33855A13A685B78BC11"
+    },
+    {
+        "Path":  "docs\\audit-v9\\registration-git-diff-check.txt",
+        "Hash":  "5838C8C750F24A8BD4AB71C44E3C1DE1AFB52AC2D068BE39D9AE8762EF397B66"
+    },
+    {
+        "Path":  "docs\\audit-v9\\registration-git-diff-stat.txt",
+        "Hash":  "A1A5A068244F6643E9573D910B407B6D0B3C9734DD810D8D47930F30EBAC80DB"
+    },
+    {
+        "Path":  "docs\\audit-v9\\registration-git-status.txt",
+        "Hash":  "74DFC22CA09BB9532906568D484D329A0DA75042DCA24DE3E8D6DF7A2DD2B8CA"
+    },
+    {
+        "Path":  "docs\\audit-v9\\registration-results.json",
+        "Hash":  "17C7EF0936AF3DB708D7C0F74C25E9ABF4773CCD0F4B8139E37BEE7CA64F994C"
+    },
+    {
+        "Path":  "docs\\audit-v9\\REGISTRATION-VALIDATION.md",
+        "Hash":  "F52C6619711E6CF73B3D15717823C5A82E6DD5E2E1A428903E818FDEDD3E1782"
+    },
+    {
+        "Path":  "FrontEnd_1\\.dockerignore",
+        "Hash":  "58CAB262F0A8885984E9334AC151B2255D5218DB787E86D04B6DD9D19AF32C20"
+    },
+    {
+        "Path":  "FrontEnd_1\\compose.yaml",
+        "Hash":  "92467816E198FC5B796BF45AABEED990115555B6A0826356815BFF14CB680F27"
+    },
+    {
+        "Path":  "FrontEnd_1\\Dockerfile",
+        "Hash":  "B0121E9105446BC9151EF0F289BEEBB914778C228ECF85555555757245B1C6B2"
+    },
+    {
+        "Path":  "FrontEnd_1\\package.json",
+        "Hash":  "4C1B1503873551217BA921F3E5715B41E6B159F027573CD2D059E1FFC90A37CB"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\logo-primax-horizontal.jpg",
+        "Hash":  "FDAED2B10C23CF5696AFF67DE94A629B258611057563DC67549911F14AD430EB"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\Logo_Plin.png",
+        "Hash":  "FA4F43776C21A7F6954921151ADC9E2B5FC776517389EFBBF93E1F126B901108"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\Logo_Yape.png",
+        "Hash":  "AB79ADF8B23C392C2DC188D0D7EEF356DEAF383150B42BDE18EA2B700314CDD7"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\ojos_abiertos_boca _abierta.jpeg",
+        "Hash":  "C161CCB9F662028936CC99DF6229AE8096F3105A96FE4E15411C151DBD2A982E"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\ojos_abiertos_boca _cerrada.jpeg",
+        "Hash":  "796582E1C90D99538BCE4D12F21A8525D22C3A59A5D4BB50D870D7CC421A1DCA"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\ojos_cerrrados_boca _abierta.jpeg",
+        "Hash":  "BB540E4B2A86A4522904C109FB17D148FA8AF96420129B61603A31E559CC357B"
+    },
+    {
+        "Path":  "FrontEnd_1\\assets\\img\\ojos_cerrrados_boca _cerrada.jpeg",
+        "Hash":  "1513F42E0A25F886B13E33CE7422515243974A1BE9E2E7FAE71B2E603F7E3BAC"
+    },
+    {
+        "Path":  "FrontEnd_1\\nginx\\15-kiosk-key.sh",
+        "Hash":  "3B3C241EA4D2BBA86498C8CDC07CD840AB9BDED6D5554304C9CB64CB97A445D0"
+    },
+    {
+        "Path":  "FrontEnd_1\\nginx\\default.conf",
+        "Hash":  "0163DBD078284DA78FA047FAEF6D9659E657EE5E554AD74E2ABE61232E4A1361"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\index.html",
+        "Hash":  "ECDB28442A64D3DE3A41DE12AC7F0AF3B8F4B574A8916A9021DA1164D1EEE674"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\adminService.js",
+        "Hash":  "A668E065DD58F2090F1F7325CD06724B2C04CA308DDC301E967BF0776B736AE8"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\apiClient.js",
+        "Hash":  "4DBF8F2D3FA9CB34EC74CADEA6A269D6311C923120AC129D1033436A8B427C28"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\customerIdentity.js",
+        "Hash":  "074D361344A9C47C0F193059DF4DB20C679F0741CB2256FB0B38618D396EB6FB"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\inventory.js",
+        "Hash":  "9D66B2520B4F7D97B693C45639A107DB74D0343C63EA2780848343102D0CC6FE"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\paymentState.js",
+        "Hash":  "53F73B09EA3846FBBEA69F173561F6DEAB8B5A9E4E26EF32B41552BCB9CEF221"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\plateCamera.js",
+        "Hash":  "B3E29222D900FE5D5DE27107E7B7F7ACF5A746F5C1E3E09CAEC50819FA63D9AD"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\script.js",
+        "Hash":  "474DD6809704F6D683E71C58F152588B98FC0D07755878F301A396F8FE03331E"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\js\\transactionsService.js",
+        "Hash":  "6A565B7361B514DFA86FDD25A99341659C30C423FC01312072079A990DFA1B05"
+    },
+    {
+        "Path":  "FrontEnd_1\\src\\styles\\styles.css",
+        "Hash":  "4A64F7309D87C5CE9432F396C3214B0AFC71F8C05BF7089ABF74AF53D411EEBE"
+    },
+    {
+        "Path":  "FrontEnd_1\\tests\\admin-identity.test.js",
+        "Hash":  "3801E5309CF34916B80A640038ADEA5E34E49AA4517135DB669B97AB271DDF50"
+    },
+    {
+        "Path":  "FrontEnd_1\\tests\\critical.test.js",
+        "Hash":  "23A69E27991C5B9FC337A97342530EA4D0DACD37CE22ADF5C4D89D01176563E6"
+    },
+    {
+        "Path":  "FrontEnd_1\\tests\\recovery.test.js",
+        "Hash":  "7B04E3BBF55D9EC5A166097FF1E27AC9072AB2AA77756098D8EAF240E4A36BFC"
+    },
+    {
+        "Path":  "FrontEnd_1\\tests\\terminology.test.js",
+        "Hash":  "9C97BD801EEE841C49788D465F4C43AF4D405423F056CB6F7FB2A449353C793F"
+    },
+    {
+        "Path":  "FrontEnd_1\\tests\\transactions.test.js",
+        "Hash":  "29BE87F0699B99A4723B70D9AEAB195997B718A314A0DF21443FADFB231C9CDB"
+    },
+    {
+        "Path":  "FrontEnd_1\\tests\\v11-payments.test.js",
+        "Hash":  "A18DFF242A0A97F0705066EA646656B2951A37E3BCD761E72122DB187920A5A0"
+    },
+    {
+        "Path":  "FrontEnd_1\\tools\\build.cjs",
+        "Hash":  "AA7DA63772B987C8ECB69DBDDB98D496EA42056C1F7ECC4F72146FC268DBECAD"
+    },
+    {
+        "Path":  "FrontEnd_2\\.dockerignore",
+        "Hash":  "B95D2AA96C9CA5563C61320D234B07A87E8D0FC8B6592475C924C3DDB2CBD8C3"
+    },
+    {
+        "Path":  "FrontEnd_2\\.gitignore",
+        "Hash":  "AAB9D853C6F3CBABFD3F0CE7AED33B89DD9649382F22E775892A7BD85B323FE5"
+    },
+    {
+        "Path":  "FrontEnd_2\\capacitor.config.json",
+        "Hash":  "CC92BBBD947DD230E39E1BB4500F174F99E0F7B554ADDDCA283A7906EB30717C"
+    },
+    {
+        "Path":  "FrontEnd_2\\Dockerfile",
+        "Hash":  "B92649FA05A99AAB7BA499E15D4D2F7DFADC155AA4027A1FD61CACD9ABB639DF"
+    },
+    {
+        "Path":  "FrontEnd_2\\index.html",
+        "Hash":  "F254DFEB9877FDFCB5D4864CFF81E47BE32F9A9E560E4A95AD068D4625D64579"
+    },
+    {
+        "Path":  "FrontEnd_2\\package-lock.json",
+        "Hash":  "8FC4C5FC52D541103134EA06CC6A89F7F4F7BCD6ABA4280234C68715DCBA8435"
+    },
+    {
+        "Path":  "FrontEnd_2\\package.json",
+        "Hash":  "FB0FD6AE99D7A36F29A295C469F01B491BEAFF63296B645BD991E2AFE31761BC"
+    },
+    {
+        "Path":  "FrontEnd_2\\playwright.config.cjs",
+        "Hash":  "AE90E831A6B530A873EC5A970A0EF710183BE2C4EA46ED4A17F84B69BBABEF61"
+    },
+    {
+        "Path":  "FrontEnd_2\\README.md",
+        "Hash":  "35D897824F42059E9A4CA39BC49D48DB22C651A4430526BEBD25C4829CB500F4"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\.gitignore",
+        "Hash":  "C24748496D9213D8AE0F8913ED0B14A5777E49361AEF0EAF9FF19AA9EB5A1D2B"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\build.gradle",
+        "Hash":  "735DAFEC431688F5202B4F4BB40E0EF9A78E3A3DCCB98FCDB5B2725195564BFE"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\capacitor.settings.gradle",
+        "Hash":  "96E9F64B9C2131B2C4AFD4839508062FFEB44F8838CBB4132465120D0B4432D9"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\gradle.properties",
+        "Hash":  "A0771D2D479CE151DACC09FAB95282DE4DEA3C94A5F6C71B5CC40C78BBC3025E"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\gradlew",
+        "Hash":  "28D2C82E7F9CCA986EE8DA10BA939CF9260D682F73936B2B6D2545E35360CE7B"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\gradlew.bat",
+        "Hash":  "1D297E00BD21DE3ACE22B4D7F2DE1F9DFA858883D66BBF7C1CCBECCCEC8F4F3B"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\settings.gradle",
+        "Hash":  "9C6C826E55D5CD4FEB1F18F49CE3AB7D19F33BF30893D8750AFB2C3B45872934"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\variables.gradle",
+        "Hash":  "80CA02724FF4A95D1192481C68B00474CB1F8C5767EABBCEA00DEB28049D06DD"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\.gitignore",
+        "Hash":  "93BFE8EDB44BFA558FB5E58590C1EFD7CD8A5C3293EB69E1B762FAC908F39B59"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\build.gradle",
+        "Hash":  "EDCF2422BDC6B092D708CB82761909118C34DF984D95BAA5C95E8502BCF33BEC"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\capacitor.build.gradle",
+        "Hash":  "5C496CD60926E3C6B34C31F95FCC485723D643F906650C7690842E8AF2150F41"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\proguard-rules.pro",
+        "Hash":  "A62624D7B48278452544F45D30648F7CC0DAFC24561BD2E95074D4F5DAB4313A"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\androidTest\\java\\com\\getcapacitor\\myapp\\ExampleInstrumentedTest.java",
+        "Hash":  "F2E64983510B1F1489B71721027151F497E71008BF7DCC323C2F26156D64DD2B"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\debug\\AndroidManifest.xml",
+        "Hash":  "6616F126E4B5F78C953D48F306020F783AB16435585E0D2CBE98DCB11506D5D7"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\AndroidManifest.xml",
+        "Hash":  "26738B3C9B7C0F510F90986D12172BE9EC82D458EB7B4702443C8201B1B3E498"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\java\\com\\primax\\prime\\MainActivity.java",
+        "Hash":  "D3CC4B4E3AD5E4B9555FAA2563FE11FB2562948C167E17ABDF14A994FBD4EC26"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable\\ic_launcher_background.xml",
+        "Hash":  "61ACABDEC7880108A9850FDC6CEA1A6FC974114BAE875BDCADC70078BF4E615F"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable\\splash.png",
+        "Hash":  "5CF98B4451BD99B20DF26F9E608A46946118BE6B0AE90762F9CA1786A30C76FF"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-hdpi\\splash.png",
+        "Hash":  "08CC34AD7713FE7ED58BCEAA37B2387B670C53CD60264B4BD6442DB3098E75DC"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-mdpi\\splash.png",
+        "Hash":  "5CF98B4451BD99B20DF26F9E608A46946118BE6B0AE90762F9CA1786A30C76FF"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-xhdpi\\splash.png",
+        "Hash":  "22F87E1E3BC89AA01A7DBC39C9A4DB058CD0BF4AD3FE9F55712BF69EB997F4BF"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-xxhdpi\\splash.png",
+        "Hash":  "42AA26392546FCDEE1B8D3AC6D4B41BFCCEB41DC6A4F3A3C30C24A8A8F4DB862"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-land-xxxhdpi\\splash.png",
+        "Hash":  "60393CE8636FD263E4E1FEA3FD4AB2DE948C6295E898FDA9B50AC4E5283BE809"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-hdpi\\splash.png",
+        "Hash":  "C5015F4BA3628392B538386C5E210F0B94F352A3160ADAB934FD0311972137CA"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-mdpi\\splash.png",
+        "Hash":  "07FA579E1C83E04BA7F9CBCBFCF41B68E15FE3638F2C44A04E58B809103E6B69"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-xhdpi\\splash.png",
+        "Hash":  "B73049CB37FE76D6C11B87A796766BF6AF0C85483B31EB6A921657B0D764A4B9"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-xxhdpi\\splash.png",
+        "Hash":  "0C7F1212F25B7B90E9A6E1D320013E4FF3D3E03E634CBB07B7B7981CAC51627F"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-port-xxxhdpi\\splash.png",
+        "Hash":  "3DB071A03B2F8FFE0DFD4170FC59842D53CD15BBA5E88AF59401D58EFABF7827"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\drawable-v24\\ic_launcher_foreground.xml",
+        "Hash":  "FE3C9A470D9DFC34DFEFA1CBBAF67F16174CDD3D242A1D4F6BD09483EA38C29B"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\layout\\activity_main.xml",
+        "Hash":  "61E5B7029215A836ABE562B61D037BD5E59E68E28CBAAB42B9F503BA5BF3CA57"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-anydpi-v26\\ic_launcher.xml",
+        "Hash":  "6BE9BE8D39CB250F663814BC3AC3BA570D9629BE22FBEBCC95D0C058E2249717"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-anydpi-v26\\ic_launcher_round.xml",
+        "Hash":  "6BE9BE8D39CB250F663814BC3AC3BA570D9629BE22FBEBCC95D0C058E2249717"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-hdpi\\ic_launcher.png",
+        "Hash":  "72B71C3581CA3B5A23B1C168D69B9D855B3F184FA079902A01F088EB4F0607D5"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-hdpi\\ic_launcher_foreground.png",
+        "Hash":  "32BAA10D2632A4417454A579F992BD640E0A3CEC79321423559B2C9940DE58A9"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-hdpi\\ic_launcher_round.png",
+        "Hash":  "BFCC1B0FA931B14BB241372C76AB4F04374B67D02363C98D9CB12EDFDACDF5F3"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-mdpi\\ic_launcher.png",
+        "Hash":  "27ED3603010EBC278F64F8645741AB132FF517ABB5308EB9DF6C8E42A48956B2"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-mdpi\\ic_launcher_foreground.png",
+        "Hash":  "58E78A618778926B1F6D9472A6468DE878DE8530970934E94AAB5BA4BA08CC00"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-mdpi\\ic_launcher_round.png",
+        "Hash":  "0166FC333074C373FBD0CE6B5DEFD71552166165AC778121CA9C9DFF6B83F0FC"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xhdpi\\ic_launcher.png",
+        "Hash":  "D35DBFFF175B83C13EF59CF924ABFC810F7B6A158595D7417C5498EA8C7C7ED1"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xhdpi\\ic_launcher_foreground.png",
+        "Hash":  "6F88083B8166CC559102F7044688DE7525287632EBE09AC45D001AC8BF4B3EAE"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xhdpi\\ic_launcher_round.png",
+        "Hash":  "40911A00922868686854A4804B93FD6E56B503664696DE03F450BFF690AFFB6D"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxhdpi\\ic_launcher.png",
+        "Hash":  "ED346EB1E3F0280F15709393705899B3FF55C20B88F4E0308006B3C33CF5FE14"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxhdpi\\ic_launcher_foreground.png",
+        "Hash":  "4A82BC1E9923576275869998925CE0AE021A79AA18B24A0DD87AD6B61CA85053"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxhdpi\\ic_launcher_round.png",
+        "Hash":  "1EE4CD9FF371DCB2E3938097E434F6FB8731688ED7165E61FC63693AD5B2F455"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxxhdpi\\ic_launcher.png",
+        "Hash":  "87CB2F2FFE992652BB4FA768C73719A37B5852AB17FBF8E170E888F7A42B0761"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxxhdpi\\ic_launcher_foreground.png",
+        "Hash":  "BD24FD383253BF8D43F0A81F11C071D76D1D555114376DD647CD9FB38FA0A9DA"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\mipmap-xxxhdpi\\ic_launcher_round.png",
+        "Hash":  "AB93096331E7CD8EC379F73F1E9ADCAAA9EE1115C9F4FF10411A811FB9700174"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\values\\ic_launcher_background.xml",
+        "Hash":  "1CAB1AA686B81505433A474A3408F56D39A3DFF8F1FF66C16D866A8FA4B806BE"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\values\\strings.xml",
+        "Hash":  "086813A0C57F7AE1F31E0A89B573E9FFC58218D0A1B75FDD990F21E2FCF50F80"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\values\\styles.xml",
+        "Hash":  "8207F1E42DD22D6D2FDDB0BDAD3EE9E7DB9535A0368AAE0B4DAADEAD05112655"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\main\\res\\xml\\file_paths.xml",
+        "Hash":  "A290266DA65E30675E410CD8E1C17CDE04DE40170C9C3B900504E7A24CA79626"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\app\\src\\test\\java\\com\\getcapacitor\\myapp\\ExampleUnitTest.java",
+        "Hash":  "486E7E67ED195D642340A4849575D406C4414E77E21E8BFBE5EF40B796A14557"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\gradle\\wrapper\\gradle-wrapper.jar",
+        "Hash":  "7D3A4AC4DE1C32B59BC6A4EB8ECB8E612CCD0CF1AE1E99F66902DA64DF296172"
+    },
+    {
+        "Path":  "FrontEnd_2\\android\\gradle\\wrapper\\gradle-wrapper.properties",
+        "Hash":  "1ADF3CAEEDAD6AE5B3A0A410E1DD94CA552D6E6F02EE68CBAF849CD5E7877D17"
+    },
+    {
+        "Path":  "FrontEnd_2\\assets\\primax.jpg",
+        "Hash":  "FDAED2B10C23CF5696AFF67DE94A629B258611057563DC67549911F14AD430EB"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\app.js",
+        "Hash":  "AE6B114B9F64B1B8E603D6BAC19785D70F3EA4EC1023EA4755CD6A611398B0F9"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\components.js",
+        "Hash":  "169F4D05E2EF8AE3410588B991865DE0196EC8D63A1A5BDB650442E02F55158E"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\config.js",
+        "Hash":  "7C9C0BCA5849037EF3F3DA014A4B72AA626701BB068328ADAE359E4B0179448A"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\login.js",
+        "Hash":  "5636C3778E46F2C58E83998AA9507C6AEB4E128592D6AD30B94DF93CDCF6B31F"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\recovery.js",
+        "Hash":  "94DF0A13EFC2F88433AE5B73FA55587EBEC9B5351F5305D4E42DC93E6999AE41"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\register.js",
+        "Hash":  "81DF201CC887E6AD9F9E4D1EA15FA2E860E67CA21D418067A1E5F26AEC2D24D4"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\views.js",
+        "Hash":  "8CB9C0E0E2391F0E657C6C7FD83420CA2BA58E0D0FC8E5FFF59A9605CE8E0A09"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\apiClient.js",
+        "Hash":  "71CB70CDB17BAFA53DDB02AF47808BE01E5E1D67B4229AB054616B602F08D94F"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\authService.js",
+        "Hash":  "8648DBA6DAE06BBA9F9C191F69BD7F5A09C0A2404CC1AEC8354DC6732C2989A8"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\benefitsService.js",
+        "Hash":  "328AD2580E8C67C9BD36B5A532323D7F43255EBB3004E9C0494A2899F40E8463"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\index.js",
+        "Hash":  "D9ACF1E35BC96BAA64E42956A302B9E75AED3E4A38B3A6BCBB59A666A9C1C964"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\membershipService.js",
+        "Hash":  "C7C517B6E8A91E3491BCCA46129AB61F8AA51AC89471DFB7FDFF6A2390F4D169"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\paymentState.js",
+        "Hash":  "53F73B09EA3846FBBEA69F173561F6DEAB8B5A9E4E26EF32B41552BCB9CEF221"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\rewardsService.js",
+        "Hash":  "4D0427834D1AEB9F40AF864A258AEDFC6D1D85C10B8F514719A9908394D3E3C3"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\session.js",
+        "Hash":  "B61CC0EC4F12158F5A6D8D4B076E05686732AB486AD659B65F9660F6D3546782"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\store.js",
+        "Hash":  "4174DA8995C94ADA940735F1E58FBDD2C12319AB3977E80A627582E1A473A968"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\transactionsService.js",
+        "Hash":  "6DDEBD156E960EAC8A57F49A79BE38B93C698D8E606C268747F7FA7A07BEBBAF"
+    },
+    {
+        "Path":  "FrontEnd_2\\js\\services\\walletService.js",
+        "Hash":  "2C79BDDEB87551793D774E9E7BB68B895E778AAB21245485D5DE62E031FA05A8"
+    },
+    {
+        "Path":  "FrontEnd_2\\nginx\\default.conf",
+        "Hash":  "DD200EEE61AB610283B26FC6D52394B1AAFB68A193AB496BA12AAE99554B3956"
+    },
+    {
+        "Path":  "FrontEnd_2\\styles\\app.css",
+        "Hash":  "EE498A16DF5D9548C5BE5AADD26B6B606C3D7449777997934D635F08BB58067B"
+    },
+    {
+        "Path":  "FrontEnd_2\\styles\\login.css",
+        "Hash":  "4E5B8B81602868DEA33A970AA98D3EC66E906A3E99A661479A7F11137E7018E9"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\api-fixture.cjs",
+        "Hash":  "995A9AEE631FCBFC7CF23F8591B83ECCD1D1E8D3BBA1A73CFEC22ED1303F5A15"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\auth.test.js",
+        "Hash":  "DB2A662F831ABA26615824232B98F435014A8842D02BD4C5F09EC9CBEA85D4DB"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\identity-recovery.spec.cjs",
+        "Hash":  "F46C22736D1D4F39FF44A740A9D4127A19C8E9F5B8AE19B5FA54B53900DEE559"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\login.spec.cjs",
+        "Hash":  "389C66483ACAE35D3BD5E96F4B6A2CEFA6D39DBA0119345C5451CCBB2C49C274"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\mobile.spec.cjs",
+        "Hash":  "0620A99345B05A7496EF22ED9367AF05D18CC1AEA0DBC41AC6316549E4194D85"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\payment-state.test.js",
+        "Hash":  "C1A69A1DE31A154D638CE1BC983D0BA67D56666C54A9FDCCA77CC151AA0A364C"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\register.spec.cjs",
+        "Hash":  "112F51AC21FEA3E0D0222ED4A9B9ACC8CFE99F0FB0DB48E1BCA9393BD2F44578"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\register.test.js",
+        "Hash":  "C9E8D4928B709292CFFBF18E70A888D456B0046FE0A97BCCA242643613EDF037"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\secrets.test.js",
+        "Hash":  "519A5587CE0060750E1AE409302905C9C33297C79347BBDE4D6DF3C580A652EB"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\services.test.js",
+        "Hash":  "534C45B38CFE17F7EC41CB7ADC8DF8C46048EE3DB411C409EFD9FB78401B5DB4"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\v10-navigation.spec.cjs",
+        "Hash":  "895CA9665D52F2B4D295ADE006779C9B297A2019CFE5FB474A138740DA208AB4"
+    },
+    {
+        "Path":  "FrontEnd_2\\tests\\v9.spec.cjs",
+        "Hash":  "323A211D93D7B376A3FBE5EC82E6EF420D7B199150F91E495F4C5CBD42CE6523"
+    },
+    {
+        "Path":  "FrontEnd_2\\tools\\android-sync.cjs",
+        "Hash":  "C67F3427B8A7B183BEB6EF0D3EA2A48EE9A1AE14FBA70D2BA03D182409ACB3FB"
+    },
+    {
+        "Path":  "FrontEnd_2\\tools\\api-url.cjs",
+        "Hash":  "7E4CE7190886C4E5A4A0500AF98465738C66D608F721BF85506ADBC07E29EEE7"
+    },
+    {
+        "Path":  "FrontEnd_2\\tools\\build.cjs",
+        "Hash":  "D29B37C545A0F1B11D8217C5FCD7340916CDAFD698D54E4A375F7D0B9ED51F60"
+    },
+    {
+        "Path":  "FrontEnd_2\\tools\\mobile.cjs",
+        "Hash":  "87690BC244B5C146A6574DFA0EDAAAA5C40C2658CD7BD382847B1A0B9AED4D3E"
+    },
+    {
+        "Path":  "FrontEnd_2\\tools\\serve.cjs",
+        "Hash":  "965363EF5937C2F1F899FBDE4F90BB5CA09199ED9C9AC95FF972C930C4C47C2D"
+    },
+    {
+        "Path":  "PlateRecognition\\app.py",
+        "Hash":  "3E662D87CF2226037F50A8001B311FAB688116C3A4A8B70EA6886C58303A99EB"
+    },
+    {
+        "Path":  "PlateRecognition\\Dockerfile",
+        "Hash":  "A1E5FAEEC14D89DF9851C5DC8EEB8930A5D68C79151E3DE06C72BEB5AA43E3C7"
+    },
+    {
+        "Path":  "PlateRecognition\\fixtures.py",
+        "Hash":  "01C266C49D8D8B8DC50DB30FC2AC4D4B142A016E475A2DF0D6FDA0E974860365"
+    },
+    {
+        "Path":  "PlateRecognition\\requirements.txt",
+        "Hash":  "565B84F3697B6075E235CFC25249F3D769628AFE60912487FE7FFCA99A3FA893"
+    },
+    {
+        "Path":  "PlateRecognition\\test_ocr.py",
+        "Hash":  "16B2C1C78442420AABF5C064971A02D9F9FCF22C08A782164B4152E368B4E3A7"
+    },
+    {
+        "Path":  "PlateRecognition\\test_v11.py",
+        "Hash":  "5B3499CF6FCAEAEAF370D63C0D189E0A6682D9E52EE8A0E7ADDE8E7254ABE12C"
+    },
+    {
+        "Path":  "PlateRecognition\\fixtures\\ABC-123.png",
+        "Hash":  "12950FF97D5318FE79FF46C1C96D79FFDAF628C26A3039C98DDD802126487EC1"
+    },
+    {
+        "Path":  "PlateRecognition\\fixtures\\no-plate.png",
+        "Hash":  "F31A28A649E9762A1B613BE5C26960CC27066E811918569A1D4FD890AF08F56E"
+    },
+    {
+        "Path":  "PlateRecognition\\fixtures\\unreadable.png",
+        "Hash":  "044E924623154696B6845C7C1A62C8CEE9C798258CD905760BD949881299D87A"
+    },
+    {
+        "Path":  "PostgreSQL\\backup.ps1",
+        "Hash":  "F3325449E105190BC039C7122DD28B60440FCA89CD49FCCA0953079E894D259C"
+    },
+    {
+        "Path":  "PostgreSQL\\ERD.md",
+        "Hash":  "A26BBD54B2A17ACD4028FF9A0E6D418426D37D9D4FCED48847FC7AFA26B0EA24"
+    },
+    {
+        "Path":  "PostgreSQL\\queries.sql",
+        "Hash":  "23628E9403C9A820FD91D2FF2C1F839344A684BACBC197071C0E69CC0DABAA0C"
+    },
+    {
+        "Path":  "PostgreSQL\\README.md",
+        "Hash":  "68684A820E1D8DC879FF6DF1C357D8083E4DB8159446EEC9AAAB060EFC8A6046"
+    },
+    {
+        "Path":  "tools\\audit-docker.cjs",
+        "Hash":  "83955032F5EEA931D3D5287D2E0E3A1C203E933EF556C5EBF1A74ACF099FA48B"
+    },
+    {
+        "Path":  "tools\\audit-secrets.cjs",
+        "Hash":  "B15E6B0F5A5E627CDE25A98F14E9EF3AA05E271AAF1DA75959E1AF5AC22AC189"
+    },
+    {
+        "Path":  "tools\\check-android.py",
+        "Hash":  "B75F8537566CA7C7568A9154D57B3F6E2DB1BCF0603D96F6C6310071BC99FC86"
+    },
+    {
+        "Path":  "tools\\check-database-access.cjs",
+        "Hash":  "85344F6F985BAFC1D0EE2DC88ED239048328F02740C274FBA59A92EB2BEDF8CC"
+    },
+    {
+        "Path":  "tools\\check-lan.cjs",
+        "Hash":  "298E3DBAF5EAEA4E360CCBF7BF7F1FCBDC0485F6061270D3DCCCA2042F4B8C42"
+    },
+    {
+        "Path":  "tools\\check-registration-persistence.cjs",
+        "Hash":  "18935BE4B27685259A47BCAE76AA6403135A4D4E430F86258740798716E92C5D"
+    },
+    {
+        "Path":  "tools\\check-standalone.cjs",
+        "Hash":  "AD5E2C4936DC07AF9160EE6D5A5654E8F5A04DD0A604B28B2482D0BDDE9213C0"
+    },
+    {
+        "Path":  "tools\\database.cjs",
+        "Hash":  "EB45D9FFBD1CEFE4D0730AC3E6AEEE9AB6B6B8C5554F6724091290FAE0283882"
+    },
+    {
+        "Path":  "tools\\generate-erd.cjs",
+        "Hash":  "9FD919EDDD53AFA556B8AAF28E86D9C2F19585FB2ABB66953AD81145769D528A"
+    },
+    {
+        "Path":  "tools\\integration.spec.cjs",
+        "Hash":  "E079C366B67A78628BEEC57BD7ABACE6611982D0467E2235AED728D94DB76B20"
+    },
+    {
+        "Path":  "tools\\playwright.integration.cjs",
+        "Hash":  "65387C9AC89C5396DBBD17AA43957BEC93F24AA29B9F13029CC4E7A870A8105D"
+    },
+    {
+        "Path":  "tools\\playwright.v9.cjs",
+        "Hash":  "FFF31FC1E0A917C3A2332C244B5FBAECD3E0EE451C75B99EE3BD6D733D410AE4"
+    },
+    {
+        "Path":  "tools\\registration.spec.cjs",
+        "Hash":  "AC9D7ED2BED4FEA1FD44FB9BF270E2DDEB25E3A6DD5713AD71C202AB879ABA64"
+    },
+    {
+        "Path":  "tools\\repair-demo-dni.cjs",
+        "Hash":  "87ACA480F4EBA484371CF6BA721892E56126A46DFF0859286CA99E31D8D1EE0F"
+    },
+    {
+        "Path":  "tools\\run-integration.cjs",
+        "Hash":  "EED8D5DEEFE00C57CD6B52EF13005CE004B345089158350BEBAADE012B71721B"
+    },
+    {
+        "Path":  "tools\\serve.cjs",
+        "Hash":  "F5B75E03C6451900A92B2EDC4D2E1015EE41B937802C431D2894AFE2AA23017D"
+    },
+    {
+        "Path":  "tools\\startup-snapshot.cjs",
+        "Hash":  "5B8FFE3DC5D843DE44465EE1A0C13F64602B1D18870627079853A196A203B20C"
+    },
+    {
+        "Path":  "tools\\test-env.cjs",
+        "Hash":  "2FB97F5F3EE4E510B0A431841EE91AA0E69123B671D0F47A6E7A6BDF94B6A0F3"
+    },
+    {
+        "Path":  "tools\\v10-admin.spec.cjs",
+        "Hash":  "07BC69F6D72949FA88FCD29A103A5DE74BFD7C90B59F44BA419EAC2F67258E06"
+    },
+    {
+        "Path":  "tools\\v10-auth.spec.cjs",
+        "Hash":  "9FE552093488ED2EAE60B96A234FAE01748C6C1C80E4B85A544082C354B4E6C3"
+    },
+    {
+        "Path":  "tools\\v10-prepaid.spec.cjs",
+        "Hash":  "A49CD585740AEDC36B8CC03B015D2EF5F19EFAE04C4EBC1CBB637E8B97858150"
+    },
+    {
+        "Path":  "tools\\v11-smoke.cjs",
+        "Hash":  "86C8452CFD2A00C1A651F99D466EB8054A0689939C681F9B49760E299021A5C6"
+    },
+    {
+        "Path":  "tools\\v8-sha256.json",
+        "Hash":  "9A3D860F33BDAEE344F334D4010AD3C5105866D8B4C29001B05A1006BF9D8127"
+    },
+    {
+        "Path":  "tools\\v9-balance.spec.cjs",
+        "Hash":  "826D173F5F129BB519296075F694F75F9FC8A2A8DFF9B18AAAE492DDEDE522A5"
+    },
+    {
+        "Path":  "tools\\v9-flow.spec.cjs",
+        "Hash":  "23D608E975933551B78FD5668B048749EE4A7549F7C6C474CDDB22FDCE03CD95"
+    },
+    {
+        "Path":  "tools\\v9-ui.spec.cjs",
+        "Hash":  "8AFB60DE2712F2003AB60497D3512F9481CF367FB8DFC6D0045EF636798C8679"
+    },
+    {
+        "Path":  "tools\\validate-erd.mjs",
+        "Hash":  "7F03FEAF0FAB51F05FB1441ACCF41E5393B7691C77EE77DEFE80F622EB604622"
+    },
+    {
+        "Path":  "tools\\verify-preserved-data.cjs",
+        "Hash":  "CA4B733D17FA39B491B53D430440404F37C42D92EA1958F0D42FA6C6DB6A9232"
+    },
+    {
+        "Path":  "tools\\verify-v10_2.cjs",
+        "Hash":  "7CDEDEF06AEEDC767F05BD07958C7BD22CB65CBC976DAEC1017C5F8DFF6A0C8D"
+    },
+    {
+        "Path":  "tools\\verify-v8.cjs",
+        "Hash":  "B2EED566798469596DD0058A9CC93C6E8AEB8A7D6C80BA136DB69660911DA5A1"
+    }
+]
