@@ -1,0 +1,5 @@
+export const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const paths={inicio:'M3 10 12 3l9 7v10h-6v-6H9v6H3z',consumos:'M4 20V10m8 10V4m8 16v-7',beneficios:'M3 9h18v4H3z M5 13v8h14v-8 M12 9v12 M12 9C2 9 5 1 9 4l3 5c10 0 7-8 3-5z',membresia:'M20 21a8 8 0 0 0-16 0 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8',ayuda:'M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3 M12 17h.01 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20',bell:'M6 8a6 6 0 0 1 12 0v7l2 2H4l2-2z M10 21h4',car:'M5 6h14l3 9v5h-3v-3H5v3H2v-5z M3 12h18 M6 15h.01 M18 15h.01',arrow:'m9 5 7 7-7 7',plus:'M12 5v14 M5 12h14',check:'m5 12 4 4L19 6'};
+export const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]||paths.beneficios}"/></svg>`;
+export const money = n => new Intl.NumberFormat('es-PE',{style:'currency',currency:'PEN'}).format(n);
+export const points = n => new Intl.NumberFormat('es-PE').format(n);

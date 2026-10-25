@@ -1,0 +1,1766 @@
+[
+  {
+    "name": "boleta-52_93",
+    "plan": {
+      "Pieces": [
+        {
+          "Text": "PRIMAX FUELFLOW",
+          "X": 6,
+          "Y": 1,
+          "Width": 50.912,
+          "Height": 4.091189,
+          "Points": 10,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "BOLETA � DEMO",
+          "X": 6,
+          "Y": 6.523105,
+          "Width": 50.912,
+          "Height": 3.302951,
+          "Points": 8,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "Sin validez fiscal / No validado por SUNAT",
+          "X": 6,
+          "Y": 10.982089,
+          "Width": 50.912,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        },
+        {
+          "Text": "Operaci�n",
+          "X": 6,
+          "Y": 17.2040138,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "12345678-1234-4234-8234-123",
+          "X": 21.2,
+          "Y": 17.2040138,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "456789012",
+          "X": 21.2,
+          "Y": 21.1309357,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Fecha",
+          "X": 6,
+          "Y": 25.39536,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "24/10/2026 12:00:00",
+          "X": 21.2,
+          "Y": 25.39536,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estaci�n",
+          "X": 6,
+          "Y": 29.6597843,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Primax Sur",
+          "X": 21.2,
+          "Y": 29.6597843,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Surtidor",
+          "X": 6,
+          "Y": 33.92421,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "03",
+          "X": 21.2,
+          "Y": 33.92421,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Placa",
+          "X": 6,
+          "Y": 38.188633,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ABC-123",
+          "X": 21.2,
+          "Y": 38.188633,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "DNI",
+          "X": 6,
+          "Y": 42.4530563,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "70123456",
+          "X": 21.2,
+          "Y": 42.4530563,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Combustible",
+          "X": 6,
+          "Y": 49.01248,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Premium",
+          "X": 21.2,
+          "Y": 49.01248,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Cantidad",
+          "X": 6,
+          "Y": 53.2769051,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "1.125 gal",
+          "X": 21.2,
+          "Y": 53.2769051,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "P. unitario",
+          "X": 6,
+          "Y": 57.54133,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00/gal",
+          "X": 21.2,
+          "Y": 57.54133,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Subtotal",
+          "X": 6,
+          "Y": 61.80575,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 22.50",
+          "X": 21.2,
+          "Y": 61.80575,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Descuento",
+          "X": 6,
+          "Y": 66.0701752,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 2.50",
+          "X": 21.2,
+          "Y": 66.0701752,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "TOTAL",
+          "X": 6,
+          "Y": 72.6296,
+          "Width": 13,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00",
+          "X": 20,
+          "Y": 72.6296,
+          "Width": 36.912,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "right"
+        },
+        {
+          "Text": "Modalidad",
+          "X": 6,
+          "Y": 79.91565,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "PREPAGO",
+          "X": 21.2,
+          "Y": 79.91565,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "M�todo",
+          "X": 6,
+          "Y": 84.18008,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "YAPE",
+          "X": 21.2,
+          "Y": 84.18008,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estado",
+          "X": 6,
+          "Y": 88.4444962,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Pagado",
+          "X": 21.2,
+          "Y": 88.4444962,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Gracias por tu visita",
+          "X": 6,
+          "Y": 94.0589142,
+          "Width": 50.912,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        }
+      ],
+      "Rules": [
+        15.8540134,
+        47.66248,
+        71.2796,
+        78.56565
+      ],
+      "RequiredHeightMm": 71.8413544,
+      "RenderedHeightMm": 95.96774,
+      "AvailableHeightMm": 97.076,
+      "LeftMm": 6,
+      "TopMm": 1,
+      "WidthMm": 50.912,
+      "Fits": true,
+      "Pages": 1
+    }
+  },
+  {
+    "name": "factura-52_93",
+    "plan": {
+      "Pieces": [
+        {
+          "Text": "PRIMAX FUELFLOW",
+          "X": 6,
+          "Y": 1,
+          "Width": 50.912,
+          "Height": 4.091189,
+          "Points": 10,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "FACTURA � DEMO",
+          "X": 6,
+          "Y": 6.119664,
+          "Width": 50.912,
+          "Height": 3.302951,
+          "Points": 8,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "Sin validez fiscal / No validado por SUNAT",
+          "X": 6,
+          "Y": 10.2529373,
+          "Width": 50.912,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        },
+        {
+          "Text": "Operaci�n",
+          "X": 6,
+          "Y": 16.0203743,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "12345678-1234-4234-8234-123",
+          "X": 21.2,
+          "Y": 16.0203743,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "456789012",
+          "X": 21.2,
+          "Y": 19.66045,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Fecha",
+          "X": 6,
+          "Y": 23.6133747,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "24/10/2026 12:00:00",
+          "X": 21.2,
+          "Y": 23.6133747,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estaci�n",
+          "X": 6,
+          "Y": 27.5663,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Primax Sur",
+          "X": 21.2,
+          "Y": 27.5663,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Surtidor",
+          "X": 6,
+          "Y": 31.5192242,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "03",
+          "X": 21.2,
+          "Y": 31.5192242,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Placa",
+          "X": 6,
+          "Y": 35.47215,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ABC-123",
+          "X": 21.2,
+          "Y": 35.47215,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "RUC",
+          "X": 6,
+          "Y": 39.42507,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "20123456789",
+          "X": 21.2,
+          "Y": 39.42507,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Raz�n social",
+          "X": 6,
+          "Y": 43.378,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "SERVICIOS DEMO SAC",
+          "X": 21.2,
+          "Y": 43.378,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Combustible",
+          "X": 6,
+          "Y": 49.4582825,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Premium",
+          "X": 21.2,
+          "Y": 49.4582825,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Cantidad",
+          "X": 6,
+          "Y": 53.41121,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "1.125 gal",
+          "X": 21.2,
+          "Y": 53.41121,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "P. unitario",
+          "X": 6,
+          "Y": 57.3641319,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00/gal",
+          "X": 21.2,
+          "Y": 57.3641319,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Subtotal",
+          "X": 6,
+          "Y": 61.31706,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 22.50",
+          "X": 21.2,
+          "Y": 61.31706,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Descuento",
+          "X": 6,
+          "Y": 65.26998,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 2.50",
+          "X": 21.2,
+          "Y": 65.26998,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "TOTAL",
+          "X": 6,
+          "Y": 71.3502655,
+          "Width": 13,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00",
+          "X": 20,
+          "Y": 71.3502655,
+          "Width": 36.912,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "right"
+        },
+        {
+          "Text": "Modalidad",
+          "X": 6,
+          "Y": 78.1040955,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "POSTPAGO",
+          "X": 21.2,
+          "Y": 78.1040955,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "M�todo",
+          "X": 6,
+          "Y": 82.0570145,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "SALDO_PRIME",
+          "X": 21.2,
+          "Y": 82.0570145,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estado",
+          "X": 6,
+          "Y": 86.00993,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Saldo pendiente",
+          "X": 21.2,
+          "Y": 86.00993,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Pendiente",
+          "X": 6,
+          "Y": 89.96285,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 10.00",
+          "X": 21.2,
+          "Y": 89.96285,
+          "Width": 35.711998,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Gracias por tu visita",
+          "X": 6,
+          "Y": 95.16716,
+          "Width": 50.912,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        }
+      ],
+      "Rules": [
+        14.7689857,
+        48.2068939,
+        70.09888,
+        76.85271
+      ],
+      "RequiredHeightMm": 78.15901,
+      "RenderedHeightMm": 97.07599,
+      "AvailableHeightMm": 97.076,
+      "LeftMm": 6,
+      "TopMm": 1,
+      "WidthMm": 50.912,
+      "Fits": true,
+      "Pages": 1
+    }
+  },
+  {
+    "name": "boleta-48_05",
+    "plan": {
+      "Pieces": [
+        {
+          "Text": "PRIMAX FUELFLOW",
+          "X": 6,
+          "Y": 1,
+          "Width": 46.05,
+          "Height": 4.091189,
+          "Points": 10,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "BOLETA � DEMO",
+          "X": 6,
+          "Y": 6.36258936,
+          "Width": 46.05,
+          "Height": 3.302951,
+          "Points": 8,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "Sin validez fiscal / No validado por",
+          "X": 6,
+          "Y": 10.6919842,
+          "Width": 46.05,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        },
+        {
+          "Text": "SUNAT",
+          "X": 6,
+          "Y": 14.5047817,
+          "Width": 46.05,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        },
+        {
+          "Text": "Operaci�n",
+          "X": 6,
+          "Y": 20.54588,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "12345678-1234-4234-8234-",
+          "X": 21.2,
+          "Y": 20.54588,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "123456789012",
+          "X": 21.2,
+          "Y": 24.358675,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Fecha",
+          "X": 6,
+          "Y": 28.4991646,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "24/10/2026 12:00:00",
+          "X": 21.2,
+          "Y": 28.4991646,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estaci�n",
+          "X": 6,
+          "Y": 32.6396561,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Primax Sur",
+          "X": 21.2,
+          "Y": 32.6396561,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Surtidor",
+          "X": 6,
+          "Y": 36.7801437,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "03",
+          "X": 21.2,
+          "Y": 36.7801437,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Placa",
+          "X": 6,
+          "Y": 40.92063,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ABC-123",
+          "X": 21.2,
+          "Y": 40.92063,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "DNI",
+          "X": 6,
+          "Y": 45.06112,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "70123456",
+          "X": 21.2,
+          "Y": 45.06112,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Combustible",
+          "X": 6,
+          "Y": 51.4299126,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Premium",
+          "X": 21.2,
+          "Y": 51.4299126,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Cantidad",
+          "X": 6,
+          "Y": 55.5704,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "1.125 gal",
+          "X": 21.2,
+          "Y": 55.5704,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "P. unitario",
+          "X": 6,
+          "Y": 59.7108879,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00/gal",
+          "X": 21.2,
+          "Y": 59.7108879,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Subtotal",
+          "X": 6,
+          "Y": 63.8513756,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 22.50",
+          "X": 21.2,
+          "Y": 63.8513756,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Descuento",
+          "X": 6,
+          "Y": 67.99187,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 2.50",
+          "X": 21.2,
+          "Y": 67.99187,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "TOTAL",
+          "X": 6,
+          "Y": 74.36066,
+          "Width": 13,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00",
+          "X": 20,
+          "Y": 74.36066,
+          "Width": 32.05,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "right"
+        },
+        {
+          "Text": "Modalidad",
+          "X": 6,
+          "Y": 81.43495,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "PREPAGO",
+          "X": 21.2,
+          "Y": 81.43495,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "M�todo",
+          "X": 6,
+          "Y": 85.57544,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "YAPE",
+          "X": 21.2,
+          "Y": 85.57544,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estado",
+          "X": 6,
+          "Y": 89.71592,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Pagado",
+          "X": 21.2,
+          "Y": 89.71592,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Gracias por tu visita",
+          "X": 6,
+          "Y": 95.16717,
+          "Width": 46.05,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        }
+      ],
+      "Rules": [
+        19.2351151,
+        50.1191444,
+        73.04989,
+        80.12418
+      ],
+      "RequiredHeightMm": 74.75018,
+      "RenderedHeightMm": 97.076,
+      "AvailableHeightMm": 97.076,
+      "LeftMm": 6,
+      "TopMm": 1,
+      "WidthMm": 46.05,
+      "Fits": true,
+      "Pages": 1
+    }
+  },
+  {
+    "name": "overflow",
+    "plan": {
+      "Pieces": [
+        {
+          "Text": "PRIMAX FUELFLOW",
+          "X": 6,
+          "Y": 1,
+          "Width": 46.05,
+          "Height": 4.091189,
+          "Points": 10,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "FACTURA � DEMO",
+          "X": 6,
+          "Y": 5.091189,
+          "Width": 46.05,
+          "Height": 3.302951,
+          "Points": 8,
+          "Bold": true,
+          "Align": "center"
+        },
+        {
+          "Text": "Sin validez fiscal / No validado por",
+          "X": 6,
+          "Y": 8.39414,
+          "Width": 46.05,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        },
+        {
+          "Text": "SUNAT",
+          "X": 6,
+          "Y": 11.3029728,
+          "Width": 46.05,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        },
+        {
+          "Text": "Operaci�n",
+          "X": 6,
+          "Y": 15.9118052,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "12345678-1234-4234-8234-",
+          "X": 21.2,
+          "Y": 15.9118052,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "123456789012",
+          "X": 21.2,
+          "Y": 18.8206367,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Fecha",
+          "X": 6,
+          "Y": 21.97947,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "24/10/2026 12:00:00",
+          "X": 21.2,
+          "Y": 21.97947,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estaci�n",
+          "X": 6,
+          "Y": 25.1383018,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 25.1383018,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 28.0471344,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 30.9559669,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 33.8648,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 36.773632,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 39.6824646,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 42.5912971,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION ESTACION",
+          "X": 21.2,
+          "Y": 45.50013,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ESTACION",
+          "X": 21.2,
+          "Y": 48.4089622,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Surtidor",
+          "X": 6,
+          "Y": 51.5677948,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "03",
+          "X": 21.2,
+          "Y": 51.5677948,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Placa",
+          "X": 6,
+          "Y": 54.7266273,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "ABC-123",
+          "X": 21.2,
+          "Y": 54.7266273,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "RUC",
+          "X": 6,
+          "Y": 57.88546,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "20123456789",
+          "X": 21.2,
+          "Y": 57.88546,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Raz�n social",
+          "X": 6,
+          "Y": 61.0442924,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "RAZON SOCIAL RAZON",
+          "X": 21.2,
+          "Y": 61.0442924,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "SOCIAL RAZON SOCIAL",
+          "X": 21.2,
+          "Y": 63.953125,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "RAZON SOCIAL RAZON",
+          "X": 21.2,
+          "Y": 66.86195,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "SOCIAL RAZON SOCIAL",
+          "X": 21.2,
+          "Y": 69.77078,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "RAZON SOCIAL RAZON",
+          "X": 21.2,
+          "Y": 72.67961,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "SOCIAL RAZON SOCIAL",
+          "X": 21.2,
+          "Y": 75.58844,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "RAZON SOCIAL RAZON",
+          "X": 21.2,
+          "Y": 78.49727,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "SOCIAL RAZON SOCIAL",
+          "X": 21.2,
+          "Y": 81.4061,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Combustible",
+          "X": 6,
+          "Y": 86.26492,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "COMBUSTIBLE",
+          "X": 21.2,
+          "Y": 86.26492,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "COMBUSTIBLE",
+          "X": 21.2,
+          "Y": 89.17375,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "COMBUSTIBLE",
+          "X": 21.2,
+          "Y": 92.08258,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "COMBUSTIBLE",
+          "X": 21.2,
+          "Y": 94.99141,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "COMBUSTIBLE",
+          "X": 21.2,
+          "Y": 97.90024,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "COMBUSTIBLE",
+          "X": 21.2,
+          "Y": 100.809067,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Cantidad",
+          "X": 6,
+          "Y": 103.967896,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "1.125 gal",
+          "X": 21.2,
+          "Y": 103.967896,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "P. unitario",
+          "X": 6,
+          "Y": 107.126724,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00/gal",
+          "X": 21.2,
+          "Y": 107.126724,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Subtotal",
+          "X": 6,
+          "Y": 110.285553,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 22.50",
+          "X": 21.2,
+          "Y": 110.285553,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "Descuento",
+          "X": 6,
+          "Y": 113.444382,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 2.50",
+          "X": 21.2,
+          "Y": 113.444382,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "right"
+        },
+        {
+          "Text": "TOTAL",
+          "X": 6,
+          "Y": 118.303207,
+          "Width": 13,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "left"
+        },
+        {
+          "Text": "S/ 20.00",
+          "X": 20,
+          "Y": 118.303207,
+          "Width": 32.05,
+          "Height": 3.69707,
+          "Points": 9,
+          "Bold": true,
+          "Align": "right"
+        },
+        {
+          "Text": "Modalidad",
+          "X": 6,
+          "Y": 123.700272,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "PREPAGO",
+          "X": 21.2,
+          "Y": 123.700272,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "M�todo",
+          "X": 6,
+          "Y": 126.8591,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "YAPE",
+          "X": 21.2,
+          "Y": 126.8591,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Estado",
+          "X": 6,
+          "Y": 130.017929,
+          "Width": 14.5,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Pagado",
+          "X": 21.2,
+          "Y": 130.017929,
+          "Width": 30.8499985,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "left"
+        },
+        {
+          "Text": "Gracias por tu visita",
+          "X": 6,
+          "Y": 134.176758,
+          "Width": 46.05,
+          "Height": 2.908832,
+          "Points": 7,
+          "Bold": false,
+          "Align": "center"
+        }
+      ],
+      "Rules": [
+        14.9118052,
+        85.26492,
+        117.303207,
+        122.700272
+      ],
+      "RequiredHeightMm": 136.085587,
+      "RenderedHeightMm": 0,
+      "AvailableHeightMm": 97.076,
+      "LeftMm": 6,
+      "TopMm": 1,
+      "WidthMm": 46.05,
+      "Fits": false,
+      "Pages": 1
+    }
+  }
+]

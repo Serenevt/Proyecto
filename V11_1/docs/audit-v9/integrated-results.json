@@ -1,0 +1,114 @@
+{
+  "date": "2026-10-19",
+  "scope": "V9 integrated validation",
+  "counts": {
+    "backend": {
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0
+    },
+    "FuelFlow": {
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Prime": {
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Mobile": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    "OCR": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "E2E": {
+      "passed": 84,
+      "failed": 0,
+      "skipped": 0
+    },
+    "docker_browser": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "total": 296,
+  "logical_scenarios_merging_mobile_viewports": 280,
+  "pending_critical_e2e": "passed",
+  "v8": {
+    "files": 226,
+    "sha256": "unchanged"
+  },
+  "health": {
+    "backend": {
+      "status": "ok",
+      "database": "up"
+    },
+    "services": [
+      "frontend1",
+      "frontend2",
+      "backend",
+      "postgres",
+      "plate-recognition"
+    ],
+    "all": "healthy",
+    "http": [
+      9081,
+      9082,
+      3100
+    ]
+  },
+  "migration": "20261017000000_critical_transaction_integrity applied; 8 migrations current",
+  "schemas": [
+    "e2e_580a4a409acb4a3aa0a109520c1c6338",
+    "e2e_v9_a4b5365b145d43d48a581d097b3e0b48"
+  ],
+  "opencv": "4.12.0 in reproducible container",
+  "promoted": [
+    "RF-07",
+    "RF-08",
+    "RF-13",
+    "RNF-13",
+    "RN-03",
+    "RN-04",
+    "RN-05",
+    "RN-06",
+    "RN-09"
+  ],
+  "partial_in_scope": [
+    "RF-09",
+    "RF-10",
+    "RF-12",
+    "RF-15",
+    "RNF-07",
+    "RNF-12",
+    "RNF-14",
+    "RN-07",
+    "RN-10",
+    "RN-16"
+  ],
+  "limitations": [
+    "Mobile uses browser API fixtures, not native Android",
+    "v9-flow revalidated historical settled transaction; did not re-run full browser debt flow",
+    "Browser transport faults injected; no physical service outage during dispensing",
+    "DEMO payments only"
+  ],
+  "commands": {
+    "backend": "docker compose run --rm --no-deps tests",
+    "fuelflow": "npm.cmd test --prefix FrontEnd_1",
+    "prime": "npm.cmd test --prefix FrontEnd_2",
+    "mobile": "npm.cmd run test:mobile --prefix FrontEnd_2",
+    "ocr": "docker compose exec -T plate-recognition python -m unittest -v test_ocr",
+    "stack": "node FrontEnd_2/node_modules/@playwright/test/cli.js test --config tools/playwright.v9.cjs",
+    "browser": "node tools/run-integration.cjs --docker",
+    "docker": "node tools/audit-docker.cjs"
+  },
+  "no_commit": true,
+  "no_push": true
+}
