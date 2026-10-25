@@ -122,3 +122,8 @@ node tools/test-layout-v11_4.cjs
 ```
 
 El último comando necesita Windows/System.Drawing, pero no impresora ni PrintDocument.Print. Los JSON de sesiones/resultados generados quedan ignorados; no publicarlos. Los verificadores históricos de versiones anteriores requieren sus checkouts/baselines y no se ejecutan como parte de esta validación. No se creó sincronización permanente en segundo plano.
+
+
+## Estado local entregado
+
+También se probó docker compose up -d con el nombre predeterminado primax-v11-1 desde el checkout preparado, verificando previamente que su volumen no existía. Terminó con código 0, creó una base nueva y las cuatro URL respondieron HTTP 200. Esta instancia queda ejecutándose localmente en 25081/25082/25000/25025. Se detuvo solo el proyecto auxiliar primax-v11-1-clean-20261025 para liberar esos puertos; se conservaron sus volúmenes y registros. Los servicios V11_4 no se detuvieron ni modificaron.
