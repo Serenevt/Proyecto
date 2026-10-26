@@ -1,3 +1,4 @@
+require('./database-safety.cjs').assertLocalDatabase();
 // Only initializes an unused V9 demo account; never resets balances or deletes data.
 const { PrismaClient, Prisma } = require('@prisma/client');
 const db = new PrismaClient();

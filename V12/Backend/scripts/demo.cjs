@@ -1,9 +1,13 @@
 // Explicit smoke test: creates one S/100 purchase in the local demo membership.
 const { randomUUID } = require('node:crypto');
+const { URL } = require('node:url');
 const { existsSync } = require('node:fs');
 if (existsSync('.env')) process.loadEnvFile('.env');
 const base =
   process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
+require('./database-safety.cjs').assertLocalDatabase();
+const target = new URL(base);
+if (!['localhost','127.0.0.1','[::1]'].includes(target.hostname)) throw Error('Remote demo API calls are blocked');
 async function api(route, options = {}) {
   const response = await fetch(`${base}/api/v1/${route}`, options);
   const body = await response.json();

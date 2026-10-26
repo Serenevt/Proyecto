@@ -30,7 +30,7 @@ describe('Single authentication and password recovery: PostgreSQL', () => {
   beforeAll(async () => {
     const url = new URL(original);
     url.searchParams.set('schema', schema);
-    process.env.DATABASE_URL = url.toString();
+    process.env.DATABASE_URL = url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     execFileSync(
       process.execPath,
       [require.resolve('prisma/build/index.js'), 'migrate', 'deploy'],
@@ -64,7 +64,7 @@ describe('Single authentication and password recovery: PostgreSQL', () => {
   afterAll(async () => {
     await app?.close();
     await db?.$disconnect();
-    process.env.DATABASE_URL = original;
+    process.env.DATABASE_URL = original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     console.log('Recovery evidence schema:', schema);
   });
   const post = (route: string, data: object) =>

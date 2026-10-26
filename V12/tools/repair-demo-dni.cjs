@@ -1,3 +1,4 @@
+require('./local-targets.cjs').assertLocalTargets();
 // One-time, explicitly authorized repair of two identified synthetic fixtures.
 const fs = require('node:fs');
 const path = require('node:path');

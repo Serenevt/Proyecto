@@ -20,7 +20,7 @@ describe('Guest prepayment in PostgreSQL', () => {
   beforeAll(async () => {
     const url = new URL(original);
     url.searchParams.set('schema', schema);
-    process.env.DATABASE_URL = url.toString();
+    process.env.DATABASE_URL = url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     for (const [entry, args] of [
       ['prisma/build/index.js', ['migrate', 'deploy']],
       ['ts-node/dist/bin.js', ['prisma/seed.ts']],
@@ -46,7 +46,7 @@ describe('Guest prepayment in PostgreSQL', () => {
   afterAll(async () => {
     await app?.close();
     await db?.$disconnect();
-    process.env.DATABASE_URL = original;
+    process.env.DATABASE_URL = original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     console.log('Guest evidence schema:', schema);
   });
   afterEach(() => jest.restoreAllMocks());

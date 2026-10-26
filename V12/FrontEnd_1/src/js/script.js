@@ -1,3 +1,5 @@
+import { ensureKioskSession, kioskAuthEnabled, kioskStationId } from './kioskSession.js';
+await ensureKioskSession();
 /* ============================================================================
  * PRIMAX FuelFlow Autónomo — script.js
  * JavaScript vanilla, modular y comentado en español.
@@ -1414,7 +1416,9 @@ async function iniciar() {
     }
     limpiarEstadoOperacion();
     const [fuels,stations]=await Promise.all([catalogService.fuels(),catalogService.stations()]);
-    const station=stations.find(s=>s.code==='PRIMAX-SUR'&&s.active);
+    const station=kioskAuthEnabled()
+      ? stations.find(s=>s.id===kioskStationId()&&s.active)
+      : stations.find(s=>s.code==='PRIMAX-SUR'&&s.active);
     if(!station)throw Error('La estación no está disponible.');
     catalog={fuels,station};transactionsService.begin();
     document.querySelectorAll('.fuel-card').forEach(card=>{const fuel=fuels.find(f=>f.name===card.dataset.fuel&&f.active);card.disabled=!fuel;if(fuel){card.dataset.price=fuel.pricePerGallon;const price=card.querySelector('.price');if(price)price.firstChild.textContent='S/ '+Number(fuel.pricePerGallon).toFixed(2)+' ';}});

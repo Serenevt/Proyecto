@@ -3,7 +3,9 @@ import {
   ExecutionContext,
   SetMetadata,
 } from '@nestjs/common';
-export type Actor = { kind: 'member'; userId: string } | { kind: 'kiosk' };
+export type Actor =
+  | { kind: 'member'; userId: string }
+  | { kind: 'kiosk'; stationId?: string };
 export const Public = () => SetMetadata('access', 'public');
 export const KioskOnly = () => SetMetadata('access', 'kiosk');
 export const MemberOrKiosk = () => SetMetadata('access', 'either');

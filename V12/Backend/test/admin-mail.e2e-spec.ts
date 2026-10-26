@@ -46,7 +46,7 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
   beforeAll(async () => {
     const url = new URL(original);
     url.searchParams.set('schema', schema);
-    process.env.DATABASE_URL = url.toString();
+    process.env.DATABASE_URL = url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     execFileSync(
       process.execPath,
       [require.resolve('prisma/build/index.js'), 'migrate', 'deploy'],
@@ -110,7 +110,7 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
   afterAll(async () => {
     await app?.close();
     await db?.$disconnect();
-    process.env.DATABASE_URL = original;
+    process.env.DATABASE_URL = original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     console.log('Admin/mail evidence schema preserved:', schema);
   });
   it('empty dashboard returns no invented alerts', async () => {

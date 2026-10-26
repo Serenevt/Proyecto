@@ -1,4 +1,7 @@
 import '../src/config/load-env';
+// Local-only even when this file is invoked directly.
+import { assertLocalDatabase } from '../scripts/database-safety.cjs';
+assertLocalDatabase();
 import { PrismaClient } from '@prisma/client';
 import { compare, hash } from 'bcryptjs';
 const prisma = new PrismaClient();

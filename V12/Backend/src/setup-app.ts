@@ -23,10 +23,15 @@ export function setupApp(app: INestApplication) {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Kiosk-Key'],
     credentials: false,
   });
+  if (
+    config.get('APP_MODE') !== 'local' &&
+    config.get('SWAGGER_ENABLED') !== 'true'
+  )
+    return;
   const document = SwaggerModule.createDocument(
     app,
     new DocumentBuilder()
-      .setTitle('Primax V11 API')
+      .setTitle('Primax V12 API')
       .setVersion('1.0.0')
       .setDescription(
         'Backend común. Efectivo/tarjeta simulados; Yape/Plin requieren confirmaci?n del proveedor. Dinero en cadenas decimales PEN. Listas de historial: page=1, limit=20 (máximo 100). JWT para socios; x-kiosk-key para terminales. No incluir la clave de terminal en aplicaciones públicas.',

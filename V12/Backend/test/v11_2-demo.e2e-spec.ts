@@ -21,7 +21,7 @@ describe('V11_4 DEMO persisted in exclusive PostgreSQL',()=>{
  let db:PrismaService,orders:OnlineOrdersService,auth:AuthorizationsService,purchases:TransactionsService,stationId:string,fuelId:string,memberId:string,userId:string;
  beforeAll(async()=>{
   if(new URL(original).pathname!=='/primax_v11_1')throw Error('Publication test requires the isolated primax_v11_1 database');
-  const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString();
+  const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
   process.env.APP_MODE='local';process.env.PAYMENT_ENV='demo';process.env.DEMO_WALLET_ENABLED='true';
   execFileSync(process.execPath,[require.resolve('prisma/build/index.js'),'migrate','deploy'],{env:process.env,stdio:'pipe'});
   db=new PrismaService();await db.$connect();orders=new OnlineOrdersService(db,new DemoWalletProvider(db));
@@ -31,7 +31,7 @@ describe('V11_4 DEMO persisted in exclusive PostgreSQL',()=>{
   await db.fuelInventory.create({data:{stationId,fuelId,liters:1000}});
   const user=await db.user.create({data:{email:randomUUID()+'@example.test',name:'Fixture',passwordHash:'unused',membership:{create:{number:'PRIM999',welcomeAvailable:false}}},include:{membership:true}});userId=user.id;memberId=user.membership!.id;
  },90000);
- afterAll(async()=>{await db?.$disconnect();process.env.DATABASE_URL=original;console.log('Retained V11_4 schema',schema);});
+ afterAll(async()=>{await db?.$disconnect();process.env.DATABASE_URL=original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;console.log('Retained V11_4 schema',schema);});
  test.each(['YAPE','PLIN'] as const)('prepaid %s: no personal fields, stock guard, capture, replay and one receipt',async method=>{
   const operationId=randomUUID(),authorization=plainToInstance(CreateAuthorizationDto,{operationId,mode:'PREPAGO',paymentMethod:method,plate:'NEW-123',stationId,fuelId,unitPrice:'20.00',amount:'60.00'});
   const dto={operationId,method,authorization};const order=await orders.create(dto,{kind:'kiosk'});

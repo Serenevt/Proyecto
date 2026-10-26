@@ -14,9 +14,13 @@ export class RecognitionService {
     private readonly vehicles: VehiclesService,
     private readonly config: ConfigService,
   ) {}
-  async recognize(image: string, kind: 'plate'|'membership' = 'plate') {
+  async recognize(image: string, kind: 'plate' | 'membership' = 'plate') {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(image) || image.length > 2800000)
       throw new BadRequestException('Imagen inválida');
+    if (this.config.get('PLATE_RECOGNITION_ENABLED') === 'false')
+      throw new ServiceUnavailableException(
+        'Reconocimiento deshabilitado. Ingresa la placa manualmente.',
+      );
     let data: { plate?: unknown; confidence?: unknown };
     try {
       const response = await fetch(
@@ -40,10 +44,23 @@ export class RecognitionService {
     }
     if (kind === 'membership') {
       const number = typeof data.plate === 'string' ? data.plate : '';
-      const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
-      const threshold = Number(this.config.get('PLATE_CONFIDENCE_THRESHOLD', '0.75'));
-      const membership = /^PRIM(?:[0-9]+[A-Z]?|E-[0-9]+)$/.test(number) && confidence >= threshold ? await this.vehicles.membership(number) : null;
-      return { membership, number, confidence, threshold, recognized: Boolean(membership && membership.status === 'ACTIVE') };
+      const confidence =
+        typeof data.confidence === 'number' ? data.confidence : 0;
+      const threshold = Number(
+        this.config.get('PLATE_CONFIDENCE_THRESHOLD', '0.75'),
+      );
+      const membership =
+        /^PRIM(?:[0-9]+[A-Z]?|E-[0-9]+)$/.test(number) &&
+        confidence >= threshold
+          ? await this.vehicles.membership(number)
+          : null;
+      return {
+        membership,
+        number,
+        confidence,
+        threshold,
+        recognized: Boolean(membership && membership.status === 'ACTIVE'),
+      };
     }
     const plate = normalizePlate(data.plate);
     const confidence =

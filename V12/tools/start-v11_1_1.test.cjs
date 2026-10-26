@@ -8,5 +8,5 @@ for(const [variable,value,error] of [['FRONTEND1_PORT','25081','Puertos inespera
 }
 test('explicit project name isolates the copy from ambient COMPOSE_PROJECT_NAME',()=>{
  const r=spawnSync(process.execPath,['tools/start-v11_1_1.cjs','--check'],{cwd:root,env:{...process.env,COMPOSE_PROJECT_NAME:'primax-v11-1'},encoding:'utf8',windowsHide:true});
- assert.equal(r.status,0,r.stderr);assert(r.stdout.includes('V11_1.1'));
+ assert.equal(r.status,0,r.stderr);assert(r.stdout.includes('V12'));
 });

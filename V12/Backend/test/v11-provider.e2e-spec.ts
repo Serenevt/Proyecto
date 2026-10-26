@@ -15,13 +15,13 @@ describe('V11 PostgreSQL + mocked provider contract (NOT provider sandbox)',()=>
  let db:PrismaService, service:OnlineOrdersService,userId:string,memberId:string,stationId:string,fuelId:string;
  const remote=new Map<string,ProviderOrder>();
  const provider={create:jest.fn(async(id:string,amount:number)=>{const value:ProviderOrder={id:'ord_test_'+id,order_number:id,amount,currency_code:'PEN',state:'pending',qr:null};remote.set(value.id,value);return value;}),get:jest.fn(async(id:string)=>remote.get(id)!)};
- beforeAll(async()=>{const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString();execFileSync(process.execPath,[require.resolve('prisma/build/index.js'),'migrate','deploy'],{env:process.env,stdio:'pipe'});db=new PrismaService();await db.$connect();
+ beforeAll(async()=>{const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;execFileSync(process.execPath,[require.resolve('prisma/build/index.js'),'migrate','deploy'],{env:process.env,stdio:'pipe'});db=new PrismaService();await db.$connect();
  const user=await db.user.create({data:{email:randomUUID()+'@example.test',name:'Provider fixture',passwordHash:'unused',membership:{create:{number:'PRIM001',welcomeAvailable:true}}},include:{membership:true}});userId=user.id;memberId=user.membership!.id;
  stationId=(await db.station.create({data:{code:'TEST',name:'Test',address:'Test'}})).id;
  fuelId=(await db.fuel.create({data:{code:'TEST',name:'Test',pricePerGallon:20}})).id;
  service=new OnlineOrdersService(db,provider as unknown as CulqiProvider);
  },90000);
- afterAll(async()=>{await db?.$disconnect();process.env.DATABASE_URL=original;console.log('V11 evidence schema:',schema);});
+ afterAll(async()=>{await db?.$disconnect();process.env.DATABASE_URL=original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;console.log('V11 evidence schema:',schema);});
  async function debt(){return db.transaction.create({data:{operationId:randomUUID(),requestHash:'a'.repeat(64),plate:'ABC-123',membershipId:memberId,stationId,fuelId,amount:100,unitPrice:20,pointsRate:0.1111,pointsEarned:0,mode:'POSTPAGO',status:'PAYMENT_PENDING',payment:{create:{amount:100,method:'SALDO_PRIME',status:'PENDING'}},debt:{create:{membershipId:memberId,amountOriginal:100,amountPending:100}}}});}
  test.each(['YAPE','PLIN'] as const)('%s pending -> provider paid -> duplicate notification settles exactly once',async method=>{
   const purchase=await debt();const dto={operationId:randomUUID(),method,transactionId:purchase.id,customer:{first_name:'Test',last_name:'Fixture',email:'test@example.test',phone_number:'999999999'}};

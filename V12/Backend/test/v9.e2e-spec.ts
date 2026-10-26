@@ -27,7 +27,7 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
   beforeAll(async () => {
     const url = new URL(original);
     url.searchParams.set('schema', schema);
-    process.env.DATABASE_URL = url.toString();
+    process.env.DATABASE_URL = url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     process.env.PRIME_DEBT_LIMIT = '200';
     for (const [entry, args] of [
       ['prisma/build/index.js', ['migrate', 'deploy']],
@@ -54,7 +54,7 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
   afterAll(async () => {
     await app?.close();
     await db?.$disconnect();
-    process.env.DATABASE_URL = original;
+    process.env.DATABASE_URL = original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     console.log('V9 evidence schema preserved:', schema);
   });
   beforeEach(async () => {

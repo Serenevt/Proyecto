@@ -1,3 +1,6 @@
+> Preparación de V12 para Vercel y Neon: [guía de despliegue y seguridad](DEPLOYMENT-VERCEL.md).
+> Los cambios son locales; las migraciones remotas y los despliegues requieren autorización.
+
 # Primax FuelFlow V11_1.1 — HTTP exclusivamente por loopback
 
 Trabajar desde `C:\Users\HP\Desktop\V11_1.1`. El original se conserva intacto. Esta versión usa **http://127.0.0.1:25443** para PrintAgent, sin certificados ni cambios de confianza de Windows. La configuración HTTPS anterior queda inactiva y sus claves se conservan protegidas.
@@ -104,3 +107,5 @@ node FrontEnd_2/node_modules/@playwright/test/cli.js test --config tools/playwri
 La segunda prueba necesita el puerto 25443 libre. En una instalación limpia, instalar dependencias solo en la copia: `npm ci --prefix Backend`, `npm run prisma:generate --prefix Backend`, `npm ci --prefix FrontEnd_2`. Ya no se necesita OpenSSL para la validación del agente.
 
 [Resultados actuales](docs/v11_1_1/RESULTADOS.md) · [Evidencias HTTP](docs/v11_1_1/http-local). Los documentos con HTTPS o versiones anteriores son históricos y no son instrucciones de esta instalación.
+> Preparación de V12 para Vercel y Neon: [guía de despliegue y seguridad](DEPLOYMENT-VERCEL.md).
+> Los cambios son locales; las migraciones remotas y los despliegues requieren autorización.

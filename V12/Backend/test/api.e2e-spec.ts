@@ -49,7 +49,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
       throw new Error('DATABASE_URL required; start PostgreSQL first');
     const url = new URL(originalUrl);
     url.searchParams.set('schema', schema);
-    process.env.DATABASE_URL = url.toString();
+    process.env.DATABASE_URL = url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
     process.env.SOLES_PER_POINT = '9';
     run('prisma/build/index.js', ['migrate', 'deploy']);
     run('ts-node/dist/bin.js', ['prisma/seed.ts']);
@@ -103,7 +103,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     }
     if (process.env.KEEP_E2E_SCHEMA === '1')
       console.log('Preserved E2E schema:', schema);
-    process.env.DATABASE_URL = originalUrl;
+    process.env.DATABASE_URL = originalUrl; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
   });
 
   it('health verifica conexión real', async () => {

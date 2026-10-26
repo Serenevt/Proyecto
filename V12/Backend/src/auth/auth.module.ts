@@ -1,3 +1,6 @@
+import { KioskService } from '../kiosk/kiosk.service';
+import { KioskStore } from '../kiosk/redis-store';
+import { KioskController } from '../kiosk/kiosk.controller';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -30,9 +33,11 @@ import { AdminController } from './admin.controller';
       }),
     }),
   ],
-  controllers: [AuthController, AdminController],
+  controllers: [AuthController, AdminController, KioskController],
   providers: [
     AuthService,
+    KioskService,
+    KioskStore,
     PasswordResetService,
     RecoveryDelivery,
     { provide: APP_GUARD, useClass: AccessGuard },
