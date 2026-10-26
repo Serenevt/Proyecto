@@ -67,7 +67,7 @@ export function openPlateCamera(onRecognized, kind = 'plate') {
 }
 
 // retry reuses the persisted operationId and asks Backend to authorize again.
-export function insufficientBalance(details, retry) {
+export function insufficientBalance(details, retry, allowDebtOption = true) {
   return new Promise(resolve => {
     const dialog = document.createElement('dialog'); dialog.className = 'v9-dialog';
     dialog.innerHTML = `<h2>Saldo insuficiente</h2><p data-message role="status"></p><dl><dt>Saldo disponible</dt><dd data-available></dd><dt>Total</dt><dd data-amount></dd><dt>Faltante</dt><dd data-pending></dd></dl><div class="v9-actions"><button class="btn btn-primary" data-action="recharge">Ya recargué</button><button class="btn" data-action="debt">Registrar saldo pendiente</button></div>`;
@@ -76,7 +76,7 @@ export function insufficientBalance(details, retry) {
     const render = () => {
       dialog.querySelector('[data-message]').textContent = details.code === 'DEBT_LIMIT' ? 'Has alcanzado el límite de saldo pendiente.' : 'Tu saldo Primax Prime no es suficiente para cubrir el consumo.';
       for (const [key, value] of [['available', details.available], ['amount', details.amount], ['pending', details.amountPending]]) dialog.querySelector('[data-' + key + ']').textContent = 'S/ ' + value;
-      buttons.forEach(button => { button.disabled = busy || (button.dataset.action === 'debt' && !details.canRegisterDebt); });
+      buttons.forEach(button => { button.disabled = busy || (button.dataset.action === 'debt' && (!allowDebtOption || !details.canRegisterDebt)); if (button.dataset.action === 'debt' && !allowDebtOption) button.hidden = true; });
     };
     const finish = action => { finished = true; dialog.remove(); resolve(action); };
     dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); else finish('cancel'); });

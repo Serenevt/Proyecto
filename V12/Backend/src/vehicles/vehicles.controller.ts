@@ -7,7 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { VehicleResponseDto } from '../common/response.dto';
-import { Actor, CurrentActor, MemberOrKiosk } from '../auth/access';
+import { Actor, CurrentActor, MemberOrKiosk, StagingFuelFlow } from '../auth/access';
 import { PaginationDto } from '../common/pagination.dto';
 import { PlateDto } from './plate.dto';
 import { VehiclesService } from './vehicles.service';
@@ -28,6 +28,7 @@ export class VehiclesController {
   }
   @Get(':plate')
   @MemberOrKiosk()
+  @StagingFuelFlow('read')
   @ApiSecurity('kiosk')
   @ApiOkResponse({ type: VehicleResponseDto })
   find(@Param() params: PlateDto, @CurrentActor() actor: Actor) {

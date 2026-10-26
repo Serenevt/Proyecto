@@ -36,7 +36,7 @@ export class TransactionsService {
     private readonly wallet: WalletRepository,
   ) {}
 
-  async create(dto: CreateTransactionDto) {
+  async create(dto: CreateTransactionDto, actor?: Actor) {
     const amount = this.policy.amount(dto.amount);
     const plate = normalizePlate(dto.plate) as string;
     const gallons = dto.gallons ? new Prisma.Decimal(dto.gallons) : null;
@@ -228,6 +228,8 @@ export class TransactionsService {
         authorizationId = settlement.id;
         pending = settlement.pending;
       }
+      if (actor?.kind === 'kiosk' && actor.operatorUserId && pending.gt(0))
+        throw new BadRequestException('Deuda deshabilitada en FuelFlow staging');
 
       const receiptDni =
         dto.receiptType === 'FACTURA'

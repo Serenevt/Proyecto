@@ -1,4 +1,12 @@
 const fs=require('node:fs'),path=require('node:path');const root=path.resolve(__dirname,'..');const generated=path.join(root,'dist');if(path.dirname(generated)!==root)throw Error('Invalid build directory');fs.rmSync(generated,{recursive:true,force:true});for(const name of ['src','assets'])fs.cpSync(path.join(root,name),path.join(root,'dist',name),{recursive:true});console.log('FuelFlow: static build ready in dist/');
+if(process.env.FUELFLOW_DEPLOYMENT==='staging'){
+ const code=process.env.FUELFLOW_STATION_CODE;
+ if(!/^[A-Z0-9-]{4,30}$/.test(code||''))throw Error('Invalid FUELFLOW_STATION_CODE');
+ fs.writeFileSync(path.join(generated,'src/js/deployment.js'),
+  `export const FUELFLOW_DEPLOYMENT = 'staging';\nexport const FUELFLOW_STATION_CODE = ${JSON.stringify(code)};\n`);
+}else if(process.env.FUELFLOW_DEPLOYMENT&&process.env.FUELFLOW_DEPLOYMENT!=='local'){
+ throw Error('Invalid FUELFLOW_DEPLOYMENT');
+}
 
 // Content version covers every module, including transitive imports.
 const crypto=require('node:crypto');

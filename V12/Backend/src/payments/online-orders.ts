@@ -7,7 +7,7 @@ import { Type } from 'class-transformer';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { Prisma, OnlineOrder } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { Actor, CurrentActor, MemberOrKiosk, Public } from '../auth/access';
+import { Actor, CurrentActor, MemberOrKiosk, Public, StagingFuelFlow } from '../auth/access';
 import { CreateAuthorizationDto } from '../transactions/create-authorization.dto';
 import { normalizePlate } from '../vehicles/plate.dto';
 import { PAYMENT_PROVIDER, PaymentProvider, verifiedPaid } from './payment-provider';
@@ -229,11 +229,11 @@ export class OnlineOrdersService {
 @Controller('online-orders')
 export class OnlineOrdersController {
  constructor(private readonly service:OnlineOrdersService){}
- @Post() @MemberOrKiosk() create(@Body()dto:OrderDto,@CurrentActor()actor:Actor){return this.service.create(dto,actor);}
- @Post(':id/demo-confirm') @MemberOrKiosk() confirmDemo(@Param('id',new ParseUUIDPipe())id:string,@Body()dto:DemoConfirmationDto,@CurrentActor()actor:Actor){return this.service.confirmDemo(id,dto,actor);}
- @Post(':id/cancel') @MemberOrKiosk() cancel(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.cancel(id,actor);}
+ @Post() @MemberOrKiosk() @StagingFuelFlow('order') create(@Body()dto:OrderDto,@CurrentActor()actor:Actor){return this.service.create(dto,actor);}
+ @Post(':id/demo-confirm') @MemberOrKiosk() @StagingFuelFlow('write') confirmDemo(@Param('id',new ParseUUIDPipe())id:string,@Body()dto:DemoConfirmationDto,@CurrentActor()actor:Actor){return this.service.confirmDemo(id,dto,actor);}
+ @Post(':id/cancel') @MemberOrKiosk() @StagingFuelFlow('write') cancel(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.cancel(id,actor);}
  @Post(':id/refund') @MemberOrKiosk() refund(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.refund(id,actor);}
- @Get(':id') @MemberOrKiosk() status(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.status(id,actor);}
+ @Get(':id') @MemberOrKiosk() @StagingFuelFlow('read') status(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.status(id,actor);}
  @Post(':id/notify') @Public() notify(@Param('id',new ParseUUIDPipe())id:string,@Headers('x-webhook-secret')secret:string){
   const expected=process.env.PAYMENT_WEBHOOK_SECRET;
   if(!expected||!secret||!timingSafeEqual(createHash('sha256').update(secret).digest(),createHash('sha256').update(expected).digest()))throw new UnauthorizedException();

@@ -19,7 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AlertsService } from '../alerts/alerts.service';
-import { KioskOnly } from '../auth/access';
+import { KioskOnly, StagingFuelFlow } from '../auth/access';
 import { AuthorizationsService } from './authorizations.service';
 import { CreateAuthorizationDto } from './create-authorization.dto';
 import { DispenseProgressDto } from './dispense-progress.dto';
@@ -30,6 +30,7 @@ export class AuthorizationsController {
   constructor(private readonly service: AuthorizationsService, private readonly alerts: AlertsService) {}
   @Post()
   @KioskOnly()
+  @StagingFuelFlow('authorization')
   @ApiSecurity('kiosk')
   @ApiCreatedResponse({
     description: 'Reserva saldo para un abastecimiento postpago.',
@@ -43,11 +44,13 @@ export class AuthorizationsController {
   }
   @Post(':id/intervention')
   @KioskOnly()
+  @StagingFuelFlow('write')
   intervention(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.service.intervention(id);
   }
   @Post(':id/progress')
   @KioskOnly()
+  @StagingFuelFlow('write')
   @ApiSecurity('kiosk')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
@@ -62,6 +65,7 @@ export class AuthorizationsController {
   }
   @Get(':id')
   @KioskOnly()
+  @StagingFuelFlow('read')
   @ApiSecurity('kiosk')
   @ApiOkResponse({
     description:
@@ -88,6 +92,7 @@ export class AuthorizationsController {
   }
   @Post(':id/release')
   @KioskOnly()
+  @StagingFuelFlow('write')
   @ApiSecurity('kiosk')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Reserva liberada sin consumo.' })

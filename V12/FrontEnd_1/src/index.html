@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="styles/styles.css?v=5" />
 </head>
 <body>
+  <section id="staging-operator-gate" class="staging-operator-gate" hidden aria-label="Acceso de operador">
+    <form id="staging-operator-form" class="staging-operator-form">
+      <h1>FuelFlow staging</h1>
+      <p>Acceso para operadores autorizados. Todas las operaciones son DEMO.</p>
+      <label>Correo o DNI<input name="identifier" autocomplete="username" required maxlength="120"></label>
+      <label>Contraseña<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label>
+      <p id="staging-operator-message" role="status"></p>
+      <button class="btn btn-primary" type="submit">Entrar</button>
+    </form>
+  </section>
   <!-- Fondo animado -->
   <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-glow" aria-hidden="true"></div>
@@ -24,6 +34,7 @@
         <button id="btn-lang" class="icon-btn" data-i18n-title="btn_lang_title" data-i18n-aria="btn_lang_title" title="Cambiar idioma" aria-label="Cambiar idioma">🌐</button>
         <button id="btn-voice-toggle" class="icon-btn" data-i18n-title="btn_voice_title" data-i18n-aria="btn_voice_title" title="Activar / silenciar voz" aria-label="Activar o silenciar voz">🔊</button>
         <button id="btn-admin-open" class="icon-btn" data-i18n-title="btn_admin_title" data-i18n-aria="btn_admin_title" title="Panel de administración" aria-label="Abrir panel de administración">⚙️</button>
+        <button id="staging-operator-logout" class="btn btn-small" type="button" hidden>Salir</button>
       </div>
     </header>
 

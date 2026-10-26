@@ -5,6 +5,11 @@ export function recoveryFailure(error) {
 }
 
 export const OPERATION_KEY = 'fuelflow:operation:v1';
+let activeOperationKey = OPERATION_KEY;
+export function setStagingOperationScope(sessionTag) {
+  if (!/^[0-9a-f]{20}$/.test(sessionTag)) throw Error('Sesión de operador inválida');
+  activeOperationKey = `fuelflow:staging:operation:v1:${sessionTag}`;
+}
 
 /**
  * Estados de una autorización de saldo en el backend.
@@ -17,15 +22,16 @@ export function createTransactionsService({
   request = apiClient,
   authorizations = authorizationService,
   uuid = () => crypto.randomUUID(),
+  storageKey = () => activeOperationKey,
 } = {}) {
   let inFlight;
   let authorizing;
-  const current = () => JSON.parse(storage.getItem(OPERATION_KEY) || 'null');
+  const current = () => JSON.parse(storage.getItem(storageKey()) || 'null');
   const save = (value) => {
-    storage.setItem(OPERATION_KEY, JSON.stringify(value));
+    storage.setItem(storageKey(), JSON.stringify(value));
     return value;
   };
-  const clear = () => storage.removeItem(OPERATION_KEY);
+  const clear = () => storage.removeItem(storageKey());
 
   return {
     current,

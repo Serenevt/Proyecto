@@ -1,3 +1,5 @@
+import { stagingOperatorIds } from '../auth/staging-fuelflow';
+
 export function validateEnvironment(env: Record<string, unknown>) {
   for (const key of ['DATABASE_URL', 'JWT_SECRET', 'KIOSK_API_KEY']) {
     if (typeof env[key] !== 'string' || !env[key])
@@ -24,6 +26,18 @@ export function validateEnvironment(env: Record<string, unknown>) {
         return true;
       }
     })) throw new Error('Staging requires exact HTTPS origins');
+  }
+  if (env.STAGING_FUELFLOW_ENABLED === 'true') {
+    if (env.APP_MODE !== 'staging')
+      throw new Error('FuelFlow operator mode requires staging');
+    if (
+      typeof env.STAGING_FUELFLOW_PROXY_KEY !== 'string' ||
+      env.STAGING_FUELFLOW_PROXY_KEY.length < 32 ||
+      env.STAGING_FUELFLOW_PROXY_KEY.includes('REPLACE_')
+    )
+      throw new Error('STAGING_FUELFLOW_PROXY_KEY must be a random secret');
+    if (!stagingOperatorIds(String(env.STAGING_FUELFLOW_OPERATOR_IDS ?? '')).size)
+      throw new Error('Staging FuelFlow requires operator IDs');
   }
   const database = new URL(String(env.DATABASE_URL));
   if (!['postgres:', 'postgresql:'].includes(database.protocol)) throw new Error('DATABASE_URL must be PostgreSQL');

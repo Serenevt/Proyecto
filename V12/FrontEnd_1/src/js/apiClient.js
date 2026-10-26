@@ -1,10 +1,11 @@
-export const API_BASE_URL = globalThis.FUELFLOW_API_BASE_URL || '/api/v1';
+import { FUELFLOW_DEPLOYMENT } from './deployment.js';
+export const API_BASE_URL = FUELFLOW_DEPLOYMENT === 'staging' ? '/api/v1' : (globalThis.FUELFLOW_API_BASE_URL || '/api/v1');
 export async function apiClient(path, {method='GET',body,token}={}) {
   let response;
-  try { response=await fetch(API_BASE_URL+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000),cache:'no-store'}); }
+  try { response=await fetch(API_BASE_URL+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(FUELFLOW_DEPLOYMENT==='staging'?{'X-FuelFlow-Request':'1'}:{})},...(body?{body:JSON.stringify(body)}:{}),...(FUELFLOW_DEPLOYMENT==='staging'?{credentials:'same-origin'}:{}),signal:AbortSignal.timeout(15000),cache:'no-store'}); }
   catch (error) { throw Object.assign(Error('No pudimos conectar. Reintenta para confirmar tu compra.'), {kind: ['TimeoutError','AbortError'].includes(error.name) ? 'timeout' : 'network'}); }
   const result=await response.json().catch(()=>null);
-  if(!response.ok)throw Object.assign(Error(response.status>=500?'No pudimos confirmar la compra. Puedes reintentar.':(Array.isArray(result?.message)?result.message.join('. '):result?.message)||'No pudimos completar la operación.'),{status:response.status,details:result});
+  if(!response.ok){if(FUELFLOW_DEPLOYMENT==='staging'&&response.status===401)globalThis.dispatchEvent?.(new Event('fuelflow-session-expired'));throw Object.assign(Error(response.status>=500?'No pudimos confirmar la compra. Puedes reintentar.':(Array.isArray(result?.message)?result.message.join('. '):result?.message)||'No pudimos completar la operación.'),{status:response.status,details:result});}
   return result;
 }
 export const catalogService={fuels:()=>apiClient('/fuels'),stations:()=>apiClient('/stations'),vehicle:plate=>apiClient('/vehicles/'+encodeURIComponent(plate))};

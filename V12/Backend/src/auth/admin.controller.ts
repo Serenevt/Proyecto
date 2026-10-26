@@ -14,7 +14,7 @@ import { IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { compare } from 'bcryptjs';
 import { Throttle } from '@nestjs/throttler';
-import { KioskOnly, Public } from './access';
+import { KioskOnly, Public, StagingFuelFlow } from './access';
 import { PlateDto } from '../vehicles/plate.dto';
 import { AlertsService } from '../alerts/alerts.service';
 
@@ -102,6 +102,7 @@ export class AdminController {
   }
   @Post('check-plate')
   @KioskOnly()
+  @StagingFuelFlow('write')
   check(@Body() dto: CheckPlateDto) {
     return this.alerts.checkPlate(
       dto.plate,

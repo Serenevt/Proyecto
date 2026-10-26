@@ -16,6 +16,10 @@ import {customerIdentity} from './customerIdentity.js';
 import {adminService, renderAlerts} from './adminService.js';
 import {apiClient, catalogService, authorizationService} from './apiClient.js';
 import {transactionsService} from './transactionsService.js';
+import { FUELFLOW_DEPLOYMENT, FUELFLOW_STATION_CODE } from './deployment.js';
+import { shouldReportProgress } from './progressPolicy.js';
+import { startStaging } from './operatorSession.js';
+const staging = FUELFLOW_DEPLOYMENT === 'staging';
 let catalog, submitting=false, backendResult=null;
 const refreshInventory=mountInventory(()=>catalog);
 
@@ -1152,6 +1156,7 @@ function setIdioma(lang, hablarSaludo = false) {
   document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
   document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  if (staging) document.querySelector('.kiosk-note').textContent = 'Estación ficticia de staging · Operación DEMO';
 
   // Idioma elegido se resalta en el selector
   document.querySelectorAll('.lang-opt').forEach((b) =>
@@ -1414,7 +1419,7 @@ async function iniciar() {
     }
     limpiarEstadoOperacion();
     const [fuels,stations]=await Promise.all([catalogService.fuels(),catalogService.stations()]);
-    const station=stations.find(s=>s.code==='PRIMAX-SUR'&&s.active);
+    const station=stations.find(s=>s.code===FUELFLOW_STATION_CODE&&s.active);
     if(!station)throw Error('La estación no está disponible.');
     catalog={fuels,station};transactionsService.begin();
     document.querySelectorAll('.fuel-card').forEach(card=>{const fuel=fuels.find(f=>f.name===card.dataset.fuel&&f.active);card.disabled=!fuel;if(fuel){card.dataset.price=fuel.pricePerGallon;const price=card.querySelector('.price');if(price)price.firstChild.textContent='S/ '+Number(fuel.pricePerGallon).toFixed(2)+' ';}});
@@ -1709,6 +1714,7 @@ function simularDespacho() {
   // Reinicia contadores
   state.galones = 0; state.total = 0; state.ultimoAnuncioGalones = 0;
   state.ultimoAvanceEnviado = 0; state.detencionManual = false;
+  lastProgressAt = 0;
   $('precio-count').textContent = 'S/ ' + state.combustible.precio.toFixed(2);
   $('despacho-titulo').textContent = t('despacho_title', { fuel: state.combustible.nombre });
   const esPre = state.modalidad === 'PREPAGO';
@@ -1765,13 +1771,17 @@ function simularDespacho() {
  * fuente de verdad del cierre y una discrepancia requiere intervención.
  */
 let progressInFlight = Promise.resolve();
+let lastProgressAt = 0;
 function reportarAvance(force = false) {
   if (!state.autorizacionId || state.estadoOperacion === 'INTERVENTION_REQUIRED') return progressInFlight;
-  if (!force && state.total - state.ultimoAvanceEnviado < 1) return progressInFlight;
+  const now = Date.now();
+  if (!shouldReportProgress({ amount: state.total, previousAmount: state.ultimoAvanceEnviado,
+    lastAt: lastProgressAt, now, force, staging })) return progressInFlight;
   const amount = state.total.toFixed(2);
   const gallons = (state.total / state.combustible.precio).toFixed(3);
   state.galones = Number(gallons);
   state.ultimoAvanceEnviado = state.total;
+  lastProgressAt = now;
   const snapshot = {...state, despachoTimer:null};
   transactionsService.checkpoint(snapshot);
   progressInFlight = progressInFlight.then(async () => {
@@ -2304,7 +2314,7 @@ async function reservarSaldoPostpago() {
     return await ejecutarReserva(monto);
   } catch (error) {
     if (['INSUFFICIENT_BALANCE', 'DEBT_LIMIT'].includes(error.details?.code)) {
-      const action = await insufficientBalance(error.details, allowDebt => ejecutarReserva(monto, allowDebt));
+      const action = await insufficientBalance(error.details, allowDebt => ejecutarReserva(monto, allowDebt), !staging);
       if (action === 'authorized') return true;
       mostrarPantalla('pantalla-datos');
       return false;
@@ -2882,8 +2892,20 @@ function init() {
   $('input-placa').addEventListener('keydown', (e) => { if (e.key === 'Enter') continuarIdentificacion(); });
 }
 
-// Arranque por HTTP; la API se publica a través del proxy.
-document.addEventListener('DOMContentLoaded', init);
+// Staging checks the operator session before enabling the terminal controls.
+document.addEventListener('DOMContentLoaded', () => {
+  if (staging) void startStaging(init);
+  else init();
+});
+if (staging) window.addEventListener('fuelflow-session-expired', () => {
+  const pending = transactionsService.current();
+  if (!state.despachoTimer && (!pending || pending.result ||
+      (!pending.authorizationRequest && !pending.payload))) return;
+  clearInterval(state.despachoTimer);
+  state.despachoTimer = null;
+  transactionsService.requireIntervention('Sesión de operador vencida', {...state});
+  marcarEstadoOperacion('INTERVENTION_REQUIRED');
+});
 
 $('prep-input-placa').addEventListener('change', async () => {
   const plate = formatearPlaca($('prep-input-placa').value);

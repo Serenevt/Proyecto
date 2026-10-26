@@ -223,6 +223,18 @@ describe('TransactionsService', () => {
     expect(authorizations.settle).toHaveBeenCalled();
   });
 
+  it('FuelFlow staging nunca crea una deuda aun si recibe una reserva incompleta', async () => {
+    const incomplete = {
+      ...reservation,
+      reservedAmount: new Prisma.Decimal('80.00'),
+    };
+    authorizations.byId.mockResolvedValueOnce(incomplete).mockResolvedValueOnce(incomplete);
+    await expect(service.create(postpago, {
+      kind: 'kiosk', operatorUserId: '11111111-1111-4111-8111-111111111111',
+    })).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
   it('POSTPAGO sin autorización previa se rechaza', async () => {
     const { authorizationId: _omit, ...withoutAuth } = postpago;
     await expect(

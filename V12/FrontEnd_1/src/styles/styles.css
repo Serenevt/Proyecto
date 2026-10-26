@@ -601,3 +601,11 @@ th { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spa
 .fuel-stock{position:fixed;right:12px;bottom:12px;max-width:290px;background:#fff;color:#182235;border:1px solid #ddd;border-radius:12px;padding:12px;z-index:10;font-size:12px;box-shadow:0 3px 12px #0002}@media(max-width:850px){.fuel-stock{position:static;max-width:none;margin:12px}}
 
 .availability{display:block;font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+/* Public staging is accessible only after an operator session is checked. */
+.staging-operator-gate[hidden], .app-shell[hidden], #staging-operator-logout[hidden] { display: none !important; }
+.staging-operator-gate:not([hidden]) { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 1.5rem; background: #092738; color: white; }
+.staging-operator-form { width: min(100%, 25rem); display: grid; gap: 1rem; padding: 2rem; border-radius: 1rem; background: #123e53; }
+.staging-operator-form label { display: grid; gap: .4rem; }
+.staging-operator-form input { width: 100%; padding: .7rem; border-radius: .3rem; }
+.staging-operator-form [role=status] { min-height: 1.5rem; }
+body[data-fuelflow-staging] [hidden] { display: none !important; }
