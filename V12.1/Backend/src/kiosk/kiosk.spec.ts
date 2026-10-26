@@ -59,7 +59,9 @@ function request(
     'x-csrf-token': csrf,
   };
   headers['x-kiosk-signature'] = createHmac('sha256', key)
-    .update(JSON.stringify([method, path, timestamp, body, token, csrf]))
+    .update(
+      JSON.stringify([method, path, timestamp, body, token, csrf, '', '']),
+    )
     .digest('hex');
   return {
     method,

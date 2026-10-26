@@ -21,9 +21,9 @@ function backend(calls, special) {
     const path = new URL(url).pathname, body = options.body ? JSON.parse(options.body) : null;
     calls.push({ path, options, body });
     const h = options.headers;
-    const expected = createHmac('sha256', env.KIOSK_GATEWAY_SECRET).update(JSON.stringify([options.method, path, h['x-kiosk-time'], body, h['x-kiosk-session'], h['x-csrf-token']])).digest('hex');
+    const expected = createHmac('sha256', env.KIOSK_GATEWAY_SECRET).update(JSON.stringify([options.method, path, h['x-kiosk-time'], body, h['x-kiosk-session'], h['x-csrf-token'], h['x-terminal-session'], h.authorization])).digest('hex');
     assert.equal(h['x-kiosk-signature'], expected);
-    assert.equal(h.cookie, undefined); assert.equal(h.authorization, undefined); assert.equal(h['x-kiosk-key'], undefined);
+    assert.equal(h.cookie, undefined); assert.equal(h['x-kiosk-key'], undefined);
     const override = special?.(path, body); if (override) return override;
     if (path === '/api/v1/kiosk/session') return Response.json({ authenticated: true, csrfToken: csrf, stationId });
     if (path.endsWith('/authorize')) return Response.json({ allowed: true, stationId });
@@ -83,4 +83,31 @@ test('route policy is identical in the independent backend and gateway packages'
     for (const path of ['health', 'fuels', 'stations', 'fuels/inventory', 'vehicles/ABC-123', 'authorizations', 'transactions', 'plate-recognition', 'online-orders', 'admin/dashboard', 'admin/check-plate', 'memberships/me', ...['authorizations', 'transactions', 'online-orders', 'payments'].flatMap(resource => ['', '/progress', '/release', '/intervention', '/demo-confirm', '/cancel', '/refund', '?extra=1'].map(suffix => resource + '/' + id + suffix))])
       assert.equal(kioskRoute(method, '/api/v1/' + path), backendPolicy(method, '/api/v1/' + path), method + ' ' + path);
   assert(kioskRoute('POST', '/api/v1/authorizations'));
+});
+test('pairs through signed supervisor request and keeps technical credential out of JSON', async () => {
+  const id = '33333333-3333-4333-8333-333333333333';
+  const secret = 'a'.repeat(64), calls = [];
+  const result = await invoke(`/api/v1/supervisor/terminals/${id}/pair`, {
+    method: 'POST', body: {}, headers: { authorization: 'Bearer supervisor.jwt.token' },
+    fetcher: backend(calls, () => Response.json({ token: secret, terminalId: id, expiresAt: '2030-01-01T00:00:00Z' })),
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.token, undefined);
+  assert.equal(calls[0].options.headers.authorization, 'Bearer supervisor.jwt.token');
+  assert(result.headers['set-cookie'][0].includes('HttpOnly'));
+  assert(result.headers['set-cookie'][0].includes(secret));
+});
+test('terminal writes require technical cookie and matching CSRF without supervisor JWT', async () => {
+  const id = '33333333-3333-4333-8333-333333333333';
+  const technical = 'b'.repeat(64), technicalCsrf = 't'.repeat(43);
+  const cookie = `__Host-primax-terminal=${technical}; __Host-primax-terminal-csrf=${technicalCsrf}`;
+  const denied = await invoke('/api/v1/terminal/operations', { method: 'POST', body: { operationId: id },
+    headers: { cookie, 'x-csrf-token': 'wrong' }, fetcher: async () => { throw Error('must not call backend'); } });
+  assert.equal(denied.statusCode, 403);
+  const calls = [];
+  const accepted = await invoke('/api/v1/terminal/operations', { method: 'POST', body: { operationId: id },
+    headers: { cookie, 'x-csrf-token': technicalCsrf }, fetcher: backend(calls) });
+  assert.equal(accepted.statusCode, 200);
+  assert.equal(calls[0].options.headers['x-terminal-session'], technical);
+  assert.equal(calls[0].options.headers.authorization, '');
 });

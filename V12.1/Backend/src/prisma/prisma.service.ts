@@ -24,6 +24,7 @@ export class PrismaService
   // Serializable + retry keeps ledger balance checks safe across simultaneous requests.
   async atomic<T>(
     work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { retryUnique?: boolean } = {},
   ): Promise<T> {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
@@ -38,7 +39,8 @@ export class PrismaService
         if (
           !(error instanceof Prisma.PrismaClientKnownRequestError) ||
           !(
-            ['P2034', 'P2002'].includes(error.code) ||
+            error.code === 'P2034' ||
+            (options.retryUnique !== false && error.code === 'P2002') ||
             (error.code === 'P2010' &&
               ['40001', '40P01'].includes(String(error.meta?.code)))
           )

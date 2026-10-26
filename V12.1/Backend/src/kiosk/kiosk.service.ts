@@ -73,6 +73,8 @@ export class KioskService {
       req.body ?? null,
       req.header('x-kiosk-session') || '',
       req.header('x-csrf-token') || '',
+      req.header('x-terminal-session') || '',
+      req.header('authorization') || '',
     ]);
     const expected = createHmac(
       'sha256',
@@ -81,6 +83,12 @@ export class KioskService {
       .update(message)
       .digest('hex');
     if (!equal(expected, signature)) throw new UnauthorizedException();
+  }
+  async limitTechnical(req: Request) {
+    const identity =
+      req.header('x-terminal-session') || req.header('authorization') || '';
+    if (!(await this.store.limit(`technical:${digest(identity)}`, 240, 60)))
+      throw new HttpException('Demasiadas operaciones', 429);
   }
   private sessionKey(token: string) {
     if (!opaque.test(token))

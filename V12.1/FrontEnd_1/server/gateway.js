@@ -1,7 +1,9 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { kioskRoute } from './policy.js';
 
 const COOKIE = '__Host-primax-kiosk';
+const TERMINAL_COOKIE = '__Host-primax-terminal';
+const TERMINAL_CSRF = '__Host-primax-terminal-csrf';
 const sessionPath = '/api/v1/kiosk/session';
 class GatewayError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -18,6 +20,21 @@ function cookieToken(value = '') {
   const token = cookies[0]?.slice(COOKIE.length + 1) || '';
   if (token && !/^[A-Za-z0-9_-]{43}$/.test(token)) fail(401, 'Sesión inválida');
   return token;
+}
+function terminalCookies(value = '') {
+  const entries = value.split(';').map(v => v.trim());
+  function one(name, pattern) {
+    const found = entries.filter(v => v.startsWith(name + '='));
+    if (found.length > 1) fail(400, 'Cookie inválida');
+    const token = found[0]?.slice(name.length + 1) || '';
+    if (token && !pattern.test(token)) fail(401, 'Sesión técnica inválida');
+    return token;
+  }
+  return { technical: one(TERMINAL_COOKIE, /^[a-f0-9]{64}$/), terminalCsrf: one(TERMINAL_CSRF, /^[A-Za-z0-9_-]{43}$/) };
+}
+function equal(a, b) {
+  const left = Buffer.from(a), right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 async function readBody(req) {
   if (req.method === 'GET') return null;
@@ -50,17 +67,18 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       // No client-controlled destination, headers, cookies or query forwarding.
       if (url.search || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
       const token = cookieToken(req.headers.cookie);
+      const { technical, terminalCsrf } = terminalCookies(req.headers.cookie);
       const csrf = req.headers['x-csrf-token'] || '';
       if (typeof csrf !== 'string' || csrf.length > 100) fail(403, 'CSRF inválido');
       const body = await readBody(req);
-      async function call(method, path, payload = null) {
+      async function call(method, path, payload = null, { terminal = '', authorization = '' } = {}) {
         const timestamp = String(Date.now());
-        const message = JSON.stringify([method, path, timestamp, payload, token, csrf]);
+        const message = JSON.stringify([method, path, timestamp, payload, token, csrf, terminal, authorization]);
         const signature = createHmac('sha256', env.KIOSK_GATEWAY_SECRET).update(message).digest('hex');
         let response;
         try {
           response = await fetcher(backend + path, { method, redirect: 'error', cache: 'no-store',
-            headers: { 'Content-Type': 'application/json', 'x-kiosk-time': timestamp, 'x-kiosk-signature': signature, 'x-kiosk-session': token, 'x-csrf-token': csrf },
+            headers: { 'Content-Type': 'application/json', 'x-kiosk-time': timestamp, 'x-kiosk-signature': signature, 'x-kiosk-session': token, 'x-csrf-token': csrf, 'x-terminal-session': terminal, authorization },
             ...(method !== 'GET' ? { body: JSON.stringify(payload) } : {}), signal: AbortSignal.timeout(18000),
           });
         } catch { fail(503, 'Servicio temporalmente no disponible'); }
@@ -91,6 +109,33 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
         }
         if (url.pathname.endsWith('/logout')) res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
         res.statusCode = status; res.end(JSON.stringify(safe)); return;
+      }
+      const uuid = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+      const pair = new RegExp(`^/api/v1/supervisor/terminals/${uuid}/(pair|rotate|revoke-session)$`);
+      if (req.method === 'POST' && pair.test(url.pathname)) {
+        if (!token || !csrf) fail(401, 'Sesión y CSRF requeridos');
+        const authorization = req.headers.authorization || '';
+        if (typeof authorization !== 'string' || !/^Bearer [A-Za-z0-9._-]+$/.test(authorization)) fail(401, 'Supervisor requerido');
+        const { value, status } = await call('POST', url.pathname, body, { authorization });
+        const revoke = url.pathname.endsWith('/revoke-session');
+        if (!revoke && (!/^[a-f0-9]{64}$/.test(value.token || '') || typeof value.terminalId !== 'string')) fail(502, 'Respuesta inválida');
+        const csrfValue = revoke ? '' : randomBytes(32).toString('base64url');
+        const maxAge = revoke ? 0 : 28800;
+        res.setHeader('Set-Cookie', [
+          `${TERMINAL_COOKIE}=${revoke ? '' : value.token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`,
+          `${TERMINAL_CSRF}=${csrfValue}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`,
+        ]);
+        res.statusCode = status; res.end(JSON.stringify(revoke ? { revoked: value.revoked } : { terminalId: value.terminalId, expiresAt: value.expiresAt, csrfToken: csrfValue })); return;
+      }
+      const terminalPath = url.pathname === '/api/v1/terminal/me' && req.method === 'GET' ||
+        url.pathname === '/api/v1/terminal/operations' && req.method === 'POST' ||
+        new RegExp(`^/api/v1/terminal/operations/${uuid}$`).test(url.pathname) && req.method === 'GET' ||
+        new RegExp(`^/api/v1/terminal/operations/${uuid}/close$`).test(url.pathname) && req.method === 'POST';
+      if (terminalPath) {
+        if (!technical) fail(401, 'Sesión técnica requerida');
+        if (req.method === 'POST' && (!terminalCsrf || !csrf || !equal(terminalCsrf, csrf))) fail(403, 'CSRF inválido');
+        const { value, status } = await call(req.method, url.pathname, body, { terminal: technical });
+        res.statusCode = status; res.end(JSON.stringify(value)); return;
       }
       if (!kioskRoute(req.method, url.pathname)) fail(403, 'Operación de terminal no permitida');
       if (!token || !csrf) fail(401, 'Inicia sesión de operador');

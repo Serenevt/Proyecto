@@ -87,7 +87,9 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
   ) {
     const timestamp = String(Date.now());
     const signature = createHmac('sha256', secret)
-      .update(JSON.stringify([method, path, timestamp, body, token, csrf]))
+      .update(
+        JSON.stringify([method, path, timestamp, body, token, csrf, '', '']),
+      )
       .digest('hex');
     const result =
       method === 'GET'

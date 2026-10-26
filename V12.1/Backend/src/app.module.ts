@@ -14,6 +14,7 @@ import { WalletModule } from './wallet/wallet.module';
 import { BenefitsModule } from './benefits/benefits.module';
 import { HealthModule } from './health/health.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { OperationsModule } from './operations/operations.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
@@ -40,6 +41,7 @@ import { AlertsModule } from './alerts/alerts.module';
     WalletModule,
     BenefitsModule,
     HealthModule,
+    OperationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

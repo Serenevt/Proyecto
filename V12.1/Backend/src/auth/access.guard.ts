@@ -8,12 +8,13 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { Request } from 'express';
 import { demoAdminEnabled } from './admin.controller';
 import { KioskService } from '../kiosk/kiosk.service';
 import { Actor } from './access';
 import { UsersService } from '../users/users.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AccessGuard implements CanActivate {
@@ -23,6 +24,7 @@ export class AccessGuard implements CanActivate {
     private readonly jwt: JwtService,
     private readonly users: UsersService,
     private readonly kiosk: KioskService,
+    private readonly db: PrismaService,
   ) {}
   async canActivate(context: ExecutionContext) {
     const access = this.reflector.getAllAndOverride<string>('access', [
@@ -30,14 +32,63 @@ export class AccessGuard implements CanActivate {
       context.getClass(),
     ]);
     const req = context.switchToHttp().getRequest<Request & { actor: Actor }>();
+    const signed = Boolean(req.header('x-kiosk-signature'));
     if (
-      req.header('x-kiosk-signature') &&
+      signed &&
+      access !== 'supervisor' &&
+      access !== 'terminal' &&
       !req.path.startsWith('/api/v1/kiosk/session')
     ) {
       req.actor = await this.kiosk.authorize(req);
       return true;
     }
+    if (access === 'terminal') {
+      if (!signed) throw new UnauthorizedException('Gateway requerido');
+      this.kiosk.verifyGateway(req);
+      await this.kiosk.limitTechnical(req);
+      const token = req.header('x-terminal-session') || '';
+      if (!/^[a-f0-9]{64}$/.test(token))
+        throw new UnauthorizedException('Credencial técnica requerida');
+      const credential = await this.db.terminalCredential.findUnique({
+        where: { tokenHash: createHash('sha256').update(token).digest('hex') },
+        include: { terminal: true },
+      });
+      if (
+        !credential ||
+        credential.revokedAt ||
+        credential.expiresAt <= new Date() ||
+        credential.terminal.lifecycle !== 'REGISTRADA' ||
+        credential.terminal.revokedAt
+      )
+        throw new UnauthorizedException(
+          'Credencial técnica revocada o vencida',
+        );
+      req.actor = {
+        kind: 'terminal',
+        terminalId: credential.terminalId,
+        stationId: credential.terminal.stationId,
+        credentialId: credential.id,
+      };
+      return true;
+    }
     if (access === 'public') return true;
+    if (signed && access !== 'supervisor')
+      throw new ForbiddenException('Ruta firmada no permitida');
+    if (
+      access === 'supervisor' &&
+      req.path?.match(/\/terminals\/[0-9a-f-]+\/(pair|rotate|revoke-session)$/i)
+    ) {
+      if (!signed) throw new UnauthorizedException('Gateway requerido');
+      this.kiosk.verifyGateway(req);
+      await this.kiosk.session(
+        req.header('x-kiosk-session') || '',
+        req.header('x-csrf-token') || '',
+        false,
+      );
+      await this.kiosk.limitTechnical(req);
+    } else if (signed) {
+      throw new ForbiddenException('Ruta firmada no permitida');
+    }
     const key = req.header('x-kiosk-key');
     if (key && (access === 'kiosk' || access === 'either')) {
       if (this.config.get('APP_MODE') === 'academic')
@@ -76,12 +127,33 @@ export class AccessGuard implements CanActivate {
         demoAdminEnabled(this.config) ? 'DEMO_ADMIN_USER' : 'ADMIN_USER',
       );
       if (
-        payload.role !== 'admin' ||
-        payload.sub !== 'admin' ||
-        !username ||
-        payload.adminUser !== username
+        payload.role === 'admin' &&
+        payload.sub === 'admin' &&
+        username &&
+        payload.adminUser === username
+      ) {
+        req.actor = { kind: 'admin', adminUser: username };
+        return true;
+      }
+      if (
+        typeof payload.sub !== 'string' ||
+        !/^[0-9a-f-]{36}$/i.test(payload.sub)
       )
-        throw new ForbiddenException('Se requiere sesión administrativa');
+        throw new ForbiddenException('Se requiere permiso administrativo');
+      const adminUser = await this.users.findById(payload.sub);
+      if (
+        !adminUser?.active ||
+        (payload.ver ?? 0) !== adminUser.authVersion ||
+        !(await this.db.userPermissionGrant.findFirst({
+          where: {
+            userId: adminUser.id,
+            permission: 'SYSTEM_ADMIN',
+            revokedAt: null,
+          },
+        }))
+      )
+        throw new ForbiddenException('Se requiere permiso administrativo');
+      req.actor = { kind: 'member', userId: adminUser.id };
       return true;
     }
     if (
@@ -96,6 +168,13 @@ export class AccessGuard implements CanActivate {
         'Sesión invalidada. Inicia sesión nuevamente.',
       );
     req.actor = { kind: 'member', userId: user.id };
+    if (
+      access === 'supervisor' &&
+      !(await this.db.supervisorStationAssignment.findFirst({
+        where: { userId: user.id, endedAt: null, station: { active: true } },
+      }))
+    )
+      throw new ForbiddenException('Se requiere asignación de supervisor');
     return true;
   }
 }
