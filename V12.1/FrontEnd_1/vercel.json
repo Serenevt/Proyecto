@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "regions": ["gru1"],
+  "functions": { "api/index.mjs": { "maxDuration": 20 } },
+  "redirects": [
+    { "source": "/", "destination": "/src/index.html", "permanent": false },
+    { "source": "/prime", "destination": "https://primax-v12-prime-staging.vercel.app", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/api/session", "destination": "/api/index?route=session" },
+    { "source": "/api/session/:path*", "destination": "/api/index?route=session/:path*" },
+    { "source": "/api/v1/:path*", "destination": "/api/index?route=v1/:path*" }
+  ],
+  "headers": [
+    { "source": "/src/(.*)", "headers": [
+      { "key": "Cache-Control", "value": "no-store" },
+      { "key": "X-Content-Type-Options", "value": "nosniff" }
+    ] }
+  ]
+}
