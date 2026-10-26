@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 const API = 'https://primax-v12-api-staging.vercel.app/api/v1';
 const COOKIE = '__Host-fuelflow-session';
+const SUPERVISOR_COOKIE = '__Host-fuelflow-supervisor';
+const TERMINAL_COOKIE = '__Host-fuelflow-terminal';
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}';
 const SLUG = '[A-Za-z0-9-]{1,40}';
 const routes = [
@@ -16,6 +18,21 @@ const routes = [
   ['POST', /^\/api\/v1\/online-orders$/, true],
   ['GET', new RegExp(`^/api/v1/online-orders/${UUID}$`), true],
   ['POST', new RegExp(`^/api/v1/online-orders/${UUID}/(?:demo-confirm|cancel)$`), true],
+];
+const supervisorRoutes = [
+  ['GET', /^\/api\/v1\/supervisor\/me\/stations$/],
+  ['GET', /^\/api\/v1\/supervisor\/shifts\/current$/],
+  ['POST', /^\/api\/v1\/supervisor\/shifts$/],
+  ['POST', new RegExp(`^/api/v1/supervisor/shifts/${UUID}/(?:suspend|resume|close)$`)],
+  ['GET', new RegExp(`^/api/v1/supervisor/stations/${UUID}/terminals$`)],
+  ['POST', new RegExp(`^/api/v1/supervisor/operations/${UUID}/resolve$`)],
+  ['POST', new RegExp(`^/api/v1/supervisor/terminals/${UUID}/(?:enable|block|restore|pair|rotate|revoke-session)$`)],
+];
+const terminalRoutes = [
+  ['GET', /^\/api\/v1\/terminal\/me$/],
+  ['POST', /^\/api\/v1\/terminal\/operations$/],
+  ['GET', new RegExp(`^/api/v1/terminal/operations/${UUID}$`)],
+  ['POST', new RegExp(`^/api/v1/terminal/operations/${UUID}/close$`)],
 ];
 
 function reply(status, data, headers = {}) {
@@ -38,11 +55,11 @@ function settings(env) {
   return { origin, operators: new Set(ids), proxyKey: env.STAGING_FUELFLOW_PROXY_KEY };
 }
 
-function cookieToken(request) {
+function cookieToken(request, name = COOKIE) {
   const matches = (request.headers.get('cookie') || '').split(';').map((part) => part.trim())
-    .filter((part) => part.startsWith(`${COOKIE}=`));
+    .filter((part) => part.startsWith(`${name}=`));
   if (matches.length !== 1) return null;
-  const token = matches[0].slice(COOKIE.length + 1);
+  const token = matches[0].slice(name.length + 1);
   return /^[A-Za-z0-9._-]+$/.test(token) && token.length < 4096 ? token : null;
 }
 
@@ -73,10 +90,11 @@ function allowedBrowserRequest(request, origin) {
   return request.method === 'GET' || request.headers.get('origin') === origin;
 }
 
-async function upstream(fetcher, path, { method = 'GET', token, proxyKey, body } = {}) {
+async function upstream(fetcher, path, { method = 'GET', token, proxyKey, technical, body } = {}) {
   const headers = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
   if (proxyKey) headers['x-fuelflow-proxy-key'] = proxyKey;
+  if (technical) headers['x-terminal-session'] = technical;
   if (body) headers['Content-Type'] = 'application/json';
   const response = await fetcher(API + path, { method, headers,
     ...(body ? { body: JSON.stringify(body) } : {}), redirect: 'error', cache: 'no-store',
@@ -85,7 +103,7 @@ async function upstream(fetcher, path, { method = 'GET', token, proxyKey, body }
   if (content.length > 1024 * 1024) throw new Error('UPSTREAM_RESPONSE_TOO_LARGE');
   let data;
   try { data = JSON.parse(content); } catch { throw new Error('UPSTREAM_INVALID_JSON'); }
-  return { status: response.status, data };
+  return { status: response.status, data, setCookie: response.headers.get('set-cookie') };
 }
 
 async function operatorSession(fetcher, token, config) {
@@ -159,6 +177,48 @@ export async function handleRequest(request, { env = process.env, fetcher = fetc
       return reply(200, { authenticated: false }, {
         'Set-Cookie': `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`,
       });
+    if (path === '/api/session/supervisor-login' && request.method === 'POST') {
+      if (!loginAllowed(request, now())) return reply(429, { message: 'Demasiados intentos' });
+      const body = await jsonBody(request);
+      if (typeof body.identifier !== 'string' || typeof body.password !== 'string' ||
+          body.identifier.length > 120 || body.password.length > 200)
+        return reply(400, { message: 'Credenciales inválidas' });
+      const login = await upstream(fetcher, '/auth/login', {method:'POST',body:{identifier:body.identifier,password:body.password}});
+      if (login.status !== 200 || typeof login.data?.accessToken !== 'string') return reply(403,{message:'Acceso denegado'});
+      const stations = await upstream(fetcher, '/supervisor/me/stations', {token:login.data.accessToken});
+      if (stations.status !== 200 || !Array.isArray(stations.data) || !stations.data.length)
+        return reply(403,{message:'Supervisor sin estación asignada'});
+      return reply(200,{authenticated:true,stations:stations.data},{'Set-Cookie':`${SUPERVISOR_COOKIE}=${login.data.accessToken}; Path=/; Max-Age=3600; HttpOnly; Secure; SameSite=Strict`});
+    }
+    if (path === '/api/session/supervisor-logout' && request.method === 'POST')
+      return reply(200,{authenticated:false},{'Set-Cookie':`${SUPERVISOR_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`});
+    if (path === '/api/session/supervisor' && request.method === 'GET') {
+      const supervisor = cookieToken(request,SUPERVISOR_COOKIE);
+      if (!supervisor) return reply(401,{authenticated:false});
+      const stations=await upstream(fetcher,'/supervisor/me/stations',{token:supervisor});
+      return stations.status===200 ? reply(200,{authenticated:true,stations:stations.data}) : reply(401,{authenticated:false});
+    }
+    const supervisorRoute = supervisorRoutes.find(([method, pattern]) => request.method === method && pattern.test(path));
+    if (supervisorRoute) {
+      const supervisor=cookieToken(request,SUPERVISOR_COOKIE);
+      if (!supervisor) return reply(401,{message:'Sesión de supervisor requerida'});
+      const body=request.method==='POST' && request.body ? await jsonBody(request) : undefined;
+      const result=await upstream(fetcher,path.slice(7),{method:request.method,token:supervisor,body});
+      if (result.status>=500)return reply(502,{message:'Backend no disponible'});
+      const cookieAction=/\/(?:pair|rotate|revoke-session)$/.test(path);
+      const setCookie=cookieAction && result.status<300 && result.setCookie?.startsWith(`${TERMINAL_COOKIE}=`)
+        ? {'Set-Cookie':result.setCookie} : {};
+      return reply(result.status,result.data,setCookie);
+    }
+    const terminalRoute=terminalRoutes.find(([method,pattern])=>request.method===method&&pattern.test(path));
+    if (terminalRoute) {
+      const technical=cookieToken(request,TERMINAL_COOKIE);
+      if (!technical || !/^[0-9a-f]{64}$/i.test(technical)) return reply(401,{message:'Sesión técnica requerida'});
+      const body=request.method==='POST' && request.body ? await jsonBody(request) : undefined;
+      const result=await upstream(fetcher,path.slice(7),{method:request.method,proxyKey:config.proxyKey,technical,body});
+      if(result.status>=500)return reply(502,{message:'Backend no disponible'});
+      return reply(result.status,result.data,result.status===401?{'Set-Cookie':`${TERMINAL_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`}:{});
+    }
     const token = cookieToken(request);
     if (!token) return reply(401, { message: 'Se requiere sesión de operador' });
     const operatorId = await operatorSession(fetcher, token, config);

@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  ConflictException,
   OnModuleInit,
   OnModuleDestroy,
   ServiceUnavailableException,
@@ -24,6 +25,7 @@ export class PrismaService
   // Serializable + retry keeps ledger balance checks safe across simultaneous requests.
   async atomic<T>(
     work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { retryUnique?: boolean } = {},
   ): Promise<T> {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
@@ -33,6 +35,14 @@ export class PrismaService
           timeout: 10000,
         });
       } catch (error) {
+        if (
+          options.retryUnique === false &&
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        )
+          throw new ConflictException(
+            'La asignación o estado activo ya existe',
+          );
         // Identity conflicts are definitive, unlike operationId races.
         if (documentConflict(error)) throw error;
         if (
