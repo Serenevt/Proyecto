@@ -95,8 +95,21 @@ test('Vercel internal rewrites retain a validated route and reject malformed tar
   });
   assert.equal(valid.status, 200);
   assert.equal(calls[1].path, '/api/v1/fuels');
+  for (const path of ['/api/index?route=v1/fuels&path=fuels',
+    '/api/index?route=v1/:path*&path=fuels']) {
+    const response = await handleRequest(request(path), { env, fetcher: api() });
+    assert.equal(response.status, 200, path);
+  }
+  const login = await handleRequest(request('/api/index?route=session/:path*&path=login', {
+    method: 'POST', withCookie: false,
+    body: { identifier: 'operator@example.test', password: 'fixture-password' },
+    headers: { 'x-forwarded-for': 'test-rewrite-login' },
+  }), { env, fetcher: api() });
+  assert.equal(login.status, 200);
   for (const path of ['/api/index?route=v1/../admin',
-    '/api/index?route=v1/fuels&next=evil', '/api/index?route=v1/plate-recognition']) {
+    '/api/index?route=v1/fuels&next=evil', '/api/index?route=v1/fuels&path=admin',
+    '/api/index?route=v1/fuels&path=fuels&path=admin',
+    '/api/index?route=v1/plate-recognition']) {
     const denied = await handleRequest(request(path), { env, fetcher: api() });
     assert.equal(denied.status, 404);
   }

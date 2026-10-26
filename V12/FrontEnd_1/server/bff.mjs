@@ -111,9 +111,23 @@ export async function handleRequest(request, { env = process.env, fetcher = fetc
   try { config = settings(env); } catch { return reply(503, { message: 'FuelFlow staging no disponible' }); }
   let url;
   try { url = new URL(request.url); } catch { return reply(400, { message: 'Solicitud inválida' }); }
-  const rewritten = url.searchParams.get('route');
+  let rewritten = url.searchParams.get('route');
+  const captured = url.searchParams.get('path');
+  // Vercel also forwards a named wildcard as `path` in the query string.
+  // Accept it only when it agrees with the route we explicitly requested.
+  if (captured !== null) {
+    const prefix = rewritten === 'session/:path*' ? 'session'
+      : rewritten === 'v1/:path*' ? 'v1' : null;
+    if (url.searchParams.size !== 2 || url.searchParams.getAll('route').length !== 1 ||
+        url.searchParams.getAll('path').length !== 1 ||
+        !/^[A-Za-z0-9/-]+$/.test(captured) ||
+        (!prefix && rewritten !== `session/${captured}` && rewritten !== `v1/${captured}`))
+      return reply(404, { message: 'Ruta no disponible' });
+    if (prefix) rewritten = `${prefix}/${captured}`;
+  }
   if (url.origin !== config.origin ||
-      (url.search && (url.searchParams.size !== 1 || rewritten === null)) ||
+      (url.search && (url.searchParams.size !== (captured === null ? 1 : 2) ||
+        url.searchParams.getAll('route').length !== 1 || rewritten === null)) ||
       (rewritten && !/^(?:session(?:\/[A-Za-z0-9-]+)?|v1\/[A-Za-z0-9/-]+)$/.test(rewritten)) ||
       /[%\\]/.test(url.pathname) || url.pathname.includes('//'))
     return reply(404, { message: 'Ruta no disponible' });
