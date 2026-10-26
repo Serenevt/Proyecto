@@ -3,7 +3,28 @@ export function validateEnvironment(env: Record<string, unknown>) {
     if (typeof env[key] !== 'string' || !env[key])
       throw new Error(`${key} is required`);
   }
-  if (env.DEMO_WALLET_ENABLED === 'true' && (env.APP_MODE !== 'local' || env.PAYMENT_ENV !== 'demo')) throw new Error('Demo wallet requires APP_MODE=local and PAYMENT_ENV=demo');
+  if (env.DEMO_WALLET_ENABLED === 'true' && (!['local', 'staging'].includes(String(env.APP_MODE)) || env.PAYMENT_ENV !== 'demo')) throw new Error('Demo wallet requires APP_MODE=local/staging and PAYMENT_ENV=demo');
+  if (env.APP_MODE === 'staging') {
+    if (env.PAYMENT_ENV !== 'demo' || env.DEMO_WALLET_ENABLED !== 'true')
+      throw new Error('Staging requires the demo payment provider');
+    if (env.CULQI_SECRET_KEY || env.PAYMENT_WEBHOOK_SECRET)
+      throw new Error('Staging cannot configure Culqi or payment webhooks');
+    if (env.SHOW_DEMO_ADMIN_CREDENTIALS === 'true')
+      throw new Error('Staging cannot expose demo admin credentials');
+    if (env.PASSWORD_RESET_DELIVERY === 'mailpit')
+      throw new Error('Staging cannot use local Mailpit');
+    if (!env.CORS_ORIGINS)
+      throw new Error('Staging requires explicit HTTPS origins');
+    const origins = String(env.CORS_ORIGINS).split(',').map((origin) => origin.trim());
+    if (origins.some((origin) => {
+      try {
+        const url = new URL(origin);
+        return url.protocol !== 'https:' || url.origin !== origin;
+      } catch {
+        return true;
+      }
+    })) throw new Error('Staging requires exact HTTPS origins');
+  }
   const database = new URL(String(env.DATABASE_URL));
   if (!['postgres:', 'postgresql:'].includes(database.protocol)) throw new Error('DATABASE_URL must be PostgreSQL');
   for (const key of ['JWT_SECRET', 'KIOSK_API_KEY']) {

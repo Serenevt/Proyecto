@@ -22,6 +22,9 @@ export class WalletService {
   async recharge(userId: string, dto: RechargeDto) {
     if (process.env.APP_MODE === 'production')
       throw new BadRequestException('La recarga simulada no est? disponible en producci?n');
+    if (process.env.APP_MODE === 'staging' &&
+        (process.env.PAYMENT_ENV !== 'demo' || process.env.DEMO_WALLET_ENABLED !== 'true'))
+      throw new BadRequestException('La recarga de staging requiere modo DEMO');
     const amount = new Prisma.Decimal(dto.amount);
     if (amount.lte(0))
       throw new BadRequestException('El monto de recarga debe ser positivo');

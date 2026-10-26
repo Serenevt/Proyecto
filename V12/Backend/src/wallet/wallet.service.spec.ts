@@ -109,3 +109,36 @@ describe('WalletService (recarga de saldo Prime)', () => {
     );
   });
 });
+
+describe('recargas DEMO por entorno', () => {
+  const keys = ['APP_MODE', 'PAYMENT_ENV', 'DEMO_WALLET_ENABLED'] as const;
+  const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  afterEach(() => {
+    for (const key of keys) {
+      const value = original[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+
+  it.each(['local', 'staging'])('allows a virtual recharge in %s/demo', async (mode) => {
+    Object.assign(process.env, { APP_MODE: mode, PAYMENT_ENV: 'demo', DEMO_WALLET_ENABLED: 'true' });
+    const { service, repo } = harness();
+    await expect(service.recharge('u1', dto)).resolves.toEqual(expect.objectContaining({ balance: '350.00' }));
+    expect(repo.movement).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects staging without its demo configuration before writing', async () => {
+    Object.assign(process.env, { APP_MODE: 'staging', PAYMENT_ENV: 'sandbox', DEMO_WALLET_ENABLED: 'false' });
+    const { service, repo } = harness();
+    await expect(service.recharge('u1', dto)).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.movement).not.toHaveBeenCalled();
+  });
+
+  it('keeps production virtual recharge blocked', async () => {
+    Object.assign(process.env, { APP_MODE: 'production', PAYMENT_ENV: 'production', DEMO_WALLET_ENABLED: 'false' });
+    const { service, repo } = harness();
+    await expect(service.recharge('u1', dto)).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.movement).not.toHaveBeenCalled();
+  });
+});

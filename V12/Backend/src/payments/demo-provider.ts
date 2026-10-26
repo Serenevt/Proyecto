@@ -2,8 +2,10 @@ import { Injectable, ServiceUnavailableException, ConflictException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentProvider, ProviderOrder } from './payment-provider';
 export function assertDemoWallet() {
- if(process.env.APP_MODE!=='local'||process.env.PAYMENT_ENV!=='demo'||process.env.DEMO_WALLET_ENABLED!=='true')
-  throw new ServiceUnavailableException('Simulación deshabilitada fuera del DEMO local');
+ if(!['local','staging'].includes(process.env.APP_MODE||'')||process.env.PAYMENT_ENV!=='demo'||process.env.DEMO_WALLET_ENABLED!=='true')
+  throw new ServiceUnavailableException(process.env.APP_MODE==='staging'
+   ? 'Staging requiere el proveedor DEMO'
+   : 'Simulación deshabilitada fuera del DEMO local');
 }
 @Injectable()
 export class DemoWalletProvider implements PaymentProvider {

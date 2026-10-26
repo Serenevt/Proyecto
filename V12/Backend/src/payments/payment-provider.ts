@@ -13,6 +13,7 @@ export interface Customer { first_name: string; last_name: string; email: string
 @Injectable()
 export class CulqiProvider implements PaymentProvider {
  assertConfigured() {
+  if (process.env.APP_MODE === 'staging') throw new ServiceUnavailableException('Culqi deshabilitado en staging');
   const key=process.env.CULQI_SECRET_KEY;
   const mode=process.env.PAYMENT_ENV || 'sandbox';
   if (!key || !key.startsWith(mode==='production'?'sk_live_':'sk_test_')) throw new ServiceUnavailableException('Configura credenciales Culqi del entorno seleccionado');

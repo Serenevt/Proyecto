@@ -30,6 +30,9 @@ export class AccessGuard implements CanActivate {
     if (access === 'public') return true;
     const req = context.switchToHttp().getRequest<Request & { actor: Actor }>();
     const key = req.header('x-kiosk-key');
+    if (this.config.get('APP_MODE') === 'staging' &&
+        (access === 'kiosk' || (access === 'either' && key)))
+      throw new ForbiddenException('Terminal deshabilitado en staging');
     if (key && (access === 'kiosk' || access === 'either')) {
       const expected = Buffer.from(
         this.config.getOrThrow<string>('KIOSK_API_KEY'),
