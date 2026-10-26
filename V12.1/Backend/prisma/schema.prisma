@@ -1,0 +1,454 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TransactionStatus {
+  PAYMENT_PENDING
+  PAID
+  REFUNDED
+}
+
+enum PurchaseMode {
+  PREPAGO
+  POSTPAGO
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TARJETA
+  YAPE
+  PLIN
+  SALDO_PRIME
+}
+
+enum PaymentStatus {
+  REJECTED
+  ERROR
+  PENDING
+  PARTIAL
+  CAPTURED
+  CANCELLED
+  REFUNDED
+}
+
+enum ReceiptType {
+  BOLETA
+  FACTURA
+}
+
+enum RewardKind {
+  EARN
+  REDEEM
+  REFUND
+}
+
+enum AuthorizationStatus {
+  RESERVED
+  SETTLED
+  RELEASED
+  DISPENSING
+  INTERVENTION_REQUIRED
+}
+
+enum AuthorizationOutcome {
+  /// El surtidor alcanzÃƒÂ³ el tope sin intervenciÃƒÂ³n del cliente.
+  AUTO
+  /// El cliente pulsÃƒÂ³ "Detener".
+  MANUAL
+  /// El cliente Detener tras consumir 0 galones: se libera todo.
+  CANCELLED
+}
+
+enum WalletMovementKind {
+  DEBT_SETTLEMENT
+  RECHARGE
+  RESERVE
+  RELEASE
+}
+
+enum RedemptionStatus {
+  ISSUED
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @db.VarChar(254)
+  name         String      @db.VarChar(80)
+  passwordHash String      @db.VarChar(100)
+  active       Boolean     @default(true)
+  authVersion  Int         @default(0)
+  passwordReset PasswordReset?
+  membership   Membership?
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+}
+
+model MembershipNumberCounter {
+  id    Int    @id
+  value BigInt @default(0)
+}
+
+model Membership {
+  welcomeReservedOperationId String? @unique @db.Uuid
+  welcomeAvailable Boolean @default(false)
+  welcomeTransactionId String? @unique @db.Uuid
+  alerts BusinessAlert[]
+  id           String           @id @default(uuid()) @db.Uuid
+  number       String           @unique @db.VarChar(30)
+  userId       String           @unique @db.Uuid
+  user         User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status       MembershipStatus @default(ACTIVE)
+  // Saldo disponible en soles. Es la ÃƒÂºnica fuente de verdad del postpago.
+  balance      Decimal          @default(0) @db.Decimal(12, 2)
+  passport String? @unique @db.VarChar(20)
+  dni String? @unique @db.VarChar(8)
+  ruc String? @unique @db.VarChar(11)
+  businessName String? @db.VarChar(160)
+  debts MembershipDebt[]
+  vehicles     Vehicle[]
+  transactions Transaction[]
+  movements    RewardMovement[]
+  redemptions  Redemption[]
+  authorizations FuelAuthorization[]
+  walletMovements WalletMovement[]
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+}
+
+model Vehicle {
+  id           String        @id @default(uuid()) @db.Uuid
+  plate        String        @unique @db.VarChar(7)
+  label        String        @db.VarChar(80)
+  membershipId String?       @db.Uuid
+  membership   Membership?   @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  authorizations FuelAuthorization[]
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId])
+}
+
+model Station {
+  inventory FuelInventory[]
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique @db.VarChar(30)
+  name         String        @db.VarChar(100)
+  address      String        @db.VarChar(200)
+  active       Boolean       @default(true)
+  transactions Transaction[]
+  authorizations FuelAuthorization[]
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model Fuel {
+  inventory FuelInventory[]
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @unique @db.VarChar(30)
+  name           String        @db.VarChar(80)
+  pricePerGallon Decimal       @db.Decimal(10, 2)
+  active         Boolean       @default(true)
+  transactions   Transaction[]
+  authorizations FuelAuthorization[]
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model Transaction {
+  originalAmount Decimal? @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  alerts BusinessAlert[]
+  id             String            @id @default(uuid()) @db.Uuid
+  operationId    String            @unique @db.Uuid
+  requestHash    String            @db.Char(64)
+  plate          String            @db.VarChar(7)
+  vehicleId      String?           @db.Uuid
+  vehicle        Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  // CÃƒÂ³digo de membresÃƒÂ­a capturado en el terminal. Se valida contra la placa
+  // antes de autorizar; queda como evidencia auditable de la operaciÃƒÂ³n.
+  membershipCode String?           @db.VarChar(30)
+  membershipId   String?           @db.Uuid
+  membership     Membership?       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  stationId      String            @db.Uuid
+  station        Station           @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuelId         String            @db.Uuid
+  fuel           Fuel              @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  amount         Decimal           @db.Decimal(12, 2)
+  currency       String            @default("PEN") @db.Char(3)
+  unitPrice      Decimal           @db.Decimal(10, 2)
+  gallons        Decimal?          @db.Decimal(12, 3)
+  solesPerPoint  Decimal?          @db.Decimal(10, 4)
+  pointsRate     Decimal           @db.Decimal(10, 4)
+  pointsEarned   Int
+  mode           PurchaseMode
+  receiptType    ReceiptType       @default(BOLETA)
+  status         TransactionStatus @default(PAID)
+  receiptDni String? @db.VarChar(8)
+  receiptRuc String? @db.VarChar(11)
+  receiptBusinessName String? @db.VarChar(160)
+  debt MembershipDebt?
+  payment        Payment?
+  rewardMovement RewardMovement?
+  // Liga cada nueva compra con su autorizaciÃƒÂ³n y avance validado.
+  authorizationId String?          @unique @db.Uuid
+  authorization   FuelAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+  @@index([vehicleId, createdAt])
+  @@index([stationId, createdAt])
+  @@index([fuelId])
+}
+
+/// AutorizaciÃƒÂ³n previa al abastecimiento; prepago exige Payment persistido.
+/// El saldo se descuenta al crear (RESERVE) y se libera la diferencia al liquidar (RELEASE).
+model FuelAuthorization {
+  id               String             @id @default(uuid()) @db.Uuid
+  operationId      String             @unique @db.Uuid
+  requestHash      String             @db.Char(64)
+  membershipId     String?            @db.Uuid
+  membership       Membership?        @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  plate            String             @db.VarChar(7)
+  vehicleId        String?            @db.Uuid
+  vehicle          Vehicle?           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  stationId        String             @db.Uuid
+  station          Station            @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuelId           String             @db.Uuid
+  fuel             Fuel               @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  unitPrice        Decimal?           @db.Decimal(10, 2)
+  paymentId        String?            @unique @db.Uuid
+  payment          Payment?           @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  interventionReason String?          @db.VarChar(200)
+  authorizedAmount Decimal            @db.Decimal(12, 2)
+  reservedAmount   Decimal            @db.Decimal(12, 2)
+  consumedAmount   Decimal?           @db.Decimal(12, 2)
+  releasedAmount   Decimal            @default(0) @db.Decimal(12, 2)
+  balanceAfter     Decimal            @db.Decimal(12, 2)
+  // Avance validado: fuente autoritativa para el cierre de la operaciÃƒÂ³n.
+  dispensedAmount  Decimal            @default(0) @db.Decimal(12, 2)
+  dispensedGallons Decimal            @default(0) @db.Decimal(12, 3)
+  mode             PurchaseMode       @default(POSTPAGO)
+  status           AuthorizationStatus @default(RESERVED)
+  outcome          AuthorizationOutcome?
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
+  transaction      Transaction?
+  movements        WalletMovement[]
+
+  @@index([membershipId, createdAt])
+  @@index([status, createdAt])
+  @@index([vehicleId, createdAt])
+}
+
+/// Libro mayor append-only del saldo de la membresÃƒÂ­a.
+model WalletMovement {
+  id               String             @id @default(uuid()) @db.Uuid
+  membershipId     String?            @db.Uuid
+  membership       Membership?        @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  debtId String? @db.Uuid
+  debt MembershipDebt? @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  kind             WalletMovementKind
+  amount           Decimal            @db.Decimal(12, 2)
+  balanceAfter     Decimal            @db.Decimal(12, 2)
+  operationId      String?            @db.VarChar(100)
+  authorizationId  String?            @db.Uuid
+  authorization    FuelAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  transactionId    String?            @db.Uuid
+  note             String?            @db.VarChar(200)
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@unique([operationId, kind])
+  @@index([membershipId, createdAt])
+  @@index([authorizationId])
+}
+
+model Payment {
+  rewardRefund RewardMovement?
+  originalAmount Decimal? @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  refundedAmount Decimal @default(0) @db.Decimal(12, 2)
+  id            String        @id @default(uuid()) @db.Uuid
+  operationId   String?       @unique @db.Uuid
+  requestHash   String?       @db.Char(64)
+  unitPrice     Decimal?      @db.Decimal(10, 2)
+  authorization FuelAuthorization?
+  transactionId String?       @unique @db.Uuid
+  transaction   Transaction?  @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(CAPTURED)
+  provider      String        @default("DEMO") @db.VarChar(30)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model RewardMovement {
+  refundPaymentId String? @unique @db.Uuid
+  refundPayment Payment? @relation(fields: [refundPaymentId], references: [id], onDelete: Restrict)
+  id            String       @id @default(uuid()) @db.Uuid
+  membershipId  String       @db.Uuid
+  membership    Membership   @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  kind          RewardKind
+  points        Int
+  transactionId String?      @unique @db.Uuid
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  redemptionId  String?      @unique @db.Uuid
+  redemption    Redemption?  @relation(fields: [redemptionId], references: [id], onDelete: Restrict)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+}
+
+model Benefit {
+  id          String       @id @default(uuid()) @db.Uuid
+  code        String       @unique @db.VarChar(30)
+  title       String       @db.VarChar(120)
+  description String       @db.VarChar(500)
+  category    String       @db.VarChar(80)
+  pointsCost  Int
+  active      Boolean      @default(true)
+  redemptions Redemption[]
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+}
+
+model Redemption {
+  id             String           @id @default(uuid()) @db.Uuid
+  operationId    String           @unique @db.Uuid
+  membershipId   String           @db.Uuid
+  membership     Membership       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  benefitId      String           @db.Uuid
+  benefit        Benefit          @relation(fields: [benefitId], references: [id], onDelete: Restrict)
+  pointsSpent    Int
+  status         RedemptionStatus @default(ISSUED)
+  rewardMovement RewardMovement?
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+  @@index([benefitId])
+}
+
+
+enum DebtStatus {
+  PENDING
+  PARTIAL
+  SETTLED
+}
+
+model MembershipDebt {
+  alerts BusinessAlert[]
+  id String @id @default(uuid()) @db.Uuid
+  membershipId String @db.Uuid
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactionId String @unique @db.Uuid
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  amountOriginal Decimal @db.Decimal(12, 2)
+  amountPaid Decimal @default(0) @db.Decimal(12, 2)
+  amountPending Decimal @db.Decimal(12, 2)
+  status DebtStatus @default(PENDING)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  settledAt DateTime? @db.Timestamptz(3)
+  movements WalletMovement[]
+  @@index([membershipId, createdAt, id])
+}
+
+model PasswordReset {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String @db.Char(64)
+  tokenHash String? @unique @db.Char(64)
+  attempts Int @default(0)
+  expiresAt DateTime @db.Timestamptz(3)
+  verifiedAt DateTime? @db.Timestamptz(3)
+  usedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+enum AlertType {
+  PLATE_MISMATCH
+  PENDING_BALANCE
+}
+enum AlertStatus {
+  OPEN
+  RESOLVED
+}
+model BusinessAlert {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(200)
+  type AlertType
+  status AlertStatus @default(OPEN)
+  plate String @db.VarChar(7)
+  expectedPlates String[]
+  userName String @db.VarChar(80)
+  description String @db.VarChar(500)
+  operationId String @db.Uuid
+  membershipId String @db.Uuid
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactionId String? @db.Uuid
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  debtId String? @db.Uuid
+  debt MembershipDebt? @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  amountPending Decimal? @db.Decimal(12, 2)
+  occurredAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  resolvedBy String? @db.VarChar(80)
+  @@index([status, occurredAt])
+  @@index([membershipId])
+  @@index([transactionId])
+  @@index([debtId])
+}
+
+model FuelInventory {
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuel Fuel @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  liters Decimal @default(0) @db.Decimal(14, 6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@id([stationId, fuelId])
+}
+
+model OnlineOrder {
+  id String @id @default(uuid()) @db.Uuid
+  operationId String @unique @db.Uuid
+  requestHash String @db.Char(64)
+  userId String? @db.Uuid
+  transactionId String? @db.Uuid
+  paymentId String? @unique @db.Uuid
+  method PaymentMethod
+  amount Decimal @db.Decimal(12,2)
+  providerId String? @unique @db.VarChar(80)
+  qr String?
+  status String @default("CREATING") @db.VarChar(24)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// Append-only financial transition evidence. Event keys are globally idempotent.
+model PaymentEvent {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(160)
+  orderId String? @db.Uuid
+  paymentId String? @db.Uuid
+  kind String @db.VarChar(32)
+  detail String @db.VarChar(300)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([paymentId, createdAt])
+}

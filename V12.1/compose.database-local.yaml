@@ -1,0 +1,5 @@
+# Optional DBeaver access, loopback only. Never use a public binding.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_LOCAL_PORT:-26543}:5432"

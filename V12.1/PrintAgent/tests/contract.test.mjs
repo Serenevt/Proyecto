@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {validateReceipt,publicJob} from '../contract.mjs';
+import {validateConfig,verifyProbe} from '../config.mjs';
+import {thermalReceipt} from '../../FrontEnd_1/src/js/thermalReceipt.js';
+const r=thermalReceipt({id:'test-1',createdAt:'2026-10-24T17:00:00Z',station:{name:'Primax Sur'},plate:'ABC-123',fuel:{name:'Premium'},gallons:'1',unitPrice:'20',amount:'20',receiptType:'BOLETA',receiptDni:'70123456',mode:'PREPAGO',status:'PAID',payment:{method:'YAPE',status:'CAPTURED'}});
+test('valid full v2 contract uses canonical property order',()=>{assert.deepEqual(validateReceipt(r),r);assert.deepEqual(validateReceipt(Object.fromEntries(Object.entries(r).reverse())),validateReceipt(r))});
+for(const delta of [{text:'arbitrary'},{printerName:'EPSON'},{copies:2},{demo:false},{dni:'123'},{ruc:'20123456789'},{total:'NaN'},{pending:'1.00',state:'Pagado'},{station:'x\nPrint()'},{documentType:'OTRO'},{schemaVersion:1}])test('rejects arbitrary or incompatible print data '+JSON.stringify(delta),()=>assert.throws(()=>validateReceipt({...r,...delta})));
+test('legacy text-only requests rejected without guessing boleta/factura',()=>assert.throws(()=>validateReceipt({id:r.id,text:'DEMO'})));
+test('status does not disclose receipt, hash or personal data',()=>{const j=publicJob({id:'receipt-test-1',status:'accepted',receipt:r,hash:'secret',physicalConfirmed:true});assert.equal(j.receipt,undefined);assert.equal(j.hash,undefined);assert.equal(j.physicalConfirmed,false)});
+const cfg={schemaVersion:2,transport:'http-loopback',agentHost:'127.0.0.1',agentPort:25443,dpi:203,origins:['http://localhost:26081'],printerName:'PeriPage A6(1)',driverName:'PeriPage A6',portName:'USB001',paperWidthHundredths:224,paperHeightHundredths:394,widthConfirmed:true,formatConfirmed:true,printableWidthMm:51.926,printableHeightMm:100.10,printableLeftMm:5,printableTopMm:0};
+const probe={printerName:cfg.printerName,driverName:cfg.driverName,port:cfg.portName,status:'Normal',dpiX:203,dpiY:203,paperWidthMm:56.896,paperHeightMm:100.076,printableWidthMm:51.926,printableHeightMm:100.10,printableLeftMm:5,printableTopMm:0,defaultPrintableWidthMm:48.05};
+test('checks final 100 mm geometry rather than default 48.05 mm width',()=>{validateConfig(cfg);verifyProbe(cfg,probe);assert.throws(()=>verifyProbe({...cfg,printableWidthMm:48.05},probe),/Área/)});
+for(const delta of [{portName:'USB002'},{driverName:'EPSON'},{paperHeightHundredths:827},{formatConfirmed:false},{origins:['*']},{printableLeftMm:20}])test('configuration rejects unsafe change '+JSON.stringify(delta),()=>{assert.throws(()=>{const c=validateConfig({...cfg,...delta});verifyProbe(c,probe)})});

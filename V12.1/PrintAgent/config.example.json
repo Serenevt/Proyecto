@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "transport": "http-loopback",
+  "agentHost": "127.0.0.1",
+  "agentPort": 25443,
+  "dpi": 203,
+  "contentWidthMm": 48,
+  "origins": ["http://localhost:26081", "http://127.0.0.1:26081"],
+  "printerName": "PeriPage A6(1)",
+  "driverName": "PeriPage A6",
+  "portName": "USB001",
+  "paperWidthHundredths": 224,
+  "paperHeightHundredths": 394,
+  "printableWidthMm": null,
+  "printableHeightMm": null,
+  "printableLeftMm": null,
+  "printableTopMm": null,
+  "widthConfirmed": false,
+  "formatConfirmed": false,
+  "dataDirectory": "data-v11_1_1"
+}
