@@ -43,9 +43,11 @@ describe('Registration and vehicles: real PostgreSQL', () => {
     setupApp(app);
     await app.init();
   }, 90000);
-  beforeEach(() =>
-    app.get<ThrottlerStorageService>(ThrottlerStorage).storage.clear(),
-  );
+  beforeEach(() => {
+    const throttle = app.get<ThrottlerStorageService>(ThrottlerStorage);
+    throttle.onApplicationShutdown();
+    throttle.storage.clear();
+  });
   afterAll(async () => {
     await app?.close();
     await db?.$disconnect();

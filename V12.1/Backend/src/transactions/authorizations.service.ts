@@ -4,6 +4,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PaymentsService } from '../payments/payments.service';
 import { creditCapacity, funding } from '../wallet/debt';
@@ -21,6 +22,13 @@ import { CreateAuthorizationDto } from './create-authorization.dto';
 import { DispenseProgressDto } from './dispense-progress.dto';
 import { terminalOperationFor, terminalSnapshot } from './operational-context';
 import { assertAuthorizationContext } from './operational-context';
+import {
+  activateInventoryReservation,
+  releaseInventoryReservation,
+  reserveInventory,
+  reviewInventoryReservation,
+} from '../inventory/inventory-reservations';
+import { TransactionsService } from './transactions.service';
 
 /** Antigüedad máxima de una reserva sin liquidar antes de considerarla abandonada. */
 const RESERVATION_TTL_MINUTES = 30;
@@ -38,6 +46,13 @@ export function authorizationResponse(value: {
   releasedAmount: Prisma.Decimal;
   dispensedAmount?: Prisma.Decimal | null;
   dispensedGallons?: Prisma.Decimal | null;
+  inventoryReservation?: {
+    status: string;
+    initialLiters: Prisma.Decimal;
+    remainingLiters: Prisma.Decimal;
+    consumedLiters: Prisma.Decimal;
+    releasedLiters: Prisma.Decimal;
+  } | null;
   createdAt: Date;
 }) {
   const zero = new Prisma.Decimal(0);
@@ -58,6 +73,15 @@ export function authorizationResponse(value: {
     dispensedGallons: (value.dispensedGallons ?? zero).toFixed(3),
     consumedAmount: value.consumedAmount?.toFixed(2) ?? null,
     releasedAmount: value.releasedAmount.toFixed(2),
+    inventoryReservation: value.inventoryReservation
+      ? {
+          status: value.inventoryReservation.status,
+          initialLiters: value.inventoryReservation.initialLiters.toFixed(6),
+          remainingLiters: value.inventoryReservation.remainingLiters.toFixed(6),
+          consumedLiters: value.inventoryReservation.consumedLiters.toFixed(6),
+          releasedLiters: value.inventoryReservation.releasedLiters.toFixed(6),
+        }
+      : null,
     expiresAt: new Date(
       value.createdAt.getTime() + RESERVATION_TTL_MINUTES * 60_000,
     ),
@@ -67,10 +91,23 @@ export function authorizationResponse(value: {
 
 @Injectable()
 export class AuthorizationsService {
+  private readonly prepaidInFlight = new Map<
+    string,
+    {
+      fingerprint: string;
+      promise: Promise<{
+        authorization: ReturnType<typeof authorizationResponse>;
+        replayed?: boolean;
+        membershipNumber?: string;
+      }>;
+    }
+  >();
+
   constructor(
     private readonly repo: AuthorizationsRepository,
     private readonly wallet: WalletRepository,
     private readonly payments: PaymentsService,
+    @Optional() private readonly transactions?: TransactionsService,
   ) {}
 
   /**
@@ -85,7 +122,23 @@ export class AuthorizationsService {
    * dos veces el mismo saldo desde dos surtidores simultáneos.
    */
   create(dto: CreateAuthorizationDto) {
-    if (dto.mode === 'PREPAGO') return this.createPrepaid(dto);
+    if (dto.mode === 'PREPAGO') {
+      const fingerprint = JSON.stringify(dto);
+      const running = this.prepaidInFlight.get(dto.operationId);
+      if (running) {
+        if (running.fingerprint !== fingerprint)
+          return Promise.reject(
+            new ConflictException('operationId ya usado con otros datos'),
+          );
+        return running.promise;
+      }
+      const pending = this.createPrepaidV12_1(dto).finally(() => {
+        if (this.prepaidInFlight.get(dto.operationId)?.promise === pending)
+          this.prepaidInFlight.delete(dto.operationId);
+      });
+      this.prepaidInFlight.set(dto.operationId, { fingerprint, promise: pending });
+      return pending;
+    }
     const plate = normalizePlate(dto.plate) as string;
     const code = (dto.membershipCode ?? '').trim().toUpperCase();
     const amount = new Prisma.Decimal(dto.amount);
@@ -172,13 +225,8 @@ export class AuthorizationsService {
           stationId_fuelId: { stationId: dto.stationId, fuelId: dto.fuelId },
         },
       });
-      if (
-        !stock ||
-        stock.liters.lt(
-          amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784'),
-        )
-      )
-        throw new BadRequestException('Stock de combustible insuficiente');
+      if (!stock)
+        throw new BadRequestException('Inventario de combustible no disponible');
       // Bloqueo de fila: serializa reservas concurrentes sobre la misma cuenta.
       await this.wallet.lockMembership(membership.id, tx);
       const fresh = await tx.membership.findUnique({
@@ -204,6 +252,19 @@ export class AuthorizationsService {
             canRegisterDebt: split.pending.lte(capacity.remaining),
           });
       }
+      const maxGallons = amount.div(fuel.pricePerGallon).toDecimalPlaces(3);
+      if (maxGallons.lte(0))
+        throw new BadRequestException('El monto no cubre el mínimo de volumen');
+      const inventoryReservation = await reserveInventory(tx, {
+        operationId: dto.operationId,
+        stationId: dto.stationId,
+        fuelId: dto.fuelId,
+        terminalOperationId: terminalOperation?.id ?? null,
+        source: terminalOperation ? 'TERMINAL' : 'LEGACY',
+        maxGallons,
+        requestHash,
+        status: 'ACTIVE',
+      });
       const balanceAfter = split.balanceAfter;
       await this.wallet.setBalance(membership.id, balanceAfter, tx);
       const authorization = await this.repo.create(
@@ -222,10 +283,15 @@ export class AuthorizationsService {
           balanceAfter,
           mode: 'POSTPAGO',
           status: AuthorizationStatus.RESERVED,
+          inventoryManaged: true,
           ...(terminalOperation ? terminalSnapshot(terminalOperation) : {}),
         },
         tx,
       );
+      await tx.inventoryReservation.update({
+        where: { id: inventoryReservation.id },
+        data: { authorizationId: authorization.id },
+      });
       if (split.cash.gt(0))
         await this.wallet.movement(
           {
@@ -239,8 +305,9 @@ export class AuthorizationsService {
           },
           tx,
         );
+      const linkedAuthorization = await this.repo.byId(authorization.id, tx);
       return {
-        authorization: authorizationResponse(authorization),
+        authorization: authorizationResponse(linkedAuthorization ?? authorization),
         replayed: false,
         membershipNumber: membership.number,
       };
@@ -288,6 +355,43 @@ export class AuthorizationsService {
         throw new BadRequestException(
           'El consumo supera el importe reservado; autoriza de nuevo antes de abastecer',
         );
+      if (authorization.inventoryManaged) {
+        const reservation = await tx.inventoryReservation.findUnique({
+          where: { authorizationId: authorization.id },
+        });
+        if (
+          !reservation ||
+          reservation.status !== 'ACTIVE' ||
+          reservation.operationId !== authorization.operationId ||
+          reservation.requestHash.trim() !== authorization.requestHash ||
+          reservation.stationId !== authorization.stationId ||
+          reservation.fuelId !== authorization.fuelId
+        )
+          throw new ConflictException(
+            'No existe una reserva de inventario activa para despacho',
+          );
+      }
+      if (authorization.terminalOperationId) {
+        const operation = await terminalOperationFor(
+          tx,
+          authorization.operationId,
+          authorization.stationId,
+        );
+        assertAuthorizationContext(
+          authorization,
+          authorization.operationId,
+          authorization.stationId,
+          authorization.fuelId,
+          operation,
+        );
+      }
+      // A retry after a lost response returns persisted progress without firing
+      // a redundant UPDATE. The SQL trigger remains the only physical debit.
+      if (
+        amount.eq(authorization.dispensedAmount) &&
+        gallons.eq(authorization.dispensedGallons)
+      )
+        return authorizationResponse(authorization);
       // El avance nunca retrocede: respeta el orden real de la manguera.
       if (
         amount.lt(authorization.dispensedAmount) ||
@@ -400,11 +504,55 @@ export class AuthorizationsService {
    * Libera una reserva vigente sin consumo. Se usa cuando el cliente abandona
    * antes de abastecer, o cuando Detener ocurre con 0 galones.
    */
-  release(id: string) {
+  async release(id: string) {
+    const snapshot = await this.repo.byId(id, this.repo.client());
+    if (!snapshot) throw new NotFoundException('Autorización no encontrada');
+    if (
+      snapshot.status === 'RELEASED' ||
+      (snapshot.status === 'SETTLED' && snapshot.outcome === 'CANCELLED')
+    )
+      return authorizationResponse(snapshot);
+    if (snapshot.dispensedAmount?.gt(0)) {
+      if (!this.transactions)
+        throw new ConflictException('El despacho parcial requiere cierre financiero');
+      const prepaidPayment =
+        snapshot.mode === 'PREPAGO' && snapshot.paymentId
+          ? await this.repo.client().payment.findUnique({
+              where: { id: snapshot.paymentId },
+            })
+          : null;
+      if (snapshot.mode === 'PREPAGO' && !prepaidPayment)
+        throw new ConflictException('Pago prepago no disponible para cierre');
+      // The transaction service owns financial settlement and closes the
+      // reservation in the same transaction as Transaction creation.
+      return this.transactions.create({
+        operationId: snapshot.operationId,
+        plate: snapshot.plate,
+        amount: snapshot.dispensedAmount.toFixed(2),
+        gallons: snapshot.dispensedGallons.toFixed(3),
+        stationId: snapshot.stationId,
+        fuelId: snapshot.fuelId,
+        mode: snapshot.mode,
+        paymentMethod:
+          snapshot.mode === 'POSTPAGO'
+            ? 'SALDO_PRIME'
+            : prepaidPayment!.method,
+        authorizationId: snapshot.id,
+        receiptType: 'BOLETA',
+        outcome: 'MANUAL',
+      });
+    }
     return this.repo.atomic(async (tx) => {
       const authorization = await this.repo.byId(id, tx);
       if (!authorization)
         throw new NotFoundException('Autorización no encontrada');
+      if (authorization.status === 'RELEASED')
+        return authorizationResponse(authorization);
+      if (
+        authorization.status === 'SETTLED' &&
+        authorization.outcome === 'CANCELLED'
+      )
+        return authorizationResponse(authorization);
       if (
         authorization.status !== AuthorizationStatus.RESERVED &&
         authorization.status !== AuthorizationStatus.DISPENSING
@@ -438,6 +586,19 @@ export class AuthorizationsService {
             detail: 'Cancelacion sin consumo; devolucion simulada, no bancaria',
           },
         });
+        if (authorization.inventoryManaged) {
+          const reservation = await tx.inventoryReservation.findUnique({
+            where: { authorizationId: id },
+          });
+          if (!reservation)
+            throw new ConflictException('Reserva de inventario no encontrada');
+          await releaseInventoryReservation(
+            tx,
+            reservation,
+            `cancel:${authorization.operationId}`,
+            'Confirmed prepaid cancellation before dispense',
+          );
+        }
         await tx.membership.updateMany({
           where: { welcomeReservedOperationId: authorization.operationId },
           data: { welcomeReservedOperationId: null },
@@ -465,9 +626,20 @@ export class AuthorizationsService {
       if (!fresh) throw new NotFoundException('Membresía no encontrada');
 
       if (authorization.dispensedAmount?.gt(0))
-        throw new BadRequestException(
-          'Confirma el consumo antes de cerrar la reserva',
+        throw new ConflictException('El avance cambió; reintenta para liquidar el consumo');
+      if (authorization.inventoryManaged) {
+        const reservation = await tx.inventoryReservation.findUnique({
+          where: { authorizationId: id },
+        });
+        if (!reservation)
+          throw new ConflictException('Reserva de inventario no encontrada');
+        await releaseInventoryReservation(
+          tx,
+          reservation,
+          `cancel:${authorization.operationId}`,
+          'Cancellation before dispense',
         );
+      }
       const balanceAfter = fresh.balance.plus(authorization.reservedAmount);
       await this.wallet.setBalance(
         authorization.membershipId,
@@ -507,141 +679,203 @@ export class AuthorizationsService {
       );
   }
 
-  /** DEMO: el pago se confirma en una transacción ANTERIOR a la autorización. */
-  private async createPrepaid(dto: CreateAuthorizationDto) {
+  /** Reserve stock before simulated/external payment; never hold a DB transaction across payment. */
+  private async createPrepaidV12_1(dto: CreateAuthorizationDto): Promise<{
+    authorization: ReturnType<typeof authorizationResponse>;
+    replayed?: boolean;
+    membershipNumber?: string;
+  }> {
     const plate = normalizePlate(dto.plate) as string;
     const amount = new Prisma.Decimal(dto.amount);
+    const method = dto.paymentMethod;
     if (amount.lte(0) || amount.gt('999999.99'))
       throw new BadRequestException('Monto inválido');
-    const method = dto.paymentMethod;
-    if (!method) throw new BadRequestException('Indica el medio de pago');
+    if (!method || method === 'SALDO_PRIME')
+      throw new BadRequestException('El prepago requiere un medio externo');
     const requestHash = createHash('sha256')
-      .update(
-        JSON.stringify({
-          ...dto,
-          plate: normalizePlate(dto.plate),
-          amount: amount.toFixed(2),
-        }),
-      )
+      .update(JSON.stringify({ ...dto, plate, amount: amount.toFixed(2) }))
       .digest('hex');
-    // Una respuesta perdida reutiliza este pago; no vuelve a cobrar.
-    const paid = await this.repo.atomic(async (tx) => {
-      const existing = await tx.payment.findUnique({
-        where: { operationId: dto.operationId },
-      });
-      if (existing) {
-        if (existing.requestHash !== requestHash)
+
+    const intent = await this.repo.atomic(async (tx) => {
+      const existingAuth = await this.repo.byOperation(dto.operationId, tx);
+      if (existingAuth) {
+        if (existingAuth.requestHash !== requestHash)
           throw new ConflictException('operationId ya usado con otros datos');
-        return existing;
+        return { existingAuth, payment: null };
       }
-      await terminalOperationFor(tx, dto.operationId, dto.stationId);
-      const fuel = await tx.fuel.findUnique({ where: { id: dto.fuelId } });
-      if (!fuel?.active)
-        throw new NotFoundException('Combustible no disponible');
+      const operation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+      );
+      const [station, fuel] = await Promise.all([
+        tx.station.findUnique({ where: { id: dto.stationId } }),
+        tx.fuel.findUnique({ where: { id: dto.fuelId } }),
+      ]);
+      if (!station?.active || !fuel?.active)
+        throw new NotFoundException('Estación o combustible no disponible');
       this.checkPrice(dto.unitPrice, fuel.pricePerGallon);
-      const stock = await tx.fuelInventory.findUnique({
-        where: {
-          stationId_fuelId: { stationId: dto.stationId, fuelId: dto.fuelId },
-        },
-      });
-      if (
-        !stock ||
-        stock.liters.lt(
-          amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784'),
-        )
-      )
-        throw new BadRequestException('Stock de combustible insuficiente');
-      const station = await tx.station.findUnique({
-        where: { id: dto.stationId },
-      });
-      if (!station?.active)
-        throw new NotFoundException('Estaci?n no disponible');
-      const pricing = await reserveWelcome(tx, dto);
-      const result = await this.payments.authorize(
-        pricing.amount,
-        method,
-        'PREPAGO',
-      );
-      return tx.payment.create({
-        data: {
-          ...result,
-          ...pricing,
-          operationId: dto.operationId,
-          requestHash,
-          unitPrice: fuel.pricePerGallon,
-        },
-      });
-    });
-    return this.repo.atomic(async (tx) => {
-      let terminalOperation = await terminalOperationFor(
-        tx,
-        dto.operationId,
-        dto.stationId,
-        false,
-      );
-      const payment = await tx.payment.findUnique({ where: { id: paid.id } });
-      if (
-        !payment ||
-        payment.status !== 'CAPTURED' ||
-        !(payment.originalAmount ?? payment.amount).eq(amount) ||
-        !payment.unitPrice
-      )
-        throw new ConflictException(
-          'Pago no aprobado; no se autoriza abastecimiento. Requiere intervención',
-        );
-      if (['YAPE', 'PLIN'].includes(payment.method)) {
-        const order = await tx.onlineOrder.findUnique({
-          where: { paymentId: payment.id },
-        });
-        if (!order || order.status !== 'CAPTURED')
-          throw new ConflictException('Orden no disponible para despacho');
-      }
-      const existing = await this.repo.byOperation(dto.operationId, tx);
-      if (existing) {
-        if (
-          existing.requestHash !== requestHash ||
-          existing.mode !== 'PREPAGO' ||
-          existing.paymentId !== payment.id
-        )
-          throw new ConflictException(
-            'operationId ya usado con otra autorización',
-          );
-        assertAuthorizationContext(
-          existing,
-          dto.operationId,
-          dto.stationId,
-          dto.fuelId,
-          terminalOperation,
-        );
-        return {
-          authorization: authorizationResponse(existing),
-          replayed: true,
-        };
-      }
-      terminalOperation = await terminalOperationFor(
-        tx,
-        dto.operationId,
-        dto.stationId,
-      );
       const vehicle = await tx.vehicle.findUnique({
-        where: { plate: normalizePlate(dto.plate) as string },
+        where: { plate },
         include: { membership: true },
       });
-      if (
-        dto.membershipCode &&
-        vehicle?.membership?.number !== dto.membershipCode
-      )
-        throw new BadRequestException(
-          'El código de membresía no corresponde al vehículo',
-        );
-      const station = await tx.station.findUnique({
-        where: { id: dto.stationId },
+      if (dto.membershipCode && vehicle?.membership?.number !== dto.membershipCode)
+        throw new BadRequestException('El código de membresía no corresponde al vehículo');
+
+      let payment = await tx.payment.findUnique({
+        where: { operationId: dto.operationId },
       });
-      const fuel = await tx.fuel.findUnique({ where: { id: dto.fuelId } });
-      if (!station?.active || !fuel?.active)
-        throw new ConflictException(
-          'Estación o combustible no disponible; requiere intervención',
+      let authorizeDemo = false;
+      if (payment) {
+        if (
+          payment.requestHash !== requestHash || payment.method !== method ||
+          !(payment.originalAmount ?? payment.amount).eq(amount) ||
+          !payment.unitPrice?.eq(fuel.pricePerGallon)
+        )
+          throw new ConflictException('operationId ya usado con otros datos');
+      } else {
+        if (method === 'YAPE' || method === 'PLIN')
+          throw new ConflictException('Crea primero la orden de pago');
+        const pricing = await reserveWelcome(tx, dto);
+        payment = await tx.payment.create({
+          data: {
+            ...pricing,
+            operationId: dto.operationId,
+            requestHash,
+            method,
+            status: 'PENDING',
+            provider: 'DEMO',
+            unitPrice: fuel.pricePerGallon,
+          },
+        });
+        authorizeDemo = true;
+      }
+      if (payment.status === 'REJECTED' || payment.status === 'CANCELLED') {
+        const reservation = await tx.inventoryReservation.findUnique({
+          where: { operationId: dto.operationId },
+        });
+        return { existingAuth: null, payment, reservation, authorizeDemo };
+      }
+      const maxGallons = (payment.originalAmount ?? payment.amount)
+        .div(fuel.pricePerGallon)
+        .toDecimalPlaces(3);
+      if (maxGallons.lte(0))
+        throw new BadRequestException('El monto no cubre el mínimo de volumen');
+      const reservation = await reserveInventory(tx, {
+        operationId: dto.operationId,
+        stationId: dto.stationId,
+        fuelId: dto.fuelId,
+        terminalOperationId: operation?.id ?? null,
+        source: operation ? 'TERMINAL' : 'LEGACY',
+        maxGallons,
+        requestHash,
+        status: 'PENDING_PAYMENT',
+      });
+      return { existingAuth: null, payment, reservation, authorizeDemo };
+    });
+    if (intent.existingAuth)
+      return {
+        authorization: authorizationResponse(intent.existingAuth),
+        replayed: true,
+      };
+    let payment = intent.payment;
+    if (!payment) throw new ConflictException('Pago no disponible');
+
+    if (
+      intent.authorizeDemo &&
+      payment.status === 'PENDING' &&
+      payment.provider === 'DEMO'
+    ) {
+      try {
+        const approved = this.payments.authorize(payment.amount, method, 'PREPAGO');
+        payment = await this.repo.atomic((tx) =>
+          tx.payment.update({
+            where: { id: payment!.id },
+            data: { status: approved.status, provider: approved.provider },
+          }),
         );
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          await this.repo.atomic(async (tx) => {
+            await tx.payment.update({ where: { id: payment!.id }, data: { status: 'REJECTED' } });
+            const reservation = await tx.inventoryReservation.findUnique({ where: { operationId: dto.operationId } });
+            if (reservation)
+              await releaseInventoryReservation(tx, reservation, `payment-rejected:${dto.operationId}`, 'Confirmed payment rejection');
+          });
+        } else {
+          await this.repo.atomic(async (tx) => {
+            const reservation = await tx.inventoryReservation.findUnique({ where: { operationId: dto.operationId } });
+            if (reservation)
+              await reviewInventoryReservation(tx, reservation.id, 'Payment result is ambiguous');
+          });
+        }
+        throw error;
+      }
+    }
+    if (payment.status === 'REJECTED' || payment.status === 'CANCELLED') {
+      await this.repo.atomic(async (tx) => {
+        const reservation = await tx.inventoryReservation.findUnique({
+          where: { operationId: dto.operationId },
+        });
+        if (reservation)
+          await releaseInventoryReservation(
+            tx,
+            reservation,
+            `payment-rejected:${dto.operationId}`,
+            'Payment provider confirmed rejection',
+          );
+      });
+      throw new ConflictException('Pago rechazado; la reserva fue liberada');
+    }
+    if (payment.status !== 'CAPTURED') {
+      if (payment.provider === 'DEMO')
+        await this.repo.atomic(async (tx) => {
+          const reservation = await tx.inventoryReservation.findUnique({
+            where: { operationId: dto.operationId },
+          });
+          if (reservation)
+            await reviewInventoryReservation(
+              tx,
+              reservation.id,
+              'Payment result is ambiguous',
+            );
+        });
+      throw new ConflictException(
+        'Pago pendiente o ambiguo; la reserva permanece comprometida',
+      );
+    }
+
+    return this.repo.atomic(async (tx) => {
+      const operation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+      );
+      const existingAuth = await this.repo.byOperation(dto.operationId, tx);
+      if (existingAuth) {
+        if (existingAuth.requestHash !== requestHash || existingAuth.paymentId !== payment!.id)
+          throw new ConflictException('operationId ya usado con otros datos');
+        assertAuthorizationContext(existingAuth, dto.operationId, dto.stationId, dto.fuelId, operation);
+        return { authorization: authorizationResponse(existingAuth), replayed: true };
+      }
+      if (method === 'YAPE' || method === 'PLIN') {
+        const order = await tx.onlineOrder.findUnique({ where: { paymentId: payment!.id } });
+        if (!order || order.status !== 'CAPTURED')
+          throw new ConflictException('Orden no confirmada para despacho');
+      }
+      const reservation = await tx.inventoryReservation.findUnique({
+        where: { operationId: dto.operationId },
+      });
+      if (
+        !reservation || reservation.requestHash.trim() !== requestHash ||
+        reservation.stationId !== dto.stationId || reservation.fuelId !== dto.fuelId
+      )
+        throw new ConflictException('Reserva de inventario incompatible');
+      await activateInventoryReservation(tx, reservation.id);
+      const vehicle = await tx.vehicle.findUnique({
+        where: { plate },
+        include: { membership: true },
+      });
       const authorization = await this.repo.create(
         {
           operationId: dto.operationId,
@@ -649,22 +883,28 @@ export class AuthorizationsService {
           plate,
           vehicleId: vehicle?.id,
           membershipId: vehicle?.membershipId,
-          stationId: station.id,
-          fuelId: fuel.id,
+          stationId: dto.stationId,
+          fuelId: dto.fuelId,
           mode: 'PREPAGO',
-          paymentId: payment.id,
-          unitPrice: payment.unitPrice,
-          authorizedAmount: payment.originalAmount ?? payment.amount,
+          paymentId: payment!.id,
+          unitPrice: payment!.unitPrice,
+          authorizedAmount: payment!.originalAmount ?? payment!.amount,
           reservedAmount: new Prisma.Decimal(0),
           releasedAmount: new Prisma.Decimal(0),
           balanceAfter: new Prisma.Decimal(0),
           status: 'RESERVED',
-          ...(terminalOperation ? terminalSnapshot(terminalOperation) : {}),
+          inventoryManaged: true,
+          ...(operation ? terminalSnapshot(operation) : {}),
         },
         tx,
       );
+      await tx.inventoryReservation.update({
+        where: { id: reservation.id },
+        data: { authorizationId: authorization.id },
+      });
+      const linkedAuthorization = await this.repo.byId(authorization.id, tx);
       return {
-        authorization: authorizationResponse(authorization),
+        authorization: authorizationResponse(linkedAuthorization ?? authorization),
         replayed: false,
       };
     });
@@ -678,8 +918,7 @@ export class AuthorizationsService {
         ['SETTLED', 'RELEASED', 'INTERVENTION_REQUIRED'].includes(auth.status)
       )
         return authorizationResponse(auth);
-      return authorizationResponse(
-        await this.repo.settle(
+      const updated = await this.repo.settle(
           id,
           {
             status: 'INTERVENTION_REQUIRED',
@@ -687,8 +926,19 @@ export class AuthorizationsService {
               'Fallo crítico reportado por terminal; revisar estado antes de continuar',
           },
           tx,
-        ),
-      );
+        );
+      if (auth.inventoryManaged) {
+        const reservation = await tx.inventoryReservation.findUnique({
+          where: { authorizationId: id },
+        });
+        if (reservation)
+          await reviewInventoryReservation(
+            tx,
+            reservation.id,
+            updated.interventionReason ?? 'Operational intervention required',
+          );
+      }
+      return authorizationResponse(updated);
     });
   }
 

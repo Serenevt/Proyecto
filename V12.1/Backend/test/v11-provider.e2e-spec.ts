@@ -14,7 +14,7 @@ describe('V11 PostgreSQL + mocked provider contract (NOT provider sandbox)',()=>
  const original=process.env.DATABASE_URL!; const schema='e2e_v11_'+randomUUID().replaceAll('-','');
  let db:PrismaService, service:OnlineOrdersService,userId:string,memberId:string,stationId:string,fuelId:string;
  const remote=new Map<string,ProviderOrder>();
- const provider={create:jest.fn(async(id:string,amount:number)=>{const value:ProviderOrder={id:'ord_test_'+id,order_number:id,amount,currency_code:'PEN',state:'pending',qr:null};remote.set(value.id,value);return value;}),get:jest.fn(async(id:string)=>remote.get(id)!)};
+ const provider={create:jest.fn(async(id:string,amount:number)=>{const value:ProviderOrder={id:'ord_test_'+id,order_number:id,amount,currency_code:'PEN',state:'pending',qr:null};remote.set(value.id,value);return value;}),get:jest.fn(async(id:string)=>remote.get(id)!),refund:jest.fn(async(id:string)=>{Object.assign(remote.get(id)!,{state:'refunded',refunded_at:Date.now()});})};
  beforeAll(async()=>{const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;execFileSync(process.execPath,[require.resolve('prisma/build/index.js'),'migrate','deploy'],{env:process.env,stdio:'pipe'});db=new PrismaService();await db.$connect();
  const user=await db.user.create({data:{email:randomUUID()+'@example.test',name:'Provider fixture',passwordHash:'unused',membership:{create:{number:'PRIM001',welcomeAvailable:true}}},include:{membership:true}});userId=user.id;memberId=user.membership!.id;
  stationId=(await db.station.create({data:{code:'TEST',name:'Test',address:'Test'}})).id;
@@ -43,6 +43,7 @@ describe('V11 PostgreSQL + mocked provider contract (NOT provider sandbox)',()=>
   await expect(auth.create(authorization)).rejects.toThrow();
   remote.get(orders.providerId!)!.state='paid';remote.get(orders.providerId!)!.paid_at=Date.now();await service.status(orders.id,{kind:'kiosk'});
   const approved=await auth.create(authorization);expect(approved.authorization.status).toBe('RESERVED');
+  await service.refund(orders.id,{kind:'kiosk'});
  });
  test('invalid webhook does not reconcile',()=>{const controller=new OnlineOrdersController(service);process.env.PAYMENT_WEBHOOK_SECRET='fixture';expect(()=>controller.notify(randomUUID(),'wrong')).toThrow();delete process.env.PAYMENT_WEBHOOK_SECRET;});
  test('concurrent pumps cannot make inventory negative; replay has zero delta',async()=>{

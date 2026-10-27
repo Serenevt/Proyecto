@@ -57,7 +57,7 @@ describe('V11 internal closure against PostgreSQL (provider is explicitly mocked
  async function finish(a:CreateAuthorizationDto,id:string,amount=a.amount){
   const gallons=new Prisma.Decimal(amount).div(20).toFixed(3);
   await auth.progress(id,{amount,gallons});
-  return purchases.create(plainToInstance(CreateTransactionDto,{...a,operationId:randomUUID(),authorizationId:id,amount,gallons,outcome:'AUTO'}));
+  return purchases.create(plainToInstance(CreateTransactionDto,{...a,operationId:a.operationId,authorizationId:id,amount,gallons,outcome:'AUTO'}));
  }
  test.each(['PREPAGO','POSTPAGO'] as const)('%s strict threshold, net points and once only',async mode=>{
   const m=await member();
@@ -76,7 +76,7 @@ describe('V11 internal closure against PostgreSQL (provider is explicitly mocked
  test.each(['PREPAGO','POSTPAGO'] as const)('%s cancellation releases eligibility without stock debit',async mode=>{
   const m=await member(),dto=body(m,mode),a=await auth.create(dto);
   const before=await db.fuelInventory.findUniqueOrThrow({where:{stationId_fuelId:{stationId,fuelId}}});
-  await auth.release(a.authorization.id);await expect(auth.release(a.authorization.id)).rejects.toThrow();
+  await auth.release(a.authorization.id);await expect(auth.release(a.authorization.id)).resolves.toMatchObject({status:'RELEASED'});
   const row=await db.membership.findUniqueOrThrow({where:{id:m.id}});
   expect(row.welcomeAvailable).toBe(true);expect(row.welcomeReservedOperationId).toBeNull();
   expect((await db.fuelInventory.findUniqueOrThrow({where:{stationId_fuelId:{stationId,fuelId}}})).liters.eq(before.liters)).toBe(true);
@@ -155,8 +155,10 @@ describe('V11 internal closure against PostgreSQL (provider is explicitly mocked
   await expect(orders.webhook({...event,type:'FAILED'})).rejects.toThrow();
  });
  test.each(['failed','rejected','expired','cancelled'])('%s releases bonus but never captures payment',async state=>{
-  const {m,order}=await online();remote.get(order.providerId!)!.state=state;
+  const {m,order}=await online();const stockBefore=await db.fuelInventory.findUniqueOrThrow({where:{stationId_fuelId:{stationId,fuelId}}});remote.get(order.providerId!)!.state=state;
   const result=await orders.status(order.id);expect(result.status).toBe(['expired','cancelled'].includes(state)?'CANCELLED':'FAILED');
+  const reservation=await db.inventoryReservation.findUniqueOrThrow({where:{operationId:order.operationId}});expect(reservation.status).toBe('CANCELLED');expect(reservation.remainingLiters.isZero()).toBe(true);
+  expect((await db.fuelInventory.findUniqueOrThrow({where:{stationId_fuelId:{stationId,fuelId}}})).liters.eq(stockBefore.liters)).toBe(true);
   expect((await db.membership.findUniqueOrThrow({where:{id:m.id}})).welcomeReservedOperationId).toBeNull();
   expect((await db.payment.findUniqueOrThrow({where:{id:order.paymentId!}})).status).not.toBe('CAPTURED');
  });

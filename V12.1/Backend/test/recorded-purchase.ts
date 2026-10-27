@@ -32,6 +32,7 @@ export function recordedPurchase(
             mode: 'PREPAGO',
             paymentMethod: body.paymentMethod,
           });
+        if (result.status !== 201) return result;
         if (result.status === 201)
           payload.authorizationId = result.body.authorization.id;
       }

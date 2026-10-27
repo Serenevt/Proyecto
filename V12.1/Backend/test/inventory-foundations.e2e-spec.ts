@@ -8,7 +8,10 @@ const db = new PrismaClient();
 suite('Fase 1B-1: inventory reservation and ledger on PostgreSQL', () => {
   beforeAll(() => {
     const url = new URL(process.env.INVENTORY_TEST_DATABASE_URL!);
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
+    if (
+      !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+      !(url.hostname === 'postgres' && process.env.APP_MODE === 'local')
+    )
       throw new Error(
         'INVENTORY_TEST_DATABASE_URL debe apuntar a PostgreSQL local.',
       );

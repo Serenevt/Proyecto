@@ -86,7 +86,9 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
     await db.fuelInventory.create({data:{stationId,fuelId,liters:5000}});
   }, 90000);
   beforeEach(async () => {
-    app.get<ThrottlerStorageService>(ThrottlerStorage).storage.clear();
+    const throttle = app.get<ThrottlerStorageService>(ThrottlerStorage);
+    throttle.onApplicationShutdown();
+    throttle.storage.clear();
     email = randomUUID() + '@example.test';
     const user = (
       await post('auth/register', {
@@ -234,9 +236,10 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
     ).toBe(true);
   });
   it('real debt creates one alert, reflects FIFO settlement and retains reviewed history', async () => {
+    const operationId = randomUUID();
     const auth = (
       await post('authorizations', {
-        operationId: randomUUID(),
+        operationId,
         plate,
         membershipCode: number,
         amount: '10',
@@ -249,7 +252,7 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
     ).body.authorization;
     const purchase = (
       await recordedPurchase(app, key, db, {
-        operationId: randomUUID(),
+        operationId,
         plate,
         membershipCode: number,
         amount: '10',
@@ -293,9 +296,10 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
     await db.vehicle.create({
       data: { plate: 'OTH-123', label: 'Second', membershipId: memberId },
     });
+    const operationId = randomUUID();
     const auth = (
       await post('authorizations', {
-        operationId: randomUUID(),
+        operationId,
         plate,
         membershipCode: number,
         amount: '10',
@@ -306,7 +310,6 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
         .set('x-kiosk-key', key)
         .expect(201)
     ).body.authorization;
-    const operationId = randomUUID();
     await post('transactions', {
       operationId,
       plate: 'OTH-123',

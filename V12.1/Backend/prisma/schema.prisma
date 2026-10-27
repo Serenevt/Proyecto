@@ -333,6 +333,7 @@ model FuelAuthorization {
   // Avance validado: fuente autoritativa para el cierre de la operaciÃƒÂ³n.
   dispensedAmount  Decimal            @default(0) @db.Decimal(12, 2)
   dispensedGallons Decimal            @default(0) @db.Decimal(12, 3)
+  inventoryManaged Boolean            @default(false)
   mode             PurchaseMode       @default(POSTPAGO)
   status           AuthorizationStatus @default(RESERVED)
   outcome          AuthorizationOutcome?

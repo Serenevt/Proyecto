@@ -77,9 +77,11 @@ suite('Phase 1A on isolated PostgreSQL', () => {
       testUrl.protocol !== 'postgresql:' ||
       testUrl.pathname !== '/primax_phase1a' ||
       testUrl.search ||
-      !['127.0.0.1:26555', 'primax-v12-phase1a-test:5432'].includes(
-        testUrl.host,
-      )
+      ![
+        '127.0.0.1:26555',
+        'primax-v12-phase1a-test:5432',
+        ...(process.env.APP_MODE === 'local' ? ['postgres:5432'] : []),
+      ].includes(testUrl.host)
     )
       throw new Error(
         'PHASE1A_TEST_DATABASE_URL must point to the dedicated local test database',

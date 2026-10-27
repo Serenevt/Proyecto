@@ -49,7 +49,9 @@ describe('Single authentication and password recovery: PostgreSQL', () => {
     await app.init();
   }, 90000);
   beforeEach(async () => {
-    app.get<ThrottlerStorageService>(ThrottlerStorage).storage.clear();
+    const throttle = app.get<ThrottlerStorageService>(ThrottlerStorage);
+    throttle.onApplicationShutdown();
+    throttle.storage.clear();
     delivery.send.mockClear();
     delivery.mode = 'demo';
     code = '';

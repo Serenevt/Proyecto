@@ -562,7 +562,7 @@ export class OperationsService {
         throw new UnauthorizedException(
           'Terminal revocada; requiere supervisor',
         );
-      const [authorizations, transactions] = await Promise.all([
+      const [authorizations, transactions, inventoryReservations] = await Promise.all([
         tx.fuelAuthorization.findMany({
           where: {
             OR: [{ terminalOperationId: operation.id }, { operationId }],
@@ -573,6 +573,10 @@ export class OperationsService {
             OR: [{ terminalOperationId: operation.id }, { operationId }],
           },
         }),
+        tx.inventoryReservation.findMany({
+          where: { operationId },
+          select: { status: true },
+        }),
       ]);
       const transaction = transactions[0];
       if (transactions.length > 1 || authorizations.length > 1)
@@ -580,6 +584,14 @@ export class OperationsService {
           'Vínculos financieros ambiguos; requiere conciliación',
         );
       const authorization = authorizations[0];
+      if (
+        inventoryReservations.some((reservation) =>
+          ['PENDING_PAYMENT', 'ACTIVE', 'REVIEW'].includes(reservation.status),
+        )
+      )
+        throw new ConflictException(
+          'Autorización pendiente: reserva de inventario requiere cierre o conciliación',
+        );
       if (
         authorization &&
         (authorization.operationId !== operationId ||
@@ -707,6 +719,16 @@ export class OperationsService {
       });
       if (activeAuth)
         throw new ConflictException('Autorización pendiente de conciliación');
+      const activeInventory = await tx.inventoryReservation.findFirst({
+        where: {
+          operationId,
+          status: { in: ['PENDING_PAYMENT', 'ACTIVE', 'REVIEW'] },
+        },
+      });
+      if (activeInventory)
+        throw new ConflictException(
+          'Autorización pendiente: reserva de inventario requiere conciliación',
+        );
       const now = new Date();
       const result = await tx.terminalOperation.update({
         where: { id: operation.id },

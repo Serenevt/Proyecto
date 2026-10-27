@@ -35,13 +35,14 @@ describe('V11_4 DEMO persisted in exclusive PostgreSQL',()=>{
  test.each(['YAPE','PLIN'] as const)('prepaid %s: no personal fields, stock guard, capture, replay and one receipt',async method=>{
   const operationId=randomUUID(),authorization=plainToInstance(CreateAuthorizationDto,{operationId,mode:'PREPAGO',paymentMethod:method,plate:'NEW-123',stationId,fuelId,unitPrice:'20.00',amount:'60.00'});
   const dto={operationId,method,authorization};const order=await orders.create(dto,{kind:'kiosk'});
+  expect((await db.inventoryReservation.findUniqueOrThrow({where:{operationId}})).status).toBe('PENDING_PAYMENT');
   expect((await orders.status(order.id,{kind:'kiosk'})).status).toBe('PENDING');await expect(auth.create(authorization)).rejects.toThrow();
   await expect(orders.confirmDemo(order.id,{amount:'59.00',currency:'PEN'},{kind:'kiosk'})).rejects.toThrow();
   await expect(orders.confirmDemo(order.id,{amount:'60.00',currency:'PEN'},{kind:'member',userId})).rejects.toThrow();
   const confirmations=await Promise.all([1,2].map(()=>orders.confirmDemo(order.id,{amount:'60.00',currency:'PEN'},{kind:'kiosk'})));expect(confirmations.every(x=>x.status==='CAPTURED')).toBe(true);
   expect((await orders.create(dto,{kind:'kiosk'})).id).toBe(order.id);
-  const a=await auth.create(authorization);await auth.progress(a.authorization.id,{amount:'60.00',gallons:'3.000'});
-  const body=plainToInstance(CreateTransactionDto,{...authorization,operationId:randomUUID(),authorizationId:a.authorization.id,gallons:'3.000',outcome:'AUTO',receiptDni:'70123456'});
+  const a=await auth.create(authorization);expect((await db.inventoryReservation.findUniqueOrThrow({where:{operationId}})).status).toBe('ACTIVE');await auth.progress(a.authorization.id,{amount:'60.00',gallons:'3.000'});
+  const body=plainToInstance(CreateTransactionDto,{...authorization,operationId,authorizationId:a.authorization.id,gallons:'3.000',outcome:'AUTO',receiptDni:'70123456'});
   const purchase=await purchases.create(body),again=await purchases.create(body);expect(again.transaction.id).toBe(purchase.transaction.id);expect(purchase.transaction.payment!.provider).toBe('DEMO');
   expect(await db.paymentEvent.count({where:{eventKey:'capture:'+order.id}})).toBe(1);expect(await db.paymentEvent.count({where:{eventKey:'demo-confirm:'+order.id}})).toBe(1);expect(await db.transaction.count({where:{authorizationId:a.authorization.id}})).toBe(1);
  });
@@ -62,11 +63,32 @@ describe('V11_4 DEMO persisted in exclusive PostgreSQL',()=>{
   const order=await orders.create({operationId,method:'PLIN',authorization},{kind:'kiosk'});
   expect((await orders.cancel(order.id,{kind:'kiosk'})).status).toBe('CANCELLED');expect((await orders.cancel(order.id,{kind:'kiosk'})).status).toBe('CANCELLED');await expect(orders.confirmDemo(order.id,{amount:'20.00',currency:'PEN'},{kind:'kiosk'})).rejects.toThrow();
   const nextId=randomUUID(),next=await orders.create({operationId:nextId,method:'PLIN',authorization:plainToInstance(CreateAuthorizationDto,{...authorization,operationId:nextId})},{kind:'kiosk'});await orders.confirmDemo(next.id,{amount:'20.00',currency:'PEN'},{kind:'kiosk'});expect((await orders.refund(next.id,{kind:'kiosk'})).status).toBe('REFUNDED');expect((await orders.refund(next.id,{kind:'kiosk'})).status).toBe('REFUNDED');
+  expect((await db.inventoryReservation.findUniqueOrThrow({where:{operationId:nextId}})).status).toBe('CANCELLED');
+ });
+ test('partial physical delivery closes inventory but blocks an accidental full payment refund',async()=>{
+  const operationId=randomUUID(),authorization=plainToInstance(CreateAuthorizationDto,{operationId,mode:'PREPAGO',paymentMethod:'YAPE',plate:'NEW-123',stationId,fuelId,unitPrice:'20.00',amount:'60.00'});
+  const order=await orders.create({operationId,method:'YAPE',authorization},{kind:'kiosk'});
+  await orders.confirmDemo(order.id,{amount:'60.00',currency:'PEN'},{kind:'kiosk'});
+  const approved=await auth.create(authorization);
+  await auth.progress(approved.authorization.id,{amount:'20.00',gallons:'1.000'});
+  const purchase=await purchases.create(plainToInstance(CreateTransactionDto,{...authorization,operationId,authorizationId:approved.authorization.id,amount:'20.00',gallons:'1.000',outcome:'MANUAL'}));
+  const reservation=await db.inventoryReservation.findUniqueOrThrow({where:{operationId}});
+  expect(reservation.status).toBe('CLOSED');expect(reservation.remainingLiters.isZero()).toBe(true);
+  const refundedBefore= (await db.payment.findUniqueOrThrow({where:{id:order.paymentId!}})).refundedAmount;
+  await expect(orders.refund(order.id,{kind:'kiosk'})).rejects.toThrow('despacho');
+  // A provider callback can arrive without going through the refund endpoint.
+  // It must not turn a delivered purchase into a full financial refund.
+  await new DemoWalletProvider(db).refund(order.providerId!);
+  await expect(orders.confirmRefund(order.id)).rejects.toThrow('despachado');
+  expect((await db.onlineOrder.findUniqueOrThrow({where:{id:order.id}})).status).toBe('CAPTURED');
+  expect((await db.payment.findUniqueOrThrow({where:{id:order.paymentId!}})).refundedAmount.eq(refundedBefore)).toBe(true);
+  expect((await db.transaction.findUniqueOrThrow({where:{id:purchase.transaction.id}})).status).toBe('PAID');
  });
  test('interrupted DEMO intent recovers without second order or payment',async()=>{
   const provider=new DemoWalletProvider(db),service=new OnlineOrdersService(db,provider);jest.spyOn(provider,'create').mockRejectedValueOnce(Error('interrupted'));
   const operationId=randomUUID(),authorization=plainToInstance(CreateAuthorizationDto,{operationId,mode:'PREPAGO',paymentMethod:'YAPE',plate:'NEW-123',stationId,fuelId,unitPrice:'20.00',amount:'20.00'});
   await expect(service.create({operationId,method:'YAPE',authorization},{kind:'kiosk'})).rejects.toThrow('interrupted');const pending=await db.onlineOrder.findUniqueOrThrow({where:{operationId}});
+  expect((await db.inventoryReservation.findUniqueOrThrow({where:{operationId}})).status).toBe('REVIEW');
   expect((await orders.status(pending.id,{kind:'kiosk'})).status).toBe('PENDING');expect(await db.onlineOrder.count({where:{operationId}})).toBe(1);expect(await db.payment.count({where:{operationId}})).toBe(1);
  });
  test('production and non-demo payment environment reject simulation',()=>{

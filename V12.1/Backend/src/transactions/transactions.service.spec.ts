@@ -119,6 +119,21 @@ describe('TransactionsService', () => {
     (tx as unknown as { paymentEvent: unknown }).paymentEvent = {
       create: jest.fn(),
     };
+    (tx as unknown as { inventoryReservation: unknown }).inventoryReservation = {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'inventory-reservation',
+        operationId: 'operation',
+        requestHash: 'a'.repeat(64),
+        stationId: 'station',
+        fuelId: 'fuel',
+        status: 'ACTIVE',
+        initialLiters: new Prisma.Decimal('10'),
+        remainingLiters: new Prisma.Decimal('10'),
+        consumedLiters: new Prisma.Decimal(0),
+        releasedLiters: new Prisma.Decimal(0),
+      }),
+    };
+    (tx as unknown as { $executeRaw: unknown }).$executeRaw = jest.fn();
     (tx as unknown as { payment: unknown }).payment = {
       update: jest.fn(),
       findUnique: jest.fn().mockResolvedValue({
@@ -166,6 +181,38 @@ describe('TransactionsService', () => {
     await service.create(prepago);
     expect(wallet.setBalance).not.toHaveBeenCalled();
     expect(wallet.movement).not.toHaveBeenCalled();
+  });
+
+  it('cierra el inventario de un prepago parcial y deja el reembolso externo en conciliación', async () => {
+    authorizations.byId.mockResolvedValueOnce({
+      ...reservation,
+      id: 'auth-pre',
+      requestHash: 'a'.repeat(64),
+      mode: 'PREPAGO',
+      paymentId: 'paid',
+      inventoryManaged: true,
+    });
+    (tx.payment.findUnique as jest.Mock).mockResolvedValue({
+      discountAmount: new Prisma.Decimal(0),
+      provider: 'CULQI',
+      id: 'paid',
+      status: 'CAPTURED',
+      method: 'TARJETA',
+      amount: new Prisma.Decimal('200'),
+    });
+
+    const result = await service.create(prepago);
+
+    expect(result.transaction.status).toBe('PAYMENT_PENDING');
+    expect(tx.paymentEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventKey: 'partial-refund-pending:auth-pre',
+        kind: 'PARTIAL_REFUND_PENDING',
+      }),
+    });
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    const [closeSql] = (tx.$executeRaw as jest.Mock).mock.calls[0];
+    expect(closeSql.join(' ')).toContain('inventory_close_reservation');
   });
 
   it('PREPAGO con medio externo acepta EFECTIVO, TARJETA, YAPE y PLIN', async () => {

@@ -30,6 +30,7 @@ import {
   terminalOperationFor,
   terminalSnapshot,
 } from './operational-context';
+import { closeInventoryReservation } from '../inventory/inventory-reservations';
 
 @Injectable()
 export class TransactionsService {
@@ -85,6 +86,10 @@ export class TransactionsService {
         throw new BadRequestException('Se requiere autorización previa');
       const auth = await this.authorizations.byId(dto.authorizationId, tx);
       if (!auth) throw new NotFoundException('Autorización no encontrada');
+      if (auth.operationId !== dto.operationId)
+        throw new ConflictException(
+          'operationId no coincide con la autorización',
+        );
       let terminalOperation = await terminalOperationFor(
         tx,
         dto.operationId,
@@ -194,6 +199,27 @@ export class TransactionsService {
         throw new ConflictException(
           'La autorización ya fue liquidada o liberada, o requiere intervención',
         );
+      if (auth.inventoryManaged) {
+        const reservation = await tx.inventoryReservation.findUnique({
+          where: { authorizationId: auth.id },
+        });
+        if (
+          !reservation ||
+          reservation.status !== 'ACTIVE' ||
+          reservation.operationId !== dto.operationId ||
+          reservation.requestHash.trim() !== auth.requestHash ||
+          reservation.stationId !== dto.stationId ||
+          reservation.fuelId !== dto.fuelId ||
+          !reservation.initialLiters.eq(
+            reservation.remainingLiters
+              .plus(reservation.consumedLiters)
+              .plus(reservation.releasedLiters),
+          )
+        )
+          throw new ConflictException(
+            'La reserva de inventario requiere conciliación antes del cierre',
+          );
+      }
       if (!auth.unitPrice)
         throw new ConflictException(
           'Precio histórico desconocido; requiere intervención',
@@ -217,6 +243,7 @@ export class TransactionsService {
         );
       let prepaidPaymentId: string | null = null;
       let prepaidPayment: Payment | null = null;
+      let prepaidRefundPending = false;
       if (dto.mode === 'PREPAGO') {
         const prepaid = auth.paymentId
           ? await tx.payment.findUnique({ where: { id: auth.paymentId } })
@@ -235,6 +262,7 @@ export class TransactionsService {
           {
             status: 'SETTLED',
             consumedAmount: auth.dispensedAmount,
+            releasedAmount: new Prisma.Decimal(0),
             outcome: dto.outcome === 'AUTO' ? 'AUTO' : 'MANUAL',
           },
           tx,
@@ -284,25 +312,39 @@ export class TransactionsService {
           });
         }
         const refund = paid.amount.minus(netAmount);
-        if (refund.gt(0) && paid.provider !== 'DEMO')
-          throw new ConflictException(
-            'Reembolso externo pendiente de confirmaci?n del proveedor',
-          );
-        if (refund.gt(0)) {
-          await tx.payment.update({
-            where: { id: paid.id },
-            data: { amount: netAmount, refundedAmount: { increment: refund } },
-          });
+        if (refund.gt(0) && paid.provider !== 'DEMO') {
+          // Fuel delivery is physically complete. Close inventory now and
+          // retain a financial reconciliation marker; do not hold stock or
+          // invent a provider refund outcome.
+          prepaidRefundPending = true;
           await tx.paymentEvent.create({
             data: {
-              eventKey: 'partial:' + auth.id,
+              eventKey: `partial-refund-pending:${auth.id}`,
               paymentId: paid.id,
-              kind: 'PARTIAL_REFUND',
+              kind: 'PARTIAL_REFUND_PENDING',
               detail:
-                'Devoluci?n interna simulada del excedente: ' +
+                'Physical delivery closed; external partial refund requires reconciliation: ' +
                 refund.toFixed(2),
             },
           });
+        }
+        if (refund.gt(0)) {
+          if (paid.provider === 'DEMO') {
+            await tx.payment.update({
+              where: { id: paid.id },
+              data: { amount: netAmount, refundedAmount: { increment: refund } },
+            });
+            await tx.paymentEvent.create({
+              data: {
+                eventKey: 'partial:' + auth.id,
+                paymentId: paid.id,
+                kind: 'PARTIAL_REFUND',
+                detail:
+                  'Devoluci?n interna simulada del excedente: ' +
+                  refund.toFixed(2),
+              },
+            });
+          }
         }
         await tx.membership.updateMany({
           where: { welcomeReservedOperationId: auth.operationId },
@@ -380,7 +422,7 @@ export class TransactionsService {
           receiptDni,
           receiptRuc,
           receiptBusinessName,
-          status: pending.gt(0) ? 'PAYMENT_PENDING' : 'PAID',
+          status: pending.gt(0) || prepaidRefundPending ? 'PAYMENT_PENDING' : 'PAID',
           payment: prepaidPaymentId
             ? { connect: { id: prepaidPaymentId } }
             : {
@@ -415,6 +457,19 @@ export class TransactionsService {
         },
         tx,
       );
+      if (auth.inventoryManaged) {
+        const inventoryReservation = await tx.inventoryReservation.findUnique({
+          where: { authorizationId: auth.id },
+        });
+        if (!inventoryReservation)
+          throw new ConflictException('Reserva de inventario no encontrada');
+        await closeInventoryReservation(
+          tx,
+          inventoryReservation.id,
+          transaction.id,
+          `transaction-close:${dto.operationId}`,
+        );
+      }
       return {
         transaction: transactionResponse(transaction),
         pointsEarned: points,

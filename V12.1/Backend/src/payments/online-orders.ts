@@ -10,7 +10,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Actor, CurrentActor, MemberOrKiosk, Public } from '../auth/access';
 import { CreateAuthorizationDto } from '../transactions/create-authorization.dto';
 import { normalizePlate } from '../vehicles/plate.dto';
-import { PAYMENT_PROVIDER, PaymentProvider, verifiedPaid } from './payment-provider';
+import { terminalOperationFor } from '../transactions/operational-context';
+import {
+  releaseInventoryReservation,
+  reserveInventory,
+  reviewInventoryReservation,
+} from '../inventory/inventory-reservations';
+import { PAYMENT_PROVIDER, PaymentProvider, ProviderOrder, verifiedPaid } from './payment-provider';
 class CustomerDto {
  @IsString() @MaxLength(80) first_name: string;
  @IsString() @MaxLength(80) last_name: string;
@@ -59,12 +65,18 @@ export class OnlineOrdersService {
     const fuel=await tx.fuel.findUnique({where:{id:a.fuelId}});
     const station=await tx.station.findUnique({where:{id:a.stationId}});
     if(!fuel?.active||!station?.active||!fuel.pricePerGallon.eq(a.unitPrice||'0'))throw new BadRequestException('Confirma cat?logo y precio');
-    const stock=await tx.fuelInventory.findUnique({where:{stationId_fuelId:{stationId:a.stationId,fuelId:a.fuelId}}});
-    if(!stock||stock.liters.lt(amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784')))throw new BadRequestException('Stock insuficiente');
+    const operation=await terminalOperationFor(tx,dto.operationId,a.stationId);
     if(a.membershipCode){const v=await tx.vehicle.findUnique({where:{plate:normalizePlate(a.plate) as string},include:{membership:true}});if(v?.membership?.number!==a.membershipCode)throw new BadRequestException('Membresía no corresponde al veh?culo');}
     const hash=createHash('sha256').update(JSON.stringify({...a,plate:normalizePlate(a.plate),amount:amount.toFixed(2)})).digest('hex');
     const pricing=await reserveWelcome(tx,a);
     amount=pricing.amount;
+    const maxGallons=new Prisma.Decimal(a.amount).div(fuel.pricePerGallon).toDecimalPlaces(3);
+    if(maxGallons.lte(0))throw new BadRequestException('El monto no cubre el mínimo de volumen');
+    await reserveInventory(tx,{
+     operationId:dto.operationId,stationId:a.stationId,fuelId:a.fuelId,
+     terminalOperationId:operation?.id??null,source:operation?'TERMINAL':'LEGACY',
+     maxGallons,requestHash:hash,status:'PENDING_PAYMENT',
+    });
     const payment=await tx.payment.create({data:{operationId:a.operationId,requestHash:hash,...pricing,method:dto.method,status:'PENDING',provider:demo?'DEMO':'CULQI',unitPrice:fuel.pricePerGallon}});
     paymentId=payment.id;
    }
@@ -74,8 +86,23 @@ export class OnlineOrdersService {
   const order=intent.order;if(!intent.created)return order;
   // Persist the intent before the external side effect. An ambiguous timeout remains
   // CREATING for reconciliation; never create a second provider charge automatically.
-  const remote=await this.provider.create(order.id,order.amount.mul(100).toNumber(),dto.customer!);
-  if(remote.order_number!==order.id||remote.amount!==order.amount.mul(100).toNumber()||remote.currency_code!=='PEN')throw new ConflictException('Respuesta de proveedor incompatible');
+  let remote:ProviderOrder;
+  try {
+   remote=await this.provider.create(order.id,order.amount.mul(100).toNumber(),dto.customer!);
+  } catch(error) {
+   await this.db.atomic(async tx=>{
+    const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+    if(reservation)await reviewInventoryReservation(tx,reservation.id,'Payment provider result is ambiguous');
+   });
+   throw error;
+  }
+  if(remote.order_number!==order.id||remote.amount!==order.amount.mul(100).toNumber()||remote.currency_code!=='PEN') {
+   await this.db.atomic(async tx=>{
+    const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+    if(reservation)await reviewInventoryReservation(tx,reservation.id,'Payment provider response did not match the intent');
+   });
+   throw new ConflictException('Respuesta de proveedor incompatible');
+  }
   const qr=remote.qr&&new URL(remote.qr).protocol==='https:'?remote.qr:null;
   return this.db.onlineOrder.update({where:{id:order.id},data:{providerId:remote.id,qr,status:'PENDING'}});
  }
@@ -110,12 +137,21 @@ export class OnlineOrdersService {
   if(!this.provider.refund)throw new ServiceUnavailableException('Reembolso externo pendiente de adapter comercial');
   if(order.paymentId){
    const paid=await this.db.payment.findUniqueOrThrow({where:{id:order.paymentId},include:{authorization:true}});
-   if(paid.authorization?.dispensedAmount.gt(0)&&!paid.transactionId)throw new ConflictException('Liquida primero el combustible entregado');
+   if(paid.authorization?.dispensedAmount.gt(0))throw new ConflictException('El reembolso total no está permitido después del despacho; concilia solo el excedente financiero');
   }
   // Persist uncertainty before side effect; retries use the same provider key.
   await this.db.atomic(async tx=>{
    await tx.onlineOrder.updateMany({where:{id,status:'CAPTURED'},data:{status:'REFUNDING'}});
-   if(order.paymentId)await tx.fuelAuthorization.updateMany({where:{paymentId:order.paymentId,status:{in:['RESERVED','DISPENSING']},dispensedAmount:0},data:{status:'INTERVENTION_REQUIRED',interventionReason:'Reembolso en conciliacion; despacho bloqueado'}});
+   if(order.paymentId) {
+    const auth=await tx.fuelAuthorization.findFirst({where:{paymentId:order.paymentId,status:{in:['RESERVED','DISPENSING']},dispensedAmount:0}});
+    if(auth) {
+     await tx.fuelAuthorization.update({where:{id:auth.id},data:{status:'INTERVENTION_REQUIRED',interventionReason:'Reembolso en conciliacion; despacho bloqueado'}});
+     if(auth.inventoryManaged) {
+      const reservation=await tx.inventoryReservation.findUnique({where:{authorizationId:auth.id}});
+      if(reservation)await reviewInventoryReservation(tx,reservation.id,'Payment refund is being reconciled');
+     }
+    }
+   }
   });
   await this.provider.refund(order.providerId,'refund:'+order.id);
   return this.confirmRefund(id);
@@ -125,7 +161,16 @@ export class OnlineOrdersService {
   if(!order)throw new NotFoundException();
   if(order.status==='REFUNDED')return order;
   if(!['CAPTURED','REFUNDING'].includes(order.status)||!order.providerId)throw new ConflictException('Pago no capturado');
-  const remote=await this.provider.get(order.providerId);
+  let remote:ProviderOrder;
+  try { remote=await this.provider.get(order.providerId); }
+  catch(error) {
+   if(order.paymentId)await this.db.atomic(async tx=>{
+    const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+    if(reservation&&reservation.status!=='CANCELLED'&&reservation.status!=='CLOSED')
+     await reviewInventoryReservation(tx,reservation.id,'Payment status could not be confirmed');
+   });
+   throw error;
+  }
   if(remote.id!==order.providerId||remote.order_number!==order.id||remote.amount!==order.amount.mul(100).toNumber()||remote.currency_code!=='PEN'||remote.state!=='refunded'||typeof remote.refunded_at!=='number'||!Number.isFinite(remote.refunded_at)||remote.refunded_at<=0)throw new ConflictException('Proveedor no confirma reembolso');
   return this.db.atomic(async tx=>{
    await tx.$queryRaw`SELECT id FROM "OnlineOrder" WHERE id=${id}::uuid FOR UPDATE`;
@@ -135,9 +180,23 @@ export class OnlineOrdersService {
    if(fresh.paymentId){
     const paid=await tx.payment.findUniqueOrThrow({where:{id:fresh.paymentId},include:{authorization:true,transaction:true}});
     if(paid.status!=='CAPTURED')throw new ConflictException('Pago incompatible');
+    if(paid.authorization?.dispensedAmount.gt(0))
+     throw new ConflictException('El combustible despachado solo admite conciliación del excedente financiero');
     if(paid.authorization && !paid.transaction){
-     if(paid.authorization.dispensedAmount.gt(0))throw new ConflictException('Liquida primero el combustible entregado');
+     if(paid.authorization.inventoryManaged) {
+      const reservation=await tx.inventoryReservation.findUnique({where:{authorizationId:paid.authorization.id}});
+      if(reservation)await releaseInventoryReservation(tx,reservation,`refund:${id}`,'Provider confirmed refund before dispense');
+     }
      await tx.fuelAuthorization.update({where:{id:paid.authorization.id},data:{status:'RELEASED',outcome:'CANCELLED',releasedAmount:0}});
+    }
+    // A refund can be confirmed while the prepaid order still has no
+    // FuelAuthorization. The payment intent already owns a PENDING_PAYMENT
+    // reservation, so release that commitment only now that the provider's
+    // refund is confirmed.
+    if(!paid.transaction && !paid.authorization) {
+     const reservation=await tx.inventoryReservation.findUnique({where:{operationId:fresh.operationId}});
+     if(reservation && !['CANCELLED','CLOSED'].includes(reservation.status))
+      await releaseInventoryReservation(tx,reservation,`refund:${id}`,'Provider confirmed refund before authorization');
     }
     if(paid.transaction){
      await tx.transaction.update({where:{id:paid.transaction.id},data:{status:'REFUNDED'}});
@@ -184,13 +243,38 @@ export class OnlineOrdersService {
   if(['CAPTURED','REFUNDING','FAILED','CANCELLED','REFUNDED'].includes(order.status))return order;
   if(!order.providerId){
    if(!this.provider.findByReference)throw new ServiceUnavailableException('Reconciliacion por referencia pendiente de adapter comercial');
-   const recovered=await this.provider.findByReference(order.id);
-   if(!recovered)return order;
+   let recovered:ProviderOrder|null;
+   try { recovered=await this.provider.findByReference(order.id); }
+   catch(error) {
+    if(order.paymentId)await this.db.atomic(async tx=>{
+     const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+     if(reservation&&reservation.status!=='CANCELLED'&&reservation.status!=='CLOSED')
+      await reviewInventoryReservation(tx,reservation.id,'Payment reference result is ambiguous');
+    });
+    throw error;
+   }
+   if(!recovered) {
+    if(order.paymentId)await this.db.atomic(async tx=>{
+     const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+     if(reservation&&reservation.status!=='CANCELLED'&&reservation.status!=='CLOSED')
+      await reviewInventoryReservation(tx,reservation.id,'Payment provider has not resolved the order reference');
+    });
+    return order;
+   }
    if(recovered.order_number!==order.id||recovered.amount!==order.amount.mul(100).toNumber()||recovered.currency_code!=='PEN')throw new ConflictException('Referencia recuperada incompatible');
    await this.db.onlineOrder.update({where:{id},data:{providerId:recovered.id,status:'PENDING'}});
    return this.status(id,actor);
   }
-  const remote=await this.provider.get(order.providerId);
+  let remote:ProviderOrder;
+  try { remote=await this.provider.get(order.providerId); }
+  catch(error) {
+   if(order.paymentId)await this.db.atomic(async tx=>{
+    const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+    if(reservation&&reservation.status!=='CANCELLED'&&reservation.status!=='CLOSED')
+     await reviewInventoryReservation(tx,reservation.id,'Payment status could not be confirmed');
+   });
+   throw error;
+  }
   if(remote.id!==order.providerId||remote.order_number!==order.id||remote.amount!==order.amount.mul(100).toNumber()||remote.currency_code!=='PEN')throw new ConflictException('Evento del proveedor incompatible');
   if(['failed','rejected','expired','cancelled'].includes(remote.state))return this.db.atomic(async tx=>{
    await tx.$queryRaw`SELECT id FROM "OnlineOrder" WHERE id=${id}::uuid FOR UPDATE`;
@@ -198,11 +282,20 @@ export class OnlineOrdersService {
    if(!['PENDING','CREATING'].includes(fresh.status))return fresh;
    const status=['cancelled','expired'].includes(remote.state)?'CANCELLED':'FAILED';
    if(fresh.paymentId)await tx.payment.update({where:{id:fresh.paymentId},data:{status:status==='FAILED'?'REJECTED':'CANCELLED'}});
+   const reservation=await tx.inventoryReservation.findUnique({where:{operationId:fresh.operationId}});
+   if(reservation)await releaseInventoryReservation(tx,reservation,`payment-rejected:${fresh.operationId}`,'Provider confirmed payment rejection');
    await tx.membership.updateMany({where:{welcomeReservedOperationId:fresh.operationId},data:{welcomeReservedOperationId:null}});
    await tx.paymentEvent.create({data:{eventKey:'terminal:'+id,orderId:id,paymentId:fresh.paymentId,kind:status,detail:'Estado confirmado consultando proveedor'}});
    return tx.onlineOrder.update({where:{id},data:{status}});
   });
-  if(!verifiedPaid(remote,order))return order;
+  if(!verifiedPaid(remote,order)) {
+   if(order.paymentId)await this.db.atomic(async tx=>{
+    const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+    if(reservation&&reservation.status!=='CANCELLED'&&reservation.status!=='CLOSED')
+     await reviewInventoryReservation(tx,reservation.id,'Payment provider returned an unrecognized state');
+   });
+   return order;
+  }
   return this.db.atomic(async tx=>{
    await tx.$queryRaw`SELECT id FROM "OnlineOrder" WHERE id=${id}::uuid FOR UPDATE`;
    const fresh=await tx.onlineOrder.findUniqueOrThrow({where:{id}});if(fresh.status==='CAPTURED')return fresh;if(!['PENDING','CREATING'].includes(fresh.status))throw new ConflictException('Orden terminal no admite captura');

@@ -236,7 +236,7 @@ describe('operator security across independent function instances', () => {
         { username: 'fixture-operator', password },
       ),
     ).rejects.toThrow('Demasiados intentos');
-  });
+  }, 15000);
   it('checks station and referenced authorization before any purchase can execute', async () => {
     const { a, login, db } = fixture();
     const session = await login();

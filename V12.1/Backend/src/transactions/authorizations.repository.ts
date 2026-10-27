@@ -9,10 +9,16 @@ export class AuthorizationsRepository {
     return this.db.atomic(work);
   }
   byOperation(operationId: string, tx: Prisma.TransactionClient) {
-    return tx.fuelAuthorization.findUnique({ where: { operationId } });
+    return tx.fuelAuthorization.findUnique({
+      where: { operationId },
+      include: { inventoryReservation: true },
+    });
   }
   byId(id: string, db: Prisma.TransactionClient | PrismaClient) {
-    return db.fuelAuthorization.findUnique({ where: { id } });
+    return db.fuelAuthorization.findUnique({
+      where: { id },
+      include: { inventoryReservation: true },
+    });
   }
   /** Cliente Prisma principal, para lecturas fuera de una transacción. */
   client() {

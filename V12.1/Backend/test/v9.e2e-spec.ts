@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { plainToInstance } from 'class-transformer';
 import { CreateAuthorizationDto } from '../src/transactions/create-authorization.dto';
-import request from 'supertest';
+import request, { Response } from 'supertest';
 import { setupApp } from '../src/setup-app';
 
 describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
@@ -119,19 +119,34 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
         fuelId,
         allowDebt,
       });
-  const buy = (authorizationId: string, amount: string, extra = {}) =>
-    recordedPurchase(app, key, db, {
-      operationId: randomUUID(),
-      plate,
-      membershipCode: number,
-      amount,
-      stationId,
-      fuelId,
-      mode: 'POSTPAGO',
-      paymentMethod: 'SALDO_PRIME',
-      authorizationId,
-      ...extra,
-    });
+  const buy = (authorizationId: string, amount: string, extra = {}) => {
+    const makeBody = async () => {
+      const authorization = await db.fuelAuthorization.findUniqueOrThrow({
+        where: { id: authorizationId },
+      });
+      return {
+        operationId: authorization.operationId,
+        plate,
+        membershipCode: number,
+        amount,
+        stationId,
+        fuelId,
+        mode: 'POSTPAGO',
+        paymentMethod: 'SALDO_PRIME',
+        authorizationId,
+        ...extra,
+      };
+    };
+    const result: {
+      then: PromiseLike<Response>['then'];
+      expect: (status: number) => Promise<Response>;
+    } = {
+      then: (resolve, reject) => result.expect(201).then(resolve, reject),
+      expect: async (status: number) =>
+        recordedPurchase(app, key, db, await makeBody()).expect(status),
+    };
+    return result;
+  };
   const recharge = (amount: string, operationId = randomUUID()) =>
     request(app.getHttpServer())
       .post('/api/v1/memberships/me/recharges')
@@ -187,7 +202,7 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
       .send({ amount: '80.00', gallons })
       .expect(200);
     const close = {
-      operationId: randomUUID(),
+      operationId,
       plate,
       stationId,
       fuelId,
@@ -267,7 +282,9 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
           .set('x-kiosk-key', key)
           .send(body)
           .expect(409);
-        expect(result.body.message).toContain('Pago no aprobado');
+        expect(result.body.message).toContain(
+          status === 'PENDING' ? 'Pago pendiente o ambiguo' : 'Pago rechazado',
+        );
       }
       expect(
         await db.fuelAuthorization.count({
@@ -408,7 +425,7 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     expect(a.status).toBe(201);
     expect(b.status).toBe(201);
     expect(a.body.authorization.id).toBe(b.body.authorization.id);
-    const purchaseId = randomUUID();
+    const purchaseId = operationId;
     const tx = (
       await buy(a.body.authorization.id, '12.60', {
         operationId: purchaseId,
@@ -550,8 +567,8 @@ describe('V9: dinero y documentos en PostgreSQL (esquema preservado)', () => {
     await recharge('21', id).expect(409);
   });
   it('compra concurrente idempotente: una deuda', async () => {
-    const res = await reserve('12.60', true).expect(201);
     const operationId = randomUUID();
+    const res = await reserve('12.60', true, operationId).expect(201);
     const results = await Promise.all([
       buy(res.body.authorization.id, '12.60', { operationId }),
       buy(res.body.authorization.id, '12.60', { operationId }),

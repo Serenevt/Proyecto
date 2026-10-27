@@ -32,6 +32,34 @@ const dto = {
 
 function harness(balance = '500.00') {
   const txDb = {
+    $queryRaw: jest.fn(async () => [{ id: 'inventory-reservation' }]),
+    inventoryReservation: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findUniqueOrThrow: jest.fn(async ({ where }: { where: { id: string } }) => ({
+        id: where.id,
+        operationId: dto.operationId,
+        stationId: dto.stationId,
+        fuelId: dto.fuelId,
+        terminalOperationId: null,
+        authorizationId: null,
+        transactionId: null,
+        source: 'LEGACY',
+        status: 'ACTIVE',
+        maxGallons: new Prisma.Decimal('8.511'),
+        initialLiters: new Prisma.Decimal('32.225'),
+        remainingLiters: new Prisma.Decimal('32.225'),
+        consumedLiters: new Prisma.Decimal(0),
+        releasedLiters: new Prisma.Decimal(0),
+        requestHash: 'a'.repeat(64),
+        version: 0,
+        reviewReason: null,
+        actorKind: 'SYSTEM',
+        actorId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: object }) => ({ id: where.id, ...data })),
+    },
     fuelInventory: { findUnique: jest.fn().mockResolvedValue({liters:new Prisma.Decimal(5000)}) },
     membershipDebt: {
       aggregate: jest.fn().mockResolvedValue({ _sum: { amountPending: null } }),
@@ -65,6 +93,7 @@ function harness(balance = '500.00') {
     atomic: <T>(fn: (c: unknown) => Promise<T>) => fn(txDb),
     byOperation: jest.fn().mockResolvedValue(null),
     byId: jest.fn(),
+    client: jest.fn().mockReturnValue(txDb),
     create: jest.fn(async (data: Record<string, unknown>) => ({
       ...data,
       id: 'auth-1',
@@ -198,7 +227,10 @@ describe('AuthorizationsService (reserva de saldo postpago)', () => {
       reservedAmount: new Prisma.Decimal('200.00'),
       status: 'RESERVED',
     });
-    const result = await service.release('auth-1');
+    const result = (await service.release('auth-1')) as {
+      status: string;
+      releasedAmount: string;
+    };
     expect(wallet.setBalance).toHaveBeenCalledWith(
       'm1',
       new Prisma.Decimal('500.00'),
@@ -214,12 +246,23 @@ describe('AuthorizationsService (reserva de saldo postpago)', () => {
       id: 'auth-1',
       membershipId: 'm1',
       mode: 'POSTPAGO',
+      operationId: dto.operationId,
+      plate: 'ABC-123',
+      stationId: 's1',
+      fuelId: 'f1',
+      authorizedAmount: new Prisma.Decimal('200.00'),
       reservedAmount: new Prisma.Decimal('200.00'),
+      releasedAmount: new Prisma.Decimal('200.00'),
+      consumedAmount: null,
+      dispensedAmount: new Prisma.Decimal(0),
+      dispensedGallons: new Prisma.Decimal(0),
+      unitPrice: new Prisma.Decimal('23.50'),
       status: 'RELEASED',
+      outcome: 'CANCELLED',
+      createdAt: new Date(),
     });
-    await expect(service.release('auth-1')).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    const result = (await service.release('auth-1')) as { status: string };
+    expect(result.status).toBe('RELEASED');
     expect(wallet.setBalance).not.toHaveBeenCalled();
   });
 

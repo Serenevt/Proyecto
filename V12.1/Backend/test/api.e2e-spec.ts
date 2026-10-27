@@ -430,9 +430,30 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
   it('reserva postpago descuenta el saldo y lo deja comprometido', async () => {
     const before = await balanceOf();
-    const res = await reserve().expect(201);
+    const operationId = randomUUID();
+    const res = await reserve({ operationId }).expect(201);
     expect(res.body.authorization.reservedAmount).toBe('200.00');
     expect(res.body.authorization.status).toBe('RESERVED');
+    const inventoryReservation = await db.inventoryReservation.findUniqueOrThrow({
+      where: { operationId },
+    });
+    expect(inventoryReservation.status).toBe('ACTIVE');
+    expect(inventoryReservation.authorizationId).toBe(res.body.authorization.id);
+    expect(inventoryReservation.initialLiters.gt(0)).toBe(true);
+    const reservedLiters = (await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    })).reservedLiters;
+    const retries = await Promise.all([
+      reserve({ amount: '200.00', operationId }),
+      reserve({ amount: '200.00', operationId }),
+    ]);
+    expect(retries.map((retry) => retry.status)).toEqual([201, 201]);
+    expect(retries.every((retry) => retry.body.replayed)).toBe(true);
+    await reserve({ amount: '201.00', operationId }).expect(409);
+    expect(await db.inventoryReservation.count({ where: { operationId } })).toBe(1);
+    expect((await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    })).reservedLiters.eq(reservedLiters)).toBe(true);
     expect((await balanceOf()).toFixed(2)).toBe(before.minus(200).toFixed(2));
     expect(
       await db.walletMovement.count({
@@ -462,12 +483,13 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
   it('postpago consume lo real y libera el excedente de la reserva', async () => {
     await recharge('1000.00').expect(201);
-    const auth = await reserve({ amount: '300.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '300.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     const afterReserve = await balanceOf();
     // PREMIUM 23.50: 9.390 gal x 23.50 = 220.67 (dentro de los 300 reservados)
     const res = await buy({
-      operationId: randomUUID(),
+      operationId,
       plate: 'ABC-123',
       amount: '220.67',
       gallons: '9.390',
@@ -490,16 +512,27 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     expect(settled.status).toBe('SETTLED');
     expect(settled.consumedAmount?.toFixed(2)).toBe('220.67');
     expect(settled.releasedAmount.toFixed(2)).toBe('79.33');
+    const reservation = await db.inventoryReservation.findUniqueOrThrow({
+      where: { operationId },
+    });
+    expect(reservation.status).toBe('CLOSED');
+    expect(reservation.transactionId).toBe(res.body.transaction.id);
+    expect(
+      reservation.initialLiters.eq(
+        reservation.consumedLiters.plus(reservation.releasedLiters),
+      ),
+    ).toBe(true);
   });
 
   it('postpago que consume menos de lo reservado devuelve el excedente', async () => {
     await recharge('1000.00').expect(201);
-    const auth = await reserve({ amount: '200.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '200.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     const afterReserve = await balanceOf();
     // 4.000 gal x 23.50 = 94.00; de 200.00 reservados se devuelven 106.00
     await buy({
-      operationId: randomUUID(),
+      operationId,
       plate: 'ABC-123',
       amount: '94.00',
       gallons: '4.000',
@@ -520,6 +553,50 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     expect(settled.releasedAmount.toFixed(2)).toBe('106.00');
   });
 
+  it('progress repetido aplica el total una vez y devuelve el estado persistido', async () => {
+    await recharge('1000.00').expect(201);
+    const operationId = randomUUID();
+    const authResponse = await reserve({ amount: '100.00', operationId }).expect(201);
+    const authorizationId = authResponse.body.authorization.id as string;
+    const payload = { amount: '43.50', gallons: '1.851' };
+    const progresses = await Promise.all([
+      request(app.getHttpServer())
+        .post(`/api/v1/authorizations/${authorizationId}/progress`)
+        .set('x-kiosk-key', key)
+        .send(payload),
+      request(app.getHttpServer())
+        .post(`/api/v1/authorizations/${authorizationId}/progress`)
+        .set('x-kiosk-key', key)
+        .send(payload),
+    ]);
+    expect(progresses.map((response) => response.status)).toEqual([200, 200]);
+    const first = progresses[0];
+    const movementCount = await db.inventoryMovement.count({
+      where: { reservation: { operationId }, kind: 'DISPENSE' },
+    });
+    const duplicate = await request(app.getHttpServer())
+      .post(`/api/v1/authorizations/${authorizationId}/progress`)
+      .set('x-kiosk-key', key)
+      .send(payload)
+      .expect(200);
+    expect(duplicate.body.dispensedGallons).toBe(first.body.dispensedGallons);
+    expect(
+      await db.inventoryMovement.count({
+        where: { reservation: { operationId }, kind: 'DISPENSE' },
+      }),
+    ).toBe(movementCount);
+    await request(app.getHttpServer())
+      .post(`/api/v1/authorizations/${authorizationId}/progress`)
+      .set('x-kiosk-key', key)
+      .send({ amount: '23.50', gallons: '1.000' })
+      .expect(200);
+    expect(
+      (await db.fuelAuthorization.findUniqueOrThrow({
+        where: { id: authorizationId },
+      })).dispensedGallons.toFixed(3),
+    ).toBe('1.851');
+  });
+
   it('postpago sin autorización previa se rechaza', async () => {
     await buy({
       operationId: randomUUID(),
@@ -534,9 +611,13 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
   });
 
   it('liberar una reserva devuelve el importe y evita el doble cobro', async () => {
-    const auth = await reserve({ amount: '120.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '120.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     const afterReserve = await balanceOf();
+    const physicalLiters = (await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    })).liters;
     const released = await request(app.getHttpServer())
       .post(`/api/v1/authorizations/${reserved.id}/release`)
       .set('x-kiosk-key', key)
@@ -545,19 +626,128 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     expect((await balanceOf()).toFixed(2)).toBe(
       afterReserve.plus(120).toFixed(2),
     );
+    const reservation = await db.inventoryReservation.findUniqueOrThrow({
+      where: { operationId },
+    });
+    expect(reservation.status).toBe('CANCELLED');
+    expect(reservation.remainingLiters.isZero()).toBe(true);
+    expect((await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    })).liters.eq(physicalLiters)).toBe(true);
     await request(app.getHttpServer())
       .post(`/api/v1/authorizations/${reserved.id}/release`)
       .set('x-kiosk-key', key)
-      .expect(409);
+      .expect(200);
   });
 
   it('PREPAGO con medio externo nunca altera el saldo', async () => {
     const before = await balanceOf();
-    for (const paymentMethod of ['EFECTIVO', 'TARJETA'])
-      await buy(purchase({ paymentMethod })).expect(201);
+    for (const paymentMethod of ['EFECTIVO', 'TARJETA']) {
+      const body = purchase({ paymentMethod });
+      const operationId = body.operationId as string;
+      await buy(body).expect(201);
+      const authorization = await db.fuelAuthorization.findUniqueOrThrow({
+        where: { operationId },
+      });
+      const reservation = await db.inventoryReservation.findUniqueOrThrow({
+        where: { operationId },
+      });
+      expect(authorization.inventoryManaged).toBe(true);
+      expect(reservation.authorizationId).toBe(authorization.id);
+      expect(reservation.status).toBe('CLOSED');
+      expect(reservation.transactionId).not.toBeNull();
+    }
     for (const paymentMethod of ['YAPE', 'PLIN'])
-      await buy(purchase({ paymentMethod })).expect(400);
+      await buy(purchase({ paymentMethod })).expect(409);
     expect((await balanceOf()).toFixed(2)).toBe(before.toFixed(2));
+  });
+
+  it('prepago parcial con reembolso externo pendiente cierra inventario y deja conciliación financiera', async () => {
+    const operationId = randomUUID();
+    const authorizationResponse = await request(app.getHttpServer())
+      .post('/api/v1/authorizations')
+      .set('x-kiosk-key', key)
+      .send({
+        operationId,
+        plate: 'ABC-123',
+        amount: '100.00',
+        unitPrice: '23.50',
+        stationId,
+        fuelId,
+        mode: 'PREPAGO',
+        paymentMethod: 'TARJETA',
+      })
+      .expect(201);
+    const authorizationId = authorizationResponse.body.authorization.id as string;
+    const paymentId = (await db.fuelAuthorization.findUniqueOrThrow({
+      where: { id: authorizationId },
+    })).paymentId!;
+    const before = await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    });
+    await db.payment.update({ where: { id: paymentId }, data: { provider: 'CULQI' } });
+    await request(app.getHttpServer())
+      .post(`/api/v1/authorizations/${authorizationId}/progress`)
+      .set('x-kiosk-key', key)
+      .send({ amount: '43.50', gallons: '1.851' })
+      .expect(200);
+    const afterProgress = await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    });
+    const reservationAtProgress = await db.inventoryReservation.findUniqueOrThrow({
+      where: { operationId },
+    });
+    expect(afterProgress.liters.lt(before.liters)).toBe(true);
+    const closePayload = {
+      operationId,
+      authorizationId,
+      plate: 'ABC-123',
+      amount: '43.50',
+      gallons: '1.851',
+      stationId,
+      fuelId,
+      mode: 'PREPAGO',
+      paymentMethod: 'TARJETA',
+    };
+    const closed = await request(app.getHttpServer())
+      .post('/api/v1/transactions')
+      .set('x-kiosk-key', key)
+      .send(closePayload)
+      .expect(201);
+    expect(closed.body.transaction.status).toBe('PAYMENT_PENDING');
+    const reservation = await db.inventoryReservation.findUniqueOrThrow({
+      where: { operationId },
+    });
+    expect(reservation.status).toBe('CLOSED');
+    expect(reservation.transactionId).toBe(closed.body.transaction.id);
+    expect(reservation.remainingLiters.toFixed(6)).toBe('0.000000');
+    expect(reservation.consumedLiters.gt(0)).toBe(true);
+    expect(reservation.releasedLiters.gt(0)).toBe(true);
+    expect(reservation.initialLiters.eq(
+      reservation.consumedLiters.plus(reservation.releasedLiters),
+    )).toBe(true);
+    const afterClose = await db.fuelInventory.findUniqueOrThrow({
+      where: { stationId_fuelId: { stationId, fuelId } },
+    });
+    expect(afterClose.liters.eq(afterProgress.liters)).toBe(true);
+    expect(afterClose.reservedLiters.eq(
+      afterProgress.reservedLiters.minus(reservationAtProgress.remainingLiters),
+    )).toBe(true);
+    expect(await db.paymentEvent.count({
+      where: { eventKey: `partial-refund-pending:${authorizationId}` },
+    })).toBe(1);
+    const releasesBeforeRetry = await db.inventoryMovement.count({
+      where: { reservationId: reservation.id, kind: 'RELEASE' },
+    });
+    const replay = await request(app.getHttpServer())
+      .post('/api/v1/transactions')
+      .set('x-kiosk-key', key)
+      .send(closePayload)
+      .expect(201);
+    expect(replay.body.replayed).toBe(true);
+    expect(await db.inventoryMovement.count({
+      where: { reservationId: reservation.id, kind: 'RELEASE' },
+    })).toBe(releasesBeforeRetry);
   });
 
   it('PREPAGO con SALDO_PRIME se rechaza: no se cobra a la membresía', async () => {
@@ -578,7 +768,8 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
   it('Detener cobra solo lo consumido y libera el excedente', async () => {
     await recharge('1000.00').expect(201);
-    const auth = await reserve({ amount: '100.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '100.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     const afterReserve = await balanceOf();
 
@@ -590,7 +781,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
       .expect(200);
 
     await buy({
-      operationId: randomUUID(),
+      operationId,
       plate: 'ABC-123',
       // PREMIUM 23.50: 1.851 gal x 23.50 = 43.4985 -> 43.50
       amount: '43.50',
@@ -658,11 +849,12 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
   it('rechaza confirmar un consumo por encima de lo reservado', async () => {
     await recharge('500.00').expect(201);
-    const auth = await reserve({ amount: '30.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '30.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     const before = await balanceOf();
     await buy({
-      operationId: randomUUID(),
+      operationId,
       plate: 'ABC-123',
       amount: '30.01',
       stationId,
@@ -682,10 +874,11 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
   it('no liquida la misma reserva dos veces', async () => {
     await recharge('500.00').expect(201);
-    const auth = await reserve({ amount: '40.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '40.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     const body = {
-      operationId: randomUUID(),
+      operationId,
       plate: 'ABC-123',
       amount: '20.00',
       stationId,
@@ -762,10 +955,10 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
   it('recargar con la autorización ya liquidada recupera el comprobante sin cobrar dos veces', async () => {
     await recharge('500.00').expect(201);
-    const auth = await reserve({ amount: '60.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '60.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     // Mismo operationId y mismo cuerpo: es un reenvío idempotente.
-    const operationId = randomUUID();
     const confirmacion = {
       operationId,
       plate: 'ABC-123',
@@ -801,7 +994,8 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
   it('recargar con la reserva liberada no reenvía y permite una operación nueva', async () => {
     await recharge('500.00').expect(201);
     const before = await balanceOf();
-    const auth = await reserve({ amount: '40.00' }).expect(201);
+    const operationId = randomUUID();
+    const auth = await reserve({ amount: '40.00', operationId }).expect(201);
     const reserved = auth.body.authorization as { id: string };
     await request(app.getHttpServer())
       .post(`/api/v1/authorizations/${reserved.id}/release`)
@@ -810,7 +1004,7 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
 
     // Reenviar contra una reserva liberada da 409, no un cobro.
     await buy({
-      operationId: randomUUID(),
+      operationId,
       plate: 'ABC-123',
       amount: '10.00',
       stationId,
@@ -827,10 +1021,11 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     expect((await balanceOf()).toFixed(2)).toBe(before.toFixed(2));
 
     // Y una operación nueva con otra reserva sí funciona.
-    const fresh = await reserve({ amount: '30.00' }).expect(201);
+    const freshOperationId = randomUUID();
+    const fresh = await reserve({ amount: '30.00', operationId: freshOperationId }).expect(201);
     const freshId = fresh.body.authorization as { id: string };
     await buy({
-      operationId: randomUUID(),
+      operationId: freshOperationId,
       plate: 'ABC-123',
       amount: '12.00',
       gallons: '0.511',
@@ -867,7 +1062,10 @@ describe('API con PostgreSQL real (esquema aislado)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/authorizations/${reserved.id}/release`)
       .set('x-kiosk-key', key)
-      .expect(400);
+      .expect(200);
+    expect(
+      await db.transaction.count({ where: { authorizationId: reserved.id } }),
+    ).toBe(1);
   });
 
   it('CORS solo permite orígenes configurados y Helmet añade cabeceras', async () => {
