@@ -19,6 +19,8 @@ import { WalletRepository } from '../wallet/wallet.repository';
 import { AuthorizationsRepository } from './authorizations.repository';
 import { CreateAuthorizationDto } from './create-authorization.dto';
 import { DispenseProgressDto } from './dispense-progress.dto';
+import { terminalOperationFor, terminalSnapshot } from './operational-context';
+import { assertAuthorizationContext } from './operational-context';
 
 /** Antigüedad máxima de una reserva sin liquidar antes de considerarla abandonada. */
 const RESERVATION_TTL_MINUTES = 30;
@@ -111,9 +113,22 @@ export class AuthorizationsService {
 
     return this.repo.atomic(async (tx) => {
       const existing = await this.repo.byOperation(dto.operationId, tx);
+      const terminalOperation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+        !existing,
+      );
       if (existing) {
         if (existing.requestHash !== requestHash)
           throw new ConflictException('operationId ya usado con otros datos');
+        assertAuthorizationContext(
+          existing,
+          dto.operationId,
+          dto.stationId,
+          dto.fuelId,
+          terminalOperation,
+        );
         return {
           authorization: authorizationResponse(existing),
           replayed: true,
@@ -152,8 +167,17 @@ export class AuthorizationsService {
         throw new NotFoundException('Estación no disponible');
 
       this.checkPrice(dto.unitPrice, fuel.pricePerGallon);
-      const stock = await tx.fuelInventory.findUnique({ where: { stationId_fuelId: { stationId: dto.stationId, fuelId: dto.fuelId } } });
-      if (!stock || stock.liters.lt(amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784')))
+      const stock = await tx.fuelInventory.findUnique({
+        where: {
+          stationId_fuelId: { stationId: dto.stationId, fuelId: dto.fuelId },
+        },
+      });
+      if (
+        !stock ||
+        stock.liters.lt(
+          amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784'),
+        )
+      )
         throw new BadRequestException('Stock de combustible insuficiente');
       // Bloqueo de fila: serializa reservas concurrentes sobre la misma cuenta.
       await this.wallet.lockMembership(membership.id, tx);
@@ -198,6 +222,7 @@ export class AuthorizationsService {
           balanceAfter,
           mode: 'POSTPAGO',
           status: AuthorizationStatus.RESERVED,
+          ...(terminalOperation ? terminalSnapshot(terminalOperation) : {}),
         },
         tx,
       );
@@ -387,13 +412,47 @@ export class AuthorizationsService {
         throw new ConflictException('La autorización ya no está reservada');
 
       if (authorization.mode === 'PREPAGO') {
-        if (authorization.dispensedAmount.gt(0)) throw new ConflictException('Confirma primero el consumo despachado');
-        const paid = authorization.paymentId ? await tx.payment.findUnique({ where: { id: authorization.paymentId } }) : null;
-        if (!paid || paid.status !== 'CAPTURED' || paid.provider !== 'DEMO') throw new ConflictException('Requiere reembolso confirmado del proveedor');
-        await tx.payment.update({ where: { id: paid.id }, data: { status: 'REFUNDED', refundedAmount: { increment: paid.amount } } });
-        await tx.paymentEvent.create({ data: { eventKey: 'refund:' + paid.id, paymentId: paid.id, kind: 'REFUNDED', detail: 'Cancelacion sin consumo; devolucion simulada, no bancaria' } });
-        await tx.membership.updateMany({ where: { welcomeReservedOperationId: authorization.operationId }, data: { welcomeReservedOperationId: null } });
-        return authorizationResponse(await this.repo.settle(id, { status: 'RELEASED', outcome: 'CANCELLED', releasedAmount: new Prisma.Decimal(0) }, tx));
+        if (authorization.dispensedAmount.gt(0))
+          throw new ConflictException('Confirma primero el consumo despachado');
+        const paid = authorization.paymentId
+          ? await tx.payment.findUnique({
+              where: { id: authorization.paymentId },
+            })
+          : null;
+        if (!paid || paid.status !== 'CAPTURED' || paid.provider !== 'DEMO')
+          throw new ConflictException(
+            'Requiere reembolso confirmado del proveedor',
+          );
+        await tx.payment.update({
+          where: { id: paid.id },
+          data: {
+            status: 'REFUNDED',
+            refundedAmount: { increment: paid.amount },
+          },
+        });
+        await tx.paymentEvent.create({
+          data: {
+            eventKey: 'refund:' + paid.id,
+            paymentId: paid.id,
+            kind: 'REFUNDED',
+            detail: 'Cancelacion sin consumo; devolucion simulada, no bancaria',
+          },
+        });
+        await tx.membership.updateMany({
+          where: { welcomeReservedOperationId: authorization.operationId },
+          data: { welcomeReservedOperationId: null },
+        });
+        return authorizationResponse(
+          await this.repo.settle(
+            id,
+            {
+              status: 'RELEASED',
+              outcome: 'CANCELLED',
+              releasedAmount: new Prisma.Decimal(0),
+            },
+            tx,
+          ),
+        );
       }
       if (!authorization.membershipId || authorization.mode !== 'POSTPAGO')
         throw new ConflictException(
@@ -475,17 +534,34 @@ export class AuthorizationsService {
           throw new ConflictException('operationId ya usado con otros datos');
         return existing;
       }
+      await terminalOperationFor(tx, dto.operationId, dto.stationId);
       const fuel = await tx.fuel.findUnique({ where: { id: dto.fuelId } });
       if (!fuel?.active)
         throw new NotFoundException('Combustible no disponible');
       this.checkPrice(dto.unitPrice, fuel.pricePerGallon);
-      const stock = await tx.fuelInventory.findUnique({ where: { stationId_fuelId: { stationId: dto.stationId, fuelId: dto.fuelId } } });
-      if (!stock || stock.liters.lt(amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784')))
+      const stock = await tx.fuelInventory.findUnique({
+        where: {
+          stationId_fuelId: { stationId: dto.stationId, fuelId: dto.fuelId },
+        },
+      });
+      if (
+        !stock ||
+        stock.liters.lt(
+          amount.div(fuel.pricePerGallon).toDecimalPlaces(3).mul('3.785411784'),
+        )
+      )
         throw new BadRequestException('Stock de combustible insuficiente');
-      const station = await tx.station.findUnique({ where: { id: dto.stationId } });
-      if (!station?.active) throw new NotFoundException('Estaci?n no disponible');
+      const station = await tx.station.findUnique({
+        where: { id: dto.stationId },
+      });
+      if (!station?.active)
+        throw new NotFoundException('Estaci?n no disponible');
       const pricing = await reserveWelcome(tx, dto);
-      const result = await this.payments.authorize(pricing.amount, method, 'PREPAGO');
+      const result = await this.payments.authorize(
+        pricing.amount,
+        method,
+        'PREPAGO',
+      );
       return tx.payment.create({
         data: {
           ...result,
@@ -497,6 +573,12 @@ export class AuthorizationsService {
       });
     });
     return this.repo.atomic(async (tx) => {
+      let terminalOperation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+        false,
+      );
       const payment = await tx.payment.findUnique({ where: { id: paid.id } });
       if (
         !payment ||
@@ -507,9 +589,12 @@ export class AuthorizationsService {
         throw new ConflictException(
           'Pago no aprobado; no se autoriza abastecimiento. Requiere intervención',
         );
-      if (['YAPE','PLIN'].includes(payment.method)) {
-        const order = await tx.onlineOrder.findUnique({ where: { paymentId: payment.id } });
-        if (!order || order.status !== 'CAPTURED') throw new ConflictException('Orden no disponible para despacho');
+      if (['YAPE', 'PLIN'].includes(payment.method)) {
+        const order = await tx.onlineOrder.findUnique({
+          where: { paymentId: payment.id },
+        });
+        if (!order || order.status !== 'CAPTURED')
+          throw new ConflictException('Orden no disponible para despacho');
       }
       const existing = await this.repo.byOperation(dto.operationId, tx);
       if (existing) {
@@ -521,11 +606,23 @@ export class AuthorizationsService {
           throw new ConflictException(
             'operationId ya usado con otra autorización',
           );
+        assertAuthorizationContext(
+          existing,
+          dto.operationId,
+          dto.stationId,
+          dto.fuelId,
+          terminalOperation,
+        );
         return {
           authorization: authorizationResponse(existing),
           replayed: true,
         };
       }
+      terminalOperation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+      );
       const vehicle = await tx.vehicle.findUnique({
         where: { plate: normalizePlate(dto.plate) as string },
         include: { membership: true },
@@ -562,6 +659,7 @@ export class AuthorizationsService {
           releasedAmount: new Prisma.Decimal(0),
           balanceAfter: new Prisma.Decimal(0),
           status: 'RESERVED',
+          ...(terminalOperation ? terminalSnapshot(terminalOperation) : {}),
         },
         tx,
       );

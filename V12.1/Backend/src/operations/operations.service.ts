@@ -562,14 +562,78 @@ export class OperationsService {
         throw new UnauthorizedException(
           'Terminal revocada; requiere supervisor',
         );
-      const activeAuth = await tx.fuelAuthorization.findFirst({
-        where: {
-          terminalOperationId: operation.id,
-          status: { in: ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'] },
-        },
-      });
-      if (activeAuth)
-        throw new ConflictException('Autorización pendiente de conciliación');
+      const [authorizations, transactions] = await Promise.all([
+        tx.fuelAuthorization.findMany({
+          where: {
+            OR: [{ terminalOperationId: operation.id }, { operationId }],
+          },
+        }),
+        tx.transaction.findMany({
+          where: {
+            OR: [{ terminalOperationId: operation.id }, { operationId }],
+          },
+        }),
+      ]);
+      const transaction = transactions[0];
+      if (transactions.length > 1 || authorizations.length > 1)
+        throw new ConflictException(
+          'Vínculos financieros ambiguos; requiere conciliación',
+        );
+      const authorization = authorizations[0];
+      if (
+        authorization &&
+        (authorization.operationId !== operationId ||
+          authorization.stationId !== operation.stationId ||
+          (authorization.terminalOperationId &&
+            authorization.terminalOperationId !== operation.id) ||
+          (authorization.terminalId &&
+            authorization.terminalId !== operation.terminalId) ||
+          (authorization.pumpId && authorization.pumpId !== operation.pumpId) ||
+          (authorization.terminalPumpAssignmentId &&
+            authorization.terminalPumpAssignmentId !==
+              operation.terminalPumpAssignmentId))
+      )
+        throw new ConflictException(
+          'Autorización no coincide con la operación; requiere conciliación',
+        );
+      if (
+        transaction &&
+        (transaction.operationId !== operationId ||
+          transaction.stationId !== operation.stationId ||
+          (authorization && transaction.authorizationId !== authorization.id) ||
+          (transaction.terminalOperationId &&
+            transaction.terminalOperationId !== operation.id) ||
+          (transaction.terminalId &&
+            transaction.terminalId !== operation.terminalId) ||
+          (transaction.pumpId && transaction.pumpId !== operation.pumpId) ||
+          (transaction.terminalPumpAssignmentId &&
+            transaction.terminalPumpAssignmentId !==
+              operation.terminalPumpAssignmentId))
+      )
+        throw new ConflictException(
+          'Transacción no coincide con la operación; requiere conciliación',
+        );
+      if (
+        authorization &&
+        ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'].includes(
+          authorization.status,
+        )
+      )
+        throw new ConflictException(
+          'Autorización pendiente de liquidación o conciliación',
+        );
+      if (authorization?.status === 'SETTLED' && !transaction)
+        throw new ConflictException(
+          'Autorización liquidada sin transacción; requiere conciliación',
+        );
+      if (!authorization && transaction)
+        throw new ConflictException(
+          'Transacción sin autorización asociada; requiere conciliación',
+        );
+      if (authorization?.status === 'RELEASED' && transaction)
+        throw new ConflictException(
+          'Autorización liberada con transacción; requiere conciliación',
+        );
       const updated = await tx.terminalOperation.update({
         where: { id: operation.id },
         data: {
@@ -637,7 +701,7 @@ export class OperationsService {
         throw new ConflictException('Operación sin intervención requerida');
       const activeAuth = await tx.fuelAuthorization.findFirst({
         where: {
-          terminalOperationId: operation.id,
+          OR: [{ terminalOperationId: operation.id }, { operationId }],
           status: { in: ['RESERVED', 'DISPENSING', 'INTERVENTION_REQUIRED'] },
         },
       });

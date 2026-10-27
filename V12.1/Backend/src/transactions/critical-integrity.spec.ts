@@ -43,10 +43,14 @@ function harness(status: PaymentStatus = 'CAPTURED') {
   };
   const vehicle = { id: 'v', membershipId: 'm', membership: member };
   const db = {
-    fuelInventory: { findUnique: jest.fn().mockResolvedValue({liters:new Prisma.Decimal(5000)}) },
+    fuelInventory: {
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ liters: new Prisma.Decimal(5000) }),
+    },
     paymentEvent: { create: jest.fn() },
     payment: {
-      update: jest.fn(async ({data}) => (paid = {...paid, ...data})),
+      update: jest.fn(async ({ data }) => (paid = { ...paid, ...data })),
       findUnique: jest.fn(async () => paid ?? null),
       create: jest.fn(
         async ({ data }: { data: Prisma.PaymentUncheckedCreateInput }) =>
@@ -62,7 +66,10 @@ function harness(status: PaymentStatus = 'CAPTURED') {
       })),
     },
     station: { findUnique: jest.fn(async () => ({ id: 's', active: true })) },
-    membership: { updateMany: jest.fn().mockResolvedValue({count:0}), findUnique: jest.fn(async () => member) },
+    membership: {
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      findUnique: jest.fn(async () => member),
+    },
   };
   // Serialize calls to model repository contract; database races need E2E.
   let queue: Promise<unknown> = Promise.resolve();
@@ -144,7 +151,7 @@ function harness(status: PaymentStatus = 'CAPTURED') {
   const close = (changes: Partial<CreateTransactionDto> = {}) =>
     transactions.create({
       ...request,
-      operationId: 'purchase-operation',
+      operationId: request.operationId,
       authorizationId: 'auth',
       amount: '80.00',
       gallons: '4.000',

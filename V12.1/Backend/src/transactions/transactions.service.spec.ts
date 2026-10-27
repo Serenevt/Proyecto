@@ -36,7 +36,7 @@ describe('TransactionsService', () => {
   };
   // tx.membership lo usa settleReservation al liberar el excedente.
   (tx as { membership?: unknown }).membership = {
-    updateMany: jest.fn().mockResolvedValue({count:0}),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     findUnique: jest.fn().mockResolvedValue({
       id: 'member',
       balance: new Prisma.Decimal('0.00'),
@@ -60,6 +60,7 @@ describe('TransactionsService', () => {
   };
   const reservation = {
     id: 'auth-1',
+    operationId: 'operation',
     plate: 'ABC-123',
     vehicleId: 'vehicle',
     mode: 'POSTPAGO',
@@ -115,7 +116,9 @@ describe('TransactionsService', () => {
         ? { ...reservation, id, mode: 'PREPAGO', paymentId: 'paid' }
         : reservation,
     );
-    (tx as unknown as { paymentEvent: unknown }).paymentEvent = { create: jest.fn() };
+    (tx as unknown as { paymentEvent: unknown }).paymentEvent = {
+      create: jest.fn(),
+    };
     (tx as unknown as { payment: unknown }).payment = {
       update: jest.fn(),
       findUnique: jest.fn().mockResolvedValue({

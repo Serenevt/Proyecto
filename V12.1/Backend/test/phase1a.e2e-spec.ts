@@ -12,6 +12,13 @@ import { Actor } from '../src/auth/access';
 import { UsersService } from '../src/users/users.service';
 import { setupApp } from '../src/setup-app';
 import { KioskService } from '../src/kiosk/kiosk.service';
+import { AuthorizationsService } from '../src/transactions/authorizations.service';
+import { AuthorizationsRepository } from '../src/transactions/authorizations.repository';
+import { TransactionsService } from '../src/transactions/transactions.service';
+import { TransactionsRepository } from '../src/transactions/transactions.repository';
+import { WalletRepository } from '../src/wallet/wallet.repository';
+import { PaymentsService } from '../src/payments/payments.service';
+import { PointsPolicyService } from '../src/rewards/points-policy.service';
 
 const isolated = process.env.PHASE1A_TEST_DATABASE_URL;
 const suite = isolated ? describe : describe.skip;
@@ -389,11 +396,16 @@ suite('Phase 1A on isolated PostgreSQL', () => {
   it('does not allow enablement during a suspended or closed shift', async () => {
     const shift = await operations.openShift(ids.supervisor, ids.station_a);
     await operations.enable(ids.supervisor, ids.terminal, shift.id);
+    const operationId = randomUUID();
+    const active = await operations.startOperation(ids.terminal, operationId);
     await operations.shiftState(ids.supervisor, shift.id, 'suspend');
+    expect((await operations.operation(ids.terminal, operationId)).id).toBe(
+      active.id,
+    );
     expect(
       (await db.terminal.findUniqueOrThrow({ where: { id: ids.terminal } }))
         .operationalStatus,
-    ).toBe('BLOQUEADA');
+    ).toBe('EN_USO');
     await expect(
       operations.enable(ids.supervisor, ids.terminal, shift.id),
     ).rejects.toThrow();
@@ -402,9 +414,9 @@ suite('Phase 1A on isolated PostgreSQL', () => {
     ).rejects.toThrow();
     await operations.shiftState(ids.supervisor, shift.id, 'resume');
     expect(
-      (await db.terminal.findUniqueOrThrow({ where: { id: ids.terminal } }))
-        .operationalStatus,
-    ).toBe('DISPONIBLE');
+      (await operations.operation(ids.terminal, operationId)).closedAt,
+    ).toBeNull();
+    await operations.closeOperation(ids.terminal, operationId);
     await operations.shiftState(ids.supervisor, shift.id, 'close');
     await expect(
       operations.enable(ids.supervisor, ids.terminal, shift.id),
@@ -495,6 +507,231 @@ suite('Phase 1A on isolated PostgreSQL', () => {
     expect((await auth('either', await signed(ids.admin))).userId).toBe(
       ids.admin,
     );
+  });
+
+  it('links a technical authorization and settlement to the same operationId', async () => {
+    const user = await db.user.create({
+      data: {
+        email: `phase1b0-${randomUUID()}@example.test`,
+        name: 'Phase 1B-0',
+        passwordHash: 'test',
+      },
+    });
+    await operations.assignSupervisor(user.id, ids.station_a, 'contract test');
+    const shift = await operations.openShift(user.id, ids.station_a);
+    const pump = await operations.createPump(
+      ids.station_a,
+      `Q${randomUUID().slice(0, 6)}`,
+      'Contract pump',
+    );
+    const terminal = await operations.createTerminal(
+      ids.station_a,
+      `Q${randomUUID().slice(0, 6)}`,
+    );
+    await operations.assignTerminal(terminal.id, pump.id);
+    await operations.enable(user.id, terminal.id, shift.id);
+    const operationId = randomUUID();
+    const op = await operations.startOperation(terminal.id, operationId);
+    const member = await db.membership.create({
+      data: {
+        number: `PR-${randomUUID().slice(0, 8).toUpperCase()}`,
+        userId: ids.client,
+        balance: '100.00',
+      },
+    });
+    const plate = `${randomUUID().slice(0, 3).toUpperCase()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+    await db.vehicle.create({
+      data: { plate, label: 'Contract vehicle', membershipId: member.id },
+    });
+    const fuel = await db.fuel.create({
+      data: {
+        code: `F${randomUUID().slice(0, 8)}`,
+        name: 'Contract fuel',
+        pricePerGallon: '10.00',
+      },
+    });
+    await db.fuelInventory.create({
+      data: { stationId: ids.station_a, fuelId: fuel.id, liters: '100.000000' },
+    });
+
+    const wallet = new WalletRepository(db);
+    const authRepo = new AuthorizationsRepository(db);
+    const authorizations = new AuthorizationsService(
+      authRepo,
+      wallet,
+      new PaymentsService(),
+    );
+    const transactions = new TransactionsService(
+      new TransactionsRepository(db),
+      new PointsPolicyService({
+        getOrThrow: () => '1',
+      } as unknown as ConfigService),
+      new PaymentsService(),
+      authRepo,
+      wallet,
+    );
+    const authResult = await authorizations.create({
+      operationId,
+      stationId: ids.station_a,
+      fuelId: fuel.id,
+      plate,
+      membershipCode: member.number,
+      amount: '20.00',
+      unitPrice: '10.00',
+      mode: 'POSTPAGO',
+    } as never);
+    const savedAuth = await db.fuelAuthorization.findUniqueOrThrow({
+      where: { operationId },
+    });
+    await db.fuelAuthorization.update({
+      where: { id: savedAuth.id },
+      data: {
+        terminalOperationId: null,
+        terminalId: null,
+        pumpId: null,
+        terminalPumpAssignmentId: null,
+      },
+    });
+    await expect(
+      operations.closeOperation(terminal.id, operationId),
+    ).rejects.toThrow('Autorización pendiente');
+    expect(
+      (await db.terminalOperation.findUniqueOrThrow({ where: { operationId } }))
+        .closedAt,
+    ).toBeNull();
+    await db.fuelAuthorization.update({
+      where: { id: savedAuth.id },
+      data: {
+        terminalOperationId: op.id,
+        terminalId: terminal.id,
+        pumpId: pump.id,
+        terminalPumpAssignmentId: op.terminalPumpAssignmentId,
+      },
+    });
+    expect(savedAuth.terminalOperationId).toBe(op.id);
+    expect(savedAuth.terminalId).toBe(terminal.id);
+    expect(savedAuth.pumpId).toBe(pump.id);
+    expect(savedAuth.terminalPumpAssignmentId).toBe(
+      op.terminalPumpAssignmentId,
+    );
+    await expect(
+      transactions.create({
+        operationId: randomUUID(),
+        stationId: ids.station_a,
+        fuelId: fuel.id,
+        amount: '10.00',
+        mode: 'POSTPAGO',
+        paymentMethod: 'SALDO_PRIME',
+        gallons: '1.000',
+        authorizationId: savedAuth.id,
+        plate,
+        membershipCode: member.number,
+      } as never),
+    ).rejects.toThrow();
+    await expect(
+      transactions.create({
+        operationId,
+        stationId: ids.station_b,
+        fuelId: fuel.id,
+        amount: '10.00',
+        mode: 'POSTPAGO',
+        paymentMethod: 'SALDO_PRIME',
+        gallons: '1.000',
+        authorizationId: savedAuth.id,
+        plate,
+        membershipCode: member.number,
+      } as never),
+    ).rejects.toThrow();
+    await expect(
+      db.fuelAuthorization.update({
+        where: { id: savedAuth.id },
+        data: { terminalId: ids.otherTerminal },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      db.fuelAuthorization.update({
+        where: { id: savedAuth.id },
+        data: { pumpId: ids.otherPump },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      db.fuelAuthorization.update({
+        where: { id: savedAuth.id },
+        data: { terminalPumpAssignmentId: ids.link },
+      }),
+    ).rejects.toThrow();
+    await authorizations.progress(savedAuth.id, {
+      amount: '10.00',
+      gallons: '1.000',
+    });
+    const result = await transactions.create({
+      operationId,
+      stationId: ids.station_a,
+      fuelId: fuel.id,
+      amount: '10.00',
+      mode: 'POSTPAGO',
+      paymentMethod: 'SALDO_PRIME',
+      gallons: '1.000',
+      authorizationId: savedAuth.id,
+      plate,
+      membershipCode: member.number,
+    } as never);
+    const savedTransaction = await db.transaction.findUniqueOrThrow({
+      where: { operationId },
+    });
+    expect(savedTransaction.authorizationId).toBe(savedAuth.id);
+    expect(savedTransaction.terminalOperationId).toBe(op.id);
+    expect(savedTransaction.terminalId).toBe(terminal.id);
+    expect(savedTransaction.pumpId).toBe(pump.id);
+    expect(savedTransaction.terminalPumpAssignmentId).toBe(
+      op.terminalPumpAssignmentId,
+    );
+    expect(result.replayed).toBe(false);
+    await operations.closeOperation(terminal.id, operationId);
+    expect(
+      (await operations.closeOperation(terminal.id, operationId)).closedAt,
+    ).not.toBeNull();
+    expect(authResult.replayed).toBe(false);
+
+    const legacyOperationId = randomUUID();
+    const legacyAuth = await db.fuelAuthorization.create({
+      data: {
+        operationId: legacyOperationId,
+        requestHash: 'a'.repeat(64),
+        plate,
+        vehicleId: (await db.vehicle.findUniqueOrThrow({ where: { plate } }))
+          .id,
+        membershipId: member.id,
+        stationId: ids.station_a,
+        fuelId: fuel.id,
+        unitPrice: '10.00',
+        authorizedAmount: '10.00',
+        reservedAmount: '10.00',
+        balanceAfter: '0.00',
+        dispensedAmount: '10.00',
+        dispensedGallons: '1.000',
+        mode: 'POSTPAGO',
+        status: 'DISPENSING',
+      },
+    });
+    const legacyTx = await transactions.create({
+      operationId: legacyOperationId,
+      stationId: ids.station_a,
+      fuelId: fuel.id,
+      amount: '10.00',
+      mode: 'POSTPAGO',
+      paymentMethod: 'SALDO_PRIME',
+      gallons: '1.000',
+      authorizationId: legacyAuth.id,
+      plate,
+      membershipCode: member.number,
+    } as never);
+    const savedLegacyTx = await db.transaction.findUniqueOrThrow({
+      where: { operationId: legacyOperationId },
+    });
+    expect(legacyTx.replayed).toBe(false);
+    expect(savedLegacyTx.terminalOperationId).toBeNull();
+    expect(savedLegacyTx.terminalId).toBeNull();
   });
 
   it('serves admin and supervisor endpoints and requires the signed gateway for pairing and terminal access', async () => {

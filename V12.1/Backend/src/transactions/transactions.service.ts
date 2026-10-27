@@ -25,6 +25,11 @@ import { AuthorizationsRepository } from './authorizations.repository';
 import { CreateTransactionDto } from './create-transaction.dto';
 import { transactionResponse } from './transaction.model';
 import { TransactionsRepository } from './transactions.repository';
+import {
+  assertAuthorizationContext,
+  terminalOperationFor,
+  terminalSnapshot,
+} from './operational-context';
 
 @Injectable()
 export class TransactionsService {
@@ -76,20 +81,66 @@ export class TransactionsService {
       .digest('hex');
 
     return this.repo.atomic(async (tx) => {
+      if (!dto.authorizationId)
+        throw new BadRequestException('Se requiere autorización previa');
+      const auth = await this.authorizations.byId(dto.authorizationId, tx);
+      if (!auth) throw new NotFoundException('Autorización no encontrada');
+      let terminalOperation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+        false,
+      );
+      assertAuthorizationContext(
+        auth,
+        dto.operationId,
+        dto.stationId,
+        dto.fuelId,
+        terminalOperation,
+      );
+      const technicalSnapshot = terminalOperation
+        ? terminalSnapshot(terminalOperation)
+        : {
+            terminalOperationId: null,
+            terminalId: null,
+            pumpId: null,
+            terminalPumpAssignmentId: null,
+          };
+      if (terminalOperation && !auth.terminalOperationId) {
+        await this.authorizations.settle(auth.id, technicalSnapshot, tx);
+        Object.assign(auth, technicalSnapshot);
+      }
       const existing = await this.repo.byOperation(dto.operationId, tx);
       if (existing) {
         if (existing.requestHash !== requestHash)
           throw new ConflictException('operationId ya usado con otros datos');
+        if (
+          existing.authorizationId !== auth.id ||
+          (terminalOperation &&
+            (existing.terminalOperationId !==
+              technicalSnapshot.terminalOperationId ||
+              existing.terminalId !== technicalSnapshot.terminalId ||
+              existing.pumpId !== technicalSnapshot.pumpId ||
+              existing.terminalPumpAssignmentId !==
+                technicalSnapshot.terminalPumpAssignmentId))
+        )
+          throw new ConflictException(
+            'La transacción existente no coincide con su contexto operacional',
+          );
         return {
           transaction: transactionResponse(existing),
           pointsEarned: existing.pointsEarned,
           replayed: true,
         };
       }
-      if (!dto.authorizationId)
-        throw new BadRequestException('Se requiere autorización previa');
-      const auth = await this.authorizations.byId(dto.authorizationId, tx);
-      if (!auth) throw new NotFoundException('Autorización no encontrada');
+      terminalOperation = await terminalOperationFor(
+        tx,
+        dto.operationId,
+        dto.stationId,
+      );
+      const finalSnapshot = terminalOperation
+        ? terminalSnapshot(terminalOperation)
+        : technicalSnapshot;
       // Keep a guest purchase unlinked even if the plate is registered mid-delivery.
       const vehicle = auth.vehicleId
         ? await this.repo.vehicle(plate, tx)
@@ -194,8 +245,17 @@ export class TransactionsService {
       if (eligible && amount.gt(50)) {
         await this.wallet.lockMembership(membership!.id, tx);
         const claimed = await tx.membership.updateMany({
-          where: { id: membership!.id, welcomeAvailable: true, welcomeReservedOperationId: dto.mode === 'PREPAGO' ? auth.operationId : null },
-          data: { welcomeAvailable: false, welcomeTransactionId: dto.operationId, welcomeReservedOperationId: null },
+          where: {
+            id: membership!.id,
+            welcomeAvailable: true,
+            welcomeReservedOperationId:
+              dto.mode === 'PREPAGO' ? auth.operationId : null,
+          },
+          data: {
+            welcomeAvailable: false,
+            welcomeTransactionId: dto.operationId,
+            welcomeReservedOperationId: null,
+          },
         });
         if (claimed.count === 1) discount = new Prisma.Decimal(10);
       }
@@ -203,18 +263,51 @@ export class TransactionsService {
       if (prepaidPayment) {
         const paid = prepaidPayment;
         if (paid.amount.lt(netAmount)) {
-          if (paid.provider !== 'DEMO') throw new ConflictException('Requiere confirmar pago adicional con el proveedor');
+          if (paid.provider !== 'DEMO')
+            throw new ConflictException(
+              'Requiere confirmar pago adicional con el proveedor',
+            );
           const extra = netAmount.minus(paid.amount);
-          await tx.payment.update({ where: { id: paid.id }, data: { amount: netAmount } });
-          await tx.paymentEvent.create({ data: { eventKey: 'adjust:' + auth.id, paymentId: paid.id, kind: 'CAPTURE_ADJUSTMENT', detail: 'Ajuste simulado dentro del importe original autorizado: ' + extra.toFixed(2) } });
+          await tx.payment.update({
+            where: { id: paid.id },
+            data: { amount: netAmount },
+          });
+          await tx.paymentEvent.create({
+            data: {
+              eventKey: 'adjust:' + auth.id,
+              paymentId: paid.id,
+              kind: 'CAPTURE_ADJUSTMENT',
+              detail:
+                'Ajuste simulado dentro del importe original autorizado: ' +
+                extra.toFixed(2),
+            },
+          });
         }
         const refund = paid.amount.minus(netAmount);
-        if (refund.gt(0) && paid.provider !== 'DEMO') throw new ConflictException('Reembolso externo pendiente de confirmaci?n del proveedor');
+        if (refund.gt(0) && paid.provider !== 'DEMO')
+          throw new ConflictException(
+            'Reembolso externo pendiente de confirmaci?n del proveedor',
+          );
         if (refund.gt(0)) {
-          await tx.payment.update({ where: { id: paid.id }, data: { amount: netAmount, refundedAmount: { increment: refund } } });
-          await tx.paymentEvent.create({ data: { eventKey: 'partial:' + auth.id, paymentId: paid.id, kind: 'PARTIAL_REFUND', detail: 'Devoluci?n interna simulada del excedente: ' + refund.toFixed(2) } });
+          await tx.payment.update({
+            where: { id: paid.id },
+            data: { amount: netAmount, refundedAmount: { increment: refund } },
+          });
+          await tx.paymentEvent.create({
+            data: {
+              eventKey: 'partial:' + auth.id,
+              paymentId: paid.id,
+              kind: 'PARTIAL_REFUND',
+              detail:
+                'Devoluci?n interna simulada del excedente: ' +
+                refund.toFixed(2),
+            },
+          });
         }
-        await tx.membership.updateMany({ where: { welcomeReservedOperationId: auth.operationId }, data: { welcomeReservedOperationId: null } });
+        await tx.membership.updateMany({
+          where: { welcomeReservedOperationId: auth.operationId },
+          data: { welcomeReservedOperationId: null },
+        });
       }
       let authorizationId: string | null = auth.id;
       let pending = new Prisma.Decimal(0);
@@ -283,6 +376,7 @@ export class TransactionsService {
           mode: dto.mode,
           receiptType: dto.receiptType,
           authorizationId,
+          ...finalSnapshot,
           receiptDni,
           receiptRuc,
           receiptBusinessName,
