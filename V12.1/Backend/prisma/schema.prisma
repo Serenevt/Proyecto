@@ -119,6 +119,32 @@ enum OperationalActorKind {
   LEGACY_KIOSK
   SYSTEM
 }
+enum InventoryReservationSource {
+  TERMINAL
+  LEGACY
+}
+enum InventoryReservationStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  REVIEW
+  CLOSED
+  CANCELLED
+}
+enum InventoryMovementKind {
+  OPENING_BALANCE
+  RESERVE
+  DISPENSE
+  LEGACY_DISPENSE
+  RELEASE
+  ADJUST_IN
+  ADJUST_OUT
+}
+enum InventoryActorKind {
+  SYSTEM
+  USER
+  TERMINAL
+  LEGACY_KIOSK
+}
 
 model User {
   id           String      @id @default(uuid()) @db.Uuid
@@ -276,6 +302,8 @@ model Transaction {
   @@index([fuelId])
   @@index([terminalId, createdAt])
   @@index([pumpId, createdAt])
+  inventoryReservation InventoryReservation? @relation("ReservationTransaction")
+  inventoryMovements InventoryMovement[] @relation("MovementTransaction")
 }
 
 /// AutorizaciÃƒÂ³n previa al abastecimiento; prepago exige Payment persistido.
@@ -320,6 +348,8 @@ model FuelAuthorization {
   terminalPumpAssignmentId String? @db.Uuid
   terminalPumpAssignment TerminalPumpAssignment? @relation(fields: [terminalPumpAssignmentId], references: [id], onDelete: Restrict)
   movements        WalletMovement[]
+  inventoryReservation InventoryReservation? @relation("ReservationAuthorization")
+  inventoryMovements InventoryMovement[] @relation("MovementAuthorization")
 
   @@index([membershipId, createdAt])
   @@index([status, createdAt])
@@ -497,6 +527,8 @@ model TerminalOperation {
   closedAt DateTime? @db.Timestamptz(3)
   version Int @default(0)
   authorizations FuelAuthorization[]
+  inventoryReservation InventoryReservation? @relation("ReservationTerminalOperation")
+  inventoryMovements InventoryMovement[] @relation("MovementTerminalOperation")
   transaction Transaction?
   @@unique([id, terminalId, pumpId, stationId])
   @@index([terminalId, openedAt])
@@ -693,8 +725,70 @@ model FuelInventory {
   station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
   fuel Fuel @relation(fields: [fuelId], references: [id], onDelete: Restrict)
   liters Decimal @default(0) @db.Decimal(14, 6)
+  reservedLiters Decimal @default(0) @db.Decimal(14, 6)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  reservations InventoryReservation[]
+  movements InventoryMovement[]
   @@id([stationId, fuelId])
+}
+
+model InventoryReservation {
+  id String @id @default(uuid()) @db.Uuid
+  operationId String @unique @db.Uuid
+  terminalOperationId String? @unique @db.Uuid
+  authorizationId String? @unique @db.Uuid
+  transactionId String? @unique @db.Uuid
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  inventory FuelInventory @relation(fields: [stationId, fuelId], references: [stationId, fuelId], onDelete: Restrict)
+  terminalOperation TerminalOperation? @relation("ReservationTerminalOperation", fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  authorization FuelAuthorization? @relation("ReservationAuthorization", fields: [authorizationId], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation("ReservationTransaction", fields: [transactionId], references: [id], onDelete: Restrict)
+  source InventoryReservationSource
+  status InventoryReservationStatus @default(ACTIVE)
+  maxGallons Decimal @db.Decimal(12, 3)
+  initialLiters Decimal @db.Decimal(14, 6)
+  remainingLiters Decimal @db.Decimal(14, 6)
+  consumedLiters Decimal @default(0) @db.Decimal(14, 6)
+  releasedLiters Decimal @default(0) @db.Decimal(14, 6)
+  requestHash String @db.Char(64)
+  version Int @default(0)
+  reviewReason String? @db.VarChar(200)
+  actorKind InventoryActorKind @default(SYSTEM)
+  actorId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  movements InventoryMovement[]
+  @@index([stationId, fuelId, status])
+  @@index([status, createdAt])
+}
+
+model InventoryMovement {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(200)
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  inventory FuelInventory @relation(fields: [stationId, fuelId], references: [stationId, fuelId], onDelete: Restrict)
+  sequence BigInt
+  reservationId String? @db.Uuid
+  reservation InventoryReservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  authorizationId String? @db.Uuid
+  authorization FuelAuthorization? @relation("MovementAuthorization", fields: [authorizationId], references: [id], onDelete: Restrict)
+  terminalOperationId String? @db.Uuid
+  terminalOperation TerminalOperation? @relation("MovementTerminalOperation", fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  transactionId String? @db.Uuid
+  transaction Transaction? @relation("MovementTransaction", fields: [transactionId], references: [id], onDelete: Restrict)
+  kind InventoryMovementKind
+  physicalDeltaLiters Decimal @db.Decimal(14, 6)
+  reservedDeltaLiters Decimal @db.Decimal(14, 6)
+  litersAfter Decimal @db.Decimal(14, 6)
+  reservedLitersAfter Decimal @db.Decimal(14, 6)
+  actorKind InventoryActorKind
+  actorId String? @db.Uuid
+  reason String? @db.VarChar(200)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([stationId, fuelId, sequence])
+  @@index([reservationId, createdAt])
 }
 
 model OnlineOrder {
