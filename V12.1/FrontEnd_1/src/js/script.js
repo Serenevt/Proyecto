@@ -1924,6 +1924,7 @@ async function mostrarResumen() {
       transactionsService.prepare({plate:state.placa,stationId:catalog.station.id,fuelId:state.combustible.id,amount:total.toFixed(2),gallons:state.galones.toFixed(3),mode:state.modalidad,paymentMethod:state.modalidad==='POSTPAGO'?'SALDO_PRIME':state.metodoPago,receiptType:state.tipoComprobante,...(state.dni?{receiptDni:state.dni}:{}),...(state.ruc?{receiptRuc:state.ruc}:{}),...(state.razonSocial?{receiptBusinessName:state.razonSocial}:{}),...(state.codigoCliente?{membershipCode:state.codigoCliente}:{}),saveReceiptProfile:Boolean($('save-receipt-profile')?.checked),authorizationId:state.autorizacionId,unitPrice:state.combustible.precio.toFixed(2),outcome:state.motivoFin==='AUTO'?'AUTO':'MANUAL'},
         {dni:state.dni,ruc:state.ruc,razonSocial:state.razonSocial,efectivoEntregado:state.efectivoEntregado,efectivoVuelto:state.efectivoVuelto,combustible:state.combustible,modalidad:state.modalidad,placa:state.placa,total:state.total,galones:state.galones,montoPrepago:state.montoPrepago,montoPostpago:state.montoPostpago,tanqueLleno:state.tanqueLleno,tipoComprobante:state.tipoComprobante,metodoPago:state.modalidad==='POSTPAGO'?'SALDO_PRIME':state.metodoPago,esMiembro:state.esMiembro,codigoCliente:state.codigoCliente,autorizacionId:state.autorizacionId,motivoFin:state.motivoFin});
     }
+    await ensureTerminalOperation();
     backendResult=await transactionsService.submit();
     state.codigoCliente=backendResult.transaction.membership?.number||'';
     state.esMiembro=Boolean(state.codigoCliente);
@@ -2431,6 +2432,7 @@ async function ejecutarReserva(monto, allowDebt = false) {
     fuelId: state.combustible.id,
     receiptType: state.tipoComprobante || 'BOLETA',
   };
+  await ensureTerminalOperation();
   const result = await transactionsService.authorize(body, {...state, despachoTimer:null});
   state.autorizacionId = result.authorization.id;
   state.montoReservado = Number(result.authorization.authorizedAmount);
@@ -2977,6 +2979,7 @@ async function crearOrdenQR(method) {
  if(state.creatingOrder)return; state.creatingOrder=true;
  $('qr-code').replaceChildren();$('btn-qr-pagado').disabled=true;$('btn-qr-pagado').textContent='Simular confirmación del pago';
  try {
+  await ensureTerminalOperation();
   const pending=transactionsService.begin();
   const authorization={mode:'PREPAGO',paymentMethod:method,unitPrice:state.combustible.precio.toFixed(2),allowDebt:false,plate:state.placa,amount:state.montoPrepago.toFixed(2),...(state.codigoCliente?{membershipCode:state.codigoCliente}:{}),stationId:catalog.station.id,fuelId:state.combustible.id,receiptType:state.tipoComprobante||'BOLETA',operationId:pending.operationId};
 

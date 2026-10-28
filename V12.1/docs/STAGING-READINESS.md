@@ -25,7 +25,7 @@ Usar un gestor de secretos y variables independientes por entorno. Estos nombres
 - `NODE_ENV=production`, `APP_MODE=academic`, `PORT`, `DATABASE_PURPOSE=academic-demo` luego de aprobar el aislamiento.
 - `DATABASE_URL`: Neon pooled URL; TLS obligatorio y `connection_limit` acotado.
 - `DATABASE_URL_UNPOOLED`: conexión directa a la misma rama/base/esquema, TLS. Prisma usa esta URL para migraciones.
-- `JWT_SECRET`, `KIOSK_API_KEY`, `KIOSK_GATEWAY_SECRET`: tres secretos aleatorios independientes; gateway y backend comparten solo el secreto HMAC que les corresponde.
+- `JWT_SECRET`, `KIOSK_API_KEY`, `KIOSK_GATEWAY_SECRET`: tres secretos aleatorios independientes; gateway y backend comparten solo el secreto HMAC que les corresponde. `KIOSK_API_KEY` no puede crear autorizaciones, órdenes ni transacciones nuevas y nunca debe quedar en Nginx ni en el navegador.
 - `KIOSK_OPERATOR_USER`, `KIOSK_OPERATOR_PASSWORD_HASH`, `KIOSK_STATION_ID`, `KIOSK_SESSION_NAMESPACE`, `KIOSK_SESSION_VERSION`.
 - `KIOSK_REDIS_REST_URL` HTTPS y `KIOSK_REDIS_REST_TOKEN`, compatibles con los comandos Redis requeridos (`GET/SET/DEL/EVAL`); el perfil académico actual no admite Redis TCP directo ni fallback in-memory.
 - `CORS_ORIGINS`: lista exacta de origins HTTPS finales, sin rutas, barra final ni comodín.
@@ -40,6 +40,7 @@ Usar un gestor de secretos y variables independientes por entorno. Estos nombres
 - `FUELFLOW_PUBLIC_ORIGIN`: origin HTTPS exacto.
 - `BACKEND_ORIGIN`: origin privado HTTPS o red privada al Backend.
 - `KIOSK_GATEWAY_SECRET`: mismo secreto aleatorio del Backend, nunca `NEXT_PUBLIC_*` ni asset estático.
+- Las rutas `/api/v1/authorizations`, `/api/v1/online-orders` y `/api/v1/transactions` de FuelFlow deben pasar obligatoriamente por el BFF HMAC; su creación exige sesión técnica y `TerminalOperation` activa. Ningún proxy de staging puede reintroducir Nginx → Backend directo para nuevas ventas.
 - Mantener cookies `HttpOnly; Secure; SameSite=Strict; Path=/`, protección Origin/CSRF y firma HMAC. No añadir `Domain`.
 - El servidor BFF debe aceptar solo rutas de `FrontEnd_1/server/policy.js`; no reenviar destinos o cabeceras arbitrarias.
 
@@ -101,7 +102,7 @@ La lista actual de migraciones se obtiene localmente con `find Backend/prisma/mi
 
 ## Pendientes concretos antes de la primera revisión de staging
 
-0. **Bloqueante funcional pendiente, Fase 4D-3:** Compose ya ejecuta el BFF HMAC y FuelFlow puede iniciar, recuperar y cerrar `TerminalOperation` con cookie técnica HttpOnly tras pairing Supervisor. El E2E HTTP local cubre turno, habilitación, pairing, operación, bloqueo, fuera de servicio, asignación inválida, rotación, revocación y suspensión; Phase 1A pasó en PostgreSQL aislado. En staging HTTPS, la cookie técnica debe conservar `Secure` y el prefijo `__Host-`; el modo HTTP está limitado a loopback local. Las rutas Kiosk compatibles de autorización y pago todavía admiten una venta nueva sin vínculo terminal. Exigir el contexto técnico en esas rutas antes de staging; no considerar resuelto el bloqueo global.
+0. **Bloqueante funcional de Terminal Binding RESUELTO en local (Fase 4D-3):** Compose ejecuta Nginx → BFF HMAC → Backend; pairing Supervisor entrega solo cookie técnica HttpOnly al navegador y FuelFlow inicia/recupera `TerminalOperation`. Las tres creaciones financieras Kiosk exigen credencial técnica vigente y operación activa; `KIOSK_API_KEY` directo recibe 403. El E2E HTTP sobre `127.0.0.1:26081` completó postpago y Yape DEMO, reintentos, progress, transacciones y cierres. PostgreSQL verificó vínculos técnicos y un movimiento `DISPENSE` por venta; intentos sin binding no dejaron autorización, reserva ni transacción. El Supervisor cerró turno durante una operación prepago: esa operación finalizó y una nueva fue rechazada. Phase 1A, inventario, incidentes, Control, gateway y FuelFlow pasaron localmente. En staging HTTPS, conservar `Secure` y `__Host-` para la cookie técnica; el modo HTTP está limitado a loopback local. Repetir la prueba de la frontera pública con dominios y Redis reales antes de desplegar.
 1. Elegir y aprobar dominios HTTPS y alojamiento para Backend persistente, Redis, OCR y SMTP. No se eligieron en esta fase.
 2. Crear Neon y Redis dedicados, revisar aislamiento/backups/restore point y guardar secretos nuevos en un gestor. Ninguno se consultó ni se creó aquí.
 3. Revisar el flujo del gateway HMAC de FuelFlow en un host HTTPS real, sus cookies Secure y revocación Redis. Compose local usa proxy Nginx loopback, no pretende simular esta frontera pública.

@@ -63,7 +63,8 @@ describe('Fase 1B-3: legacy abierto, activación y conciliación local', () => {
   beforeAll(async () => {
     const originalUrl = new URL(original);
     if (
-      !['127.0.0.1', 'localhost', '[::1]'].includes(originalUrl.hostname) ||
+      !(['127.0.0.1', 'localhost', '[::1]'].includes(originalUrl.hostname) ||
+        (originalUrl.hostname === 'postgres' && process.env.APP_MODE === 'local')) ||
       originalUrl.pathname !== '/primax_v12_1b3_test'
     )
       throw Error('Se requiere PostgreSQL local de prueba');

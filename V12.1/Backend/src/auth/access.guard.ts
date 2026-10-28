@@ -43,7 +43,9 @@ export class AccessGuard implements CanActivate {
       access !== 'terminal' &&
       !req.path.startsWith('/api/v1/kiosk/session')
     ) {
-      req.actor = await this.kiosk.authorize(req);
+      const actor = await this.kiosk.authorize(req);
+      if (this.newKioskSale(req)) await this.assertSaleBinding(req, actor.stationId);
+      req.actor = actor;
       return true;
     }
     if (access === 'terminal') {
@@ -95,6 +97,8 @@ export class AccessGuard implements CanActivate {
     }
     const key = req.header('x-kiosk-key');
     if (key && (access === 'kiosk' || access === 'either')) {
+      if (this.newKioskSale(req))
+        throw new ForbiddenException('La venta requiere operación técnica de terminal');
       if (this.config.get('APP_MODE') === 'academic')
         throw new UnauthorizedException('Se requiere una sesión de operador');
       const expected = Buffer.from(
@@ -258,5 +262,42 @@ export class AccessGuard implements CanActivate {
     )
       throw new ForbiddenException('Se requiere asignación de supervisor');
     return true;
+  }
+
+  private newKioskSale(req: Request) {
+    return req.method === 'POST' && [
+      '/api/v1/authorizations',
+      '/api/v1/online-orders',
+      '/api/v1/transactions',
+    ].includes(req.path);
+  }
+
+  private async assertSaleBinding(req: Request, kioskStationId?: string) {
+    const token = req.header('x-terminal-session') || '';
+    if (!/^[a-f0-9]{64}$/.test(token))
+      throw new UnauthorizedException('Sesión técnica requerida');
+    await this.kiosk.limitTechnical(req);
+    const credential = await this.db.terminalCredential.findUnique({
+      where: { tokenHash: createHash('sha256').update(token).digest('hex') },
+      include: { terminal: true },
+    });
+    if (
+      !credential || credential.revokedAt || credential.expiresAt <= new Date() ||
+      credential.terminal.lifecycle !== 'REGISTRADA' || credential.terminal.revokedAt
+    ) throw new UnauthorizedException('Sesión técnica no disponible');
+    const body = req.body as { operationId?: string; stationId?: string; authorization?: { operationId?: string; stationId?: string } };
+    if (!body?.operationId || body.authorization?.operationId && body.authorization.operationId !== body.operationId)
+      throw new ForbiddenException('Operación técnica requerida');
+    const operation = await this.db.terminalOperation.findUnique({
+      where: { operationId: body.operationId },
+    });
+    if (
+      !operation || operation.closedAt || operation.status !== 'ACTIVE' ||
+      operation.terminalId !== credential.terminalId ||
+      operation.stationId !== credential.terminal.stationId ||
+      operation.stationId !== kioskStationId ||
+      (body.stationId && body.stationId !== operation.stationId) ||
+      (body.authorization?.stationId && body.authorization.stationId !== operation.stationId)
+    ) throw new ForbiddenException('Operación técnica no disponible');
   }
 }

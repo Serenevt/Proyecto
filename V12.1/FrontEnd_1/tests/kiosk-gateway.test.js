@@ -44,17 +44,26 @@ test('denies admin routes, unexpected methods, queries and arbitrary destination
 });
 test('validates resource permission with NestJS before forwarding the signed operation', async () => {
   const calls = []; const body = { stationId, operationId: '33333333-3333-4333-8333-333333333333' };
-  const res = await invoke('/api/v1/authorizations', { method: 'POST', body, fetcher: backend(calls) });
+  const res = await invoke('/api/v1/authorizations', { method: 'POST', body, headers: { cookie: '__Host-primax-kiosk=' + token + '; __Host-primax-terminal=' + 'a'.repeat(64) }, fetcher: backend(calls) });
   assert.equal(res.statusCode, 200);
   assert.deepEqual(calls.map(c => c.path), ['/api/v1/kiosk/session/authorize', '/api/v1/authorizations']);
   assert.deepEqual(calls[0].body, { method: 'POST', path: '/api/v1/authorizations', body });
   assert.deepEqual(calls[1].body, body);
+  assert.equal(calls[1].options.headers['x-terminal-session'], 'a'.repeat(64));
 });
 test('rejects a client-selected station and never executes a denied resource operation', async () => {
-  const calls = []; const res = await invoke('/api/v1/transactions', { method: 'POST', body: { stationId: 'foreign-station' }, fetcher: backend(calls) });
+  const calls = []; const res = await invoke('/api/v1/transactions', { method: 'POST', body: { stationId: 'foreign-station' }, headers: { cookie: '__Host-primax-kiosk=' + token + '; __Host-primax-terminal=' + 'a'.repeat(64) }, fetcher: backend(calls) });
   assert.equal(res.statusCode, 403); assert.equal(calls.length, 1);
   const denied = []; const result = await invoke('/api/v1/transactions/33333333-3333-4333-8333-333333333333', { fetcher: backend(denied, p => p.endsWith('/authorize') ? Response.json({ message: 'Forbidden' }, { status: 403 }) : null) });
   assert.equal(result.statusCode, 403); assert.equal(denied.length, 1);
+});
+test('never forwards a new financial sale without a technical cookie', async () => {
+  for (const path of ['/api/v1/authorizations', '/api/v1/online-orders', '/api/v1/transactions']) {
+    let calls = 0;
+    const result = await invoke(path, { method: 'POST', body: { stationId, operationId: '33333333-3333-4333-8333-333333333333' }, fetcher: async () => { calls++; return Response.json({}); } });
+    assert.equal(result.statusCode, 401);
+    assert.equal(calls, 0);
+  }
 });
 test('session tokens stay in host-only secure cookies and are stripped from JSON', async () => {
   const calls = [];

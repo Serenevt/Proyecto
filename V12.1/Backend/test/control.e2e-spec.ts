@@ -61,7 +61,8 @@ suite('Primax Control foundation on isolated PostgreSQL', () => {
       target.protocol !== 'postgresql:' ||
       target.pathname !== '/primax_control_test' ||
       target.search ||
-      !['127.0.0.1:26544', 'localhost:26544'].includes(target.host)
+      !(['127.0.0.1:26544', 'localhost:26544'].includes(target.host) ||
+        (target.host === 'postgres:5432' && process.env.APP_MODE === 'local'))
     )
       throw new Error(
         'CONTROL_TEST_DATABASE_URL must point to the dedicated local control database',

@@ -32,7 +32,7 @@ suite('Primax Control operational modules on isolated PostgreSQL', () => {
 
   beforeAll(async () => {
     const target = new URL(isolated!);
-    if (target.protocol !== 'postgresql:' || target.pathname !== '/primax_control_test' || target.search || !['127.0.0.1:26544', 'localhost:26544'].includes(target.host))
+    if (target.protocol !== 'postgresql:' || target.pathname !== '/primax_control_test' || target.search || !(['127.0.0.1:26544', 'localhost:26544'].includes(target.host) || (target.host === 'postgres:5432' && process.env.APP_MODE === 'local')))
       throw new Error('CONTROL_TEST_DATABASE_URL must point to the dedicated local control database');
     process.env.DATABASE_URL = isolated;
     db = new PrismaService();

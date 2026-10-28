@@ -48,6 +48,10 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
       findUnique: jest.fn().mockResolvedValue({ stationId: foreignId }),
     },
     terminalCredential: { findUnique: jest.fn() },
+    terminalOperation: { findUnique: jest.fn() },
+    transaction: { findUnique: jest.fn().mockResolvedValue(null) },
+    onlineOrder: { findUnique: jest.fn().mockResolvedValue(null) },
+    payment: { findUnique: jest.fn().mockResolvedValue(null) },
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -85,11 +89,12 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
     body: unknown = null,
     token = '',
     csrf = '',
+    technical = '',
   ) {
     const timestamp = String(Date.now());
     const signature = createHmac('sha256', secret)
       .update(
-        JSON.stringify([method, path, timestamp, body, token, csrf, '', '']),
+        JSON.stringify([method, path, timestamp, body, token, csrf, technical, '']),
       )
       .digest('hex');
     const result =
@@ -100,7 +105,8 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
       .set('x-kiosk-time', timestamp)
       .set('x-kiosk-signature', signature)
       .set('x-kiosk-session', token)
-      .set('x-csrf-token', csrf);
+      .set('x-csrf-token', csrf)
+      .set('x-terminal-session', technical);
     if (body !== null) result.send(body);
     return result;
   }
@@ -110,7 +116,7 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
       .post('/api/v1/authorizations')
       .set('x-kiosk-key', 'k'.repeat(48))
       .send({})
-      .expect(401);
+      .expect(403);
     await signed('POST', '/api/v1/kiosk/session/login', {
       username: 'fixture',
       password: 'fixture',
@@ -199,5 +205,26 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
     await terminalRequest(token).expect(401);
     db.terminalCredential.findUnique.mockResolvedValueOnce({ revokedAt: new Date(), expiresAt: new Date(Date.now() + 10000), terminal: { lifecycle: 'REGISTRADA', revokedAt: null } });
     await terminalRequest(token).expect(401);
+  });
+  it('requires the same active terminal operation for signed financial creation and rejects the direct legacy key', async () => {
+    db.fuelAuthorization.findUnique.mockResolvedValue(null);
+    const operationId = '33333333-3333-4333-8333-333333333333';
+    const technical = 'b'.repeat(64);
+    const pre = (await signed('GET', '/api/v1/kiosk/session').expect(200)).body;
+    const session = (await signed('POST', '/api/v1/kiosk/session/login', { username: 'fixture-operator', password }, pre.token, pre.csrfToken).expect(201)).body;
+    const body = { operationId, stationId };
+    const order = { operationId, method: 'YAPE', authorization: { operationId, stationId } };
+    for (const [path, payload] of [['/api/v1/authorizations', body], ['/api/v1/online-orders', order], ['/api/v1/transactions', body]] as const) {
+      await request(app.getHttpServer()).post(path).set('x-kiosk-key', 'k'.repeat(48)).send(payload).expect(403);
+      await signed('POST', path, payload, session.token, session.csrfToken).expect(401);
+    }
+    db.terminalCredential.findUnique.mockResolvedValue({ terminalId: '44444444-4444-4444-8444-444444444444', revokedAt: null, expiresAt: new Date(Date.now() + 60000), terminal: { stationId, lifecycle: 'REGISTRADA', revokedAt: null } });
+    db.terminalOperation.findUnique.mockResolvedValue(null);
+    await signed('POST', '/api/v1/authorizations', body, session.token, session.csrfToken, technical).expect(403);
+    await signed('POST', '/api/v1/online-orders', order, session.token, session.csrfToken, technical).expect(403);
+    db.terminalOperation.findUnique.mockResolvedValue({ operationId, terminalId: '44444444-4444-4444-8444-444444444444', stationId, status: 'ACTIVE', closedAt: null });
+    await signed('POST', '/api/v1/authorizations', body, session.token, session.csrfToken, technical).expect(400);
+    await signed('POST', '/api/v1/online-orders', order, session.token, session.csrfToken, technical).expect(400);
+    await signed('POST', '/api/v1/authorizations', { ...body, stationId: foreignId }, session.token, session.csrfToken, technical).expect(403);
   });
 });

@@ -150,11 +150,13 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       }
       if (!kioskRoute(req.method, url.pathname)) fail(403, 'Operación de terminal no permitida');
       if (!token || !csrf) fail(401, 'Inicia sesión de operador');
+      const saleCreate = req.method === 'POST' && ['/api/v1/authorizations', '/api/v1/online-orders', '/api/v1/transactions'].includes(url.pathname);
+      if (saleCreate && !technical) fail(401, 'Esta terminal no está disponible en este momento');
       const { value: session } = await call('POST', sessionPath + '/authorize', { method: req.method, path: url.pathname, ...(body ? { body } : {}) });
       if (!session.allowed || typeof session.stationId !== 'string') fail(401, 'Inicia sesión de operador');
       // Station comes from authenticated server state, never from browser configuration.
       if (body?.stationId !== undefined && body.stationId !== session.stationId || body?.authorization?.stationId !== undefined && body.authorization.stationId !== session.stationId) fail(403, 'Estación no autorizada');
-      const { value, status } = await call(req.method, url.pathname, body);
+      const { value, status } = await call(req.method, url.pathname, body, { terminal: saleCreate ? technical : '' });
       res.statusCode = status; res.end(JSON.stringify(value));
     } catch (error) {
       res.statusCode = error instanceof GatewayError ? error.status : 503;
