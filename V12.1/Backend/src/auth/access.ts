@@ -7,6 +7,14 @@ export type Actor =
   | { kind: 'member'; userId: string }
   | { kind: 'admin'; adminUser: string }
   | {
+      kind: 'control';
+      userId: string;
+      role: string;
+      permissions: string[];
+      stationIds: string[];
+      global: boolean;
+    }
+  | {
       kind: 'terminal';
       terminalId: string;
       stationId: string;

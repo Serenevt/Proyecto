@@ -21,7 +21,7 @@ export function setupApp(app: INestApplication) {
     origin: config.getOrThrow<string>('CORS_ORIGINS').split(','),
     methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Kiosk-Key'],
-    credentials: false,
+    credentials: true,
   });
   if (
     config.get('APP_MODE') !== 'local' &&

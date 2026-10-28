@@ -1,0 +1,12 @@
+{
+  "name": "primax-control",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "build": "node tools/build.cjs",
+    "dev": "node tools/serve.cjs"
+  }
+}

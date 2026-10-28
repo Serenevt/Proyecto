@@ -33,6 +33,10 @@ export class AccessGuard implements CanActivate {
     ]);
     const req = context.switchToHttp().getRequest<Request & { actor: Actor }>();
     const signed = Boolean(req.header('x-kiosk-signature'));
+    if (signed && access === 'control')
+      throw new ForbiddenException(
+        'Primax Control no acepta sesiones de kiosco',
+      );
     if (
       signed &&
       access !== 'supervisor' &&
@@ -107,7 +111,16 @@ export class AccessGuard implements CanActivate {
     }
     if (access === 'kiosk')
       throw new UnauthorizedException('Se requiere credencial de terminal');
-    const token = req.header('authorization')?.match(/^Bearer (\S+)$/i)?.[1];
+    const cookieToken =
+      access === 'control'
+        ? req.headers.cookie
+            ?.split(';')
+            .map((part) => part.trim())
+            .find((part) => part.startsWith('primax_control='))
+            ?.slice('primax_control='.length)
+        : undefined;
+    const token =
+      req.header('authorization')?.match(/^Bearer (\S+)$/i)?.[1] ?? cookieToken;
     if (!token) throw new UnauthorizedException('Se requiere un token Bearer');
     let payload: {
       sub?: string;
@@ -154,6 +167,65 @@ export class AccessGuard implements CanActivate {
       )
         throw new ForbiddenException('Se requiere permiso administrativo');
       req.actor = { kind: 'member', userId: adminUser.id };
+      return true;
+    }
+    if (access === 'control') {
+      if (
+        typeof payload.sub !== 'string' ||
+        !/^[0-9a-f-]{36}$/i.test(payload.sub)
+      )
+        throw new UnauthorizedException('Sesión administrativa inválida');
+      const user = await this.users.findById(payload.sub);
+      if (!user?.active || (payload.ver ?? 0) !== user.authVersion)
+        throw new UnauthorizedException('Sesión administrativa vencida');
+      const systemAdmin = await this.db.userPermissionGrant.findFirst({
+        where: { userId: user.id, permission: 'SYSTEM_ADMIN', revokedAt: null },
+      });
+      const account = await this.db.adminControlAccount.findUnique({
+        where: { userId: user.id },
+        include: {
+          stations: {
+            where: { endedAt: null, station: { active: true } },
+            select: { stationId: true },
+          },
+        },
+      });
+      if (
+        !systemAdmin &&
+        (!account || account.status !== 'APPROVED' || !account.emailVerifiedAt)
+      )
+        throw new ForbiddenException(
+          'Acceso administrativo pendiente o revocado',
+        );
+      const permissions = systemAdmin
+        ? [
+            'ADMIN_CONTROL_ACCESS',
+            'ADMIN_DASHBOARD_VIEW',
+            'ADMIN_INCIDENT_VIEW',
+            'ADMIN_INCIDENT_MANAGE',
+            'ADMIN_INVENTORY_VIEW',
+            'ADMIN_OPERATION_VIEW',
+            'ADMIN_USER_MANAGE',
+            'ADMIN_STATION_MANAGE',
+            'ADMIN_AUDIT_VIEW',
+          ]
+        : (
+            await this.db.adminControlGrant.findMany({
+              where: { userId: user.id, revokedAt: null },
+            })
+          ).map((grant) => grant.permission);
+      if (!systemAdmin && !permissions.includes('ADMIN_CONTROL_ACCESS'))
+        throw new ForbiddenException('Se requiere acceso a Primax Control');
+      req.actor = {
+        kind: 'control',
+        userId: user.id,
+        role: systemAdmin ? 'SUPER_ADMIN' : account!.role,
+        permissions,
+        stationIds: systemAdmin
+          ? []
+          : account!.stations.map((station) => station.stationId),
+        global: Boolean(systemAdmin),
+      };
       return true;
     }
     if (

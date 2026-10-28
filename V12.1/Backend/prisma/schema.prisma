@@ -84,6 +84,29 @@ enum RedemptionStatus {
 enum GlobalPermission {
   SYSTEM_ADMIN
 }
+enum AdminControlRole {
+  SUPER_ADMIN
+  ADMIN
+  ENCARGADO
+}
+enum AdminControlStatus {
+  PENDING_EMAIL
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISABLED
+}
+enum AdminControlPermission {
+  ADMIN_CONTROL_ACCESS
+  ADMIN_DASHBOARD_VIEW
+  ADMIN_INCIDENT_VIEW
+  ADMIN_INCIDENT_MANAGE
+  ADMIN_INVENTORY_VIEW
+  ADMIN_OPERATION_VIEW
+  ADMIN_USER_MANAGE
+  ADMIN_STATION_MANAGE
+  ADMIN_AUDIT_VIEW
+}
 enum TerminalLifecycle {
   REGISTRADA
   REVOCADA
@@ -178,6 +201,13 @@ model User {
   grantedPermissions UserPermissionGrant[] @relation("PermissionGrantor")
   supervisorAssignments SupervisorStationAssignment[] @relation("SupervisorOwner")
   grantedSupervisorAssignments SupervisorStationAssignment[] @relation("SupervisorGrantor")
+  adminControlAccount AdminControlAccount?
+  adminControlGrants AdminControlGrant[] @relation("AdminGrantOwner")
+  grantedAdminControlGrants AdminControlGrant[] @relation("AdminGrantor")
+  adminStationAssignments AdminStationAssignment[] @relation("AdminStationOwner")
+  grantedAdminStationAssignments AdminStationAssignment[] @relation("AdminStationGrantor")
+  approvedAdminAccounts AdminControlAccount[] @relation("AdminAccountApprover")
+  emailVerification AdminEmailVerification?
   supervisorShifts SupervisorShift[]
   pumpAssignments TerminalPumpAssignment[]
   terminalEnablements TerminalEnablement[]
@@ -245,6 +275,7 @@ model Station {
   pumps Pump[]
   terminals Terminal[]
   supervisorAssignments SupervisorStationAssignment[]
+  adminAssignments AdminStationAssignment[]
   supervisorShifts SupervisorShift[]
   terminalPumpAssignments TerminalPumpAssignment[]
   terminalEnablements TerminalEnablement[]
@@ -393,6 +424,64 @@ model UserPermissionGrant {
   grantedAt DateTime @default(now()) @db.Timestamptz(3)
   revokedAt DateTime? @db.Timestamptz(3)
   @@index([userId, permission, revokedAt])
+}
+
+model AdminControlAccount {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role AdminControlRole
+  status AdminControlStatus @default(PENDING_EMAIL)
+  emailVerifiedAt DateTime? @db.Timestamptz(3)
+  approvedAt DateTime? @db.Timestamptz(3)
+  approvedByUserId String? @db.Uuid
+  approvedBy User? @relation("AdminAccountApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  rejectionReason String? @db.VarChar(300)
+  stations AdminStationAssignment[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@index([status, createdAt])
+}
+
+model AdminControlGrant {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation("AdminGrantOwner", fields: [userId], references: [id], onDelete: Restrict)
+  permission AdminControlPermission
+  grantedByUserId String? @db.Uuid
+  grantedBy User? @relation("AdminGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  reason String @db.VarChar(200)
+  grantedAt DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  @@unique([userId, permission, revokedAt])
+  @@index([userId, revokedAt])
+}
+
+model AdminStationAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation("AdminStationOwner", fields: [userId], references: [id], onDelete: Restrict)
+  accountId String @db.Uuid
+  account AdminControlAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  grantedByUserId String? @db.Uuid
+  grantedBy User? @relation("AdminStationGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  reason String @db.VarChar(200)
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  @@index([userId, stationId, endedAt])
+  @@index([stationId, endedAt])
+}
+
+model AdminEmailVerification {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String @unique @db.Char(64)
+  expiresAt DateTime @db.Timestamptz(3)
+  verifiedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model SupervisorStationAssignment {

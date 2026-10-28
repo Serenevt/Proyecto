@@ -38,6 +38,42 @@ export class RecoveryDelivery {
       });
       return;
     }
-    if (this.mode !== 'disabled') throw new Error('Use SMTP or Mailpit; fake mailboxes are disabled');
+    if (this.mode !== 'disabled')
+      throw new Error('Use SMTP or Mailpit; fake mailboxes are disabled');
+  }
+
+  async sendAdminVerification(email: string, token: string, expiresAt: Date) {
+    if (this.mode !== 'smtp' && this.mode !== 'mailpit')
+      throw new Error('Email verification requires SMTP or Mailpit delivery');
+    const local = this.mode === 'mailpit';
+    const user = this.config.get<string>('SMTP_USER');
+    const transport = createTransport({
+      host: local ? 'mailpit' : this.config.getOrThrow<string>('SMTP_HOST'),
+      port: local ? 1025 : Number(this.config.get('SMTP_PORT') ?? 587),
+      secure: !local && String(this.config.get('SMTP_SECURE')) === 'true',
+      requireTLS: !local,
+      ...(local || !user
+        ? {}
+        : {
+            auth: {
+              user,
+              pass: this.config.getOrThrow<string>('SMTP_PASSWORD'),
+            },
+          }),
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      disableFileAccess: true,
+      disableUrlAccess: true,
+    });
+    const base =
+      this.config.get<string>('PRIMAX_CONTROL_PUBLIC_URL') ??
+      'http://localhost:3003';
+    await transport.sendMail({
+      from: this.config.getOrThrow<string>('SMTP_FROM'),
+      to: email,
+      subject: 'Primax Control: verifica tu correo',
+      text: `Verifica tu correo para solicitar acceso a Primax Control: ${base}/#/verify?token=${encodeURIComponent(token)}\nEl enlace vence: ${expiresAt.toISOString()}`,
+    });
   }
 }
