@@ -14,11 +14,13 @@ async function sessionRequest(path, body) {
   return value;
 }
 async function terminalReady() {
-  const response = await fetch('/api/v1/terminal/me', {
-    credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(20000),
-    headers: { ...kioskHeaders() },
-  });
-  return response.ok;
+  try {
+    const response = await fetch('/api/v1/terminal/me', {
+      credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(20000),
+      headers: { ...kioskHeaders() },
+    });
+    return response.ok && (await response.json()).prepared === true;
+  } catch { return false; }
 }
 export function kioskHeaders() {
   return kioskAuthEnabled() ? { 'X-FuelFlow-Request': '1', 'X-CSRF-Token': current?.csrfToken || '' } : {};
@@ -73,27 +75,39 @@ export function ensureKioskSession() {
       const stations = await request('me/stations');
       if (!stations.length) throw Error('No tienes estaciones asignadas. Solicita asistencia administrativa.');
       let stationId = stations[0].stationId;
+      let rotateTerminalId = null;
       async function render(message = '') {
         const [shift, terminals] = await Promise.all([request('shifts/current'), request('stations/' + stationId + '/terminals')]);
         const active = shift && shift.stationId === stationId;
-        dialog.innerHTML = `<div class="terminal-access-card supervisor-card"><div class="terminal-access-brand">PRIMAX <span>Supervisor de estación</span></div><h1>Preparar FuelFlow</h1><label>Estación<select id="supervisor-station">${stations.map(row => `<option value="${escape(row.stationId)}" ${row.stationId === stationId ? 'selected' : ''}>${escape(row.station.name)} · ${escape(row.station.code)}</option>`).join('')}</select></label><div class="supervisor-state"><strong>Turno</strong><span>${active ? escape(shift.status) : 'CERRADO'}</span></div><div class="supervisor-actions">${!active ? '<button data-action="open">Abrir turno</button>' : shift.status === 'ABIERTO' ? '<button data-action="suspend">Suspender turno</button><button data-action="close" class="secondary">Cerrar turno</button>' : '<button data-action="resume">Reanudar turno</button><button data-action="close" class="secondary">Cerrar turno</button>'}</div><div class="supervisor-terminals">${terminals.map(row => `<section class="supervisor-terminal"><strong>${escape(row.code)}</strong><p>Surtidor: ${escape(row.assignments?.[0]?.pump?.code || 'Sin asignar')}</p><p>Estado: ${escape(row.operationalStatus)}</p>${active && shift.status === 'ABIERTO' && !row.enablements?.length ? `<button data-action="enable" data-terminal="${escape(row.id)}">Habilitar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && row.enablements?.length ? `<button data-action="pair" data-terminal="${escape(row.id)}">Emparejar terminal</button>` : ''}</section>`).join('')}</div><p class="terminal-access-error" role="alert">${escape(message)}</p><button data-action="back" class="secondary">Volver a FuelFlow</button></div>`;
+        dialog.innerHTML = `<div class="terminal-access-card supervisor-card"><div class="terminal-access-brand">PRIMAX <span>Supervisor de estación</span></div><h1>Preparar FuelFlow</h1><label>Estación<select id="supervisor-station">${stations.map(row => `<option value="${escape(row.stationId)}" ${row.stationId === stationId ? 'selected' : ''}>${escape(row.station.name)} · ${escape(row.station.code)}</option>`).join('')}</select></label><div class="supervisor-state"><strong>Turno</strong><span>${active ? escape(shift.status) : 'CERRADO'}</span></div><div class="supervisor-actions">${!active ? '<button data-action="open">Abrir turno</button>' : shift.status === 'ABIERTO' ? '<button data-action="suspend">Suspender turno</button><button data-action="close" class="secondary">Cerrar turno</button>' : '<button data-action="resume">Reanudar turno</button><button data-action="close" class="secondary">Cerrar turno</button>'}</div><div class="supervisor-terminals">${terminals.map(row => `<section class="supervisor-terminal"><strong>${escape(row.code)}</strong><p>Surtidor: ${escape(row.assignments?.[0]?.pump?.code || 'Sin asignar')}</p><p>Estado: ${escape(row.operationalStatus)}</p>${active && shift.status === 'ABIERTO' && !row.enablements?.length ? `<button data-action="enable" data-terminal="${escape(row.id)}">Habilitar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && row.enablements?.length ? `<button data-action="pair" data-terminal="${escape(row.id)}">Emparejar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && rotateTerminalId === row.id ? `<button data-action="rotate" data-terminal="${escape(row.id)}" class="secondary">Reemparejar en este navegador</button>` : ''}</section>`).join('')}</div><p class="terminal-access-error" role="alert">${escape(message)}</p><button data-action="back" class="secondary">Volver a FuelFlow</button></div>`;
         dialog.querySelector('#supervisor-station').addEventListener('change', event => { stationId = event.target.value; void render(); });
         dialog.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', async () => {
           const action = button.dataset.action;
-          if (action === 'back') { location.hash = ''; if (await terminalReady()) { dialog.close(); dialog.remove(); window.removeEventListener('hashchange', update); resolve(); } return; }
           button.disabled = true;
           try {
+            if (action === 'back') {
+              if (!await terminalReady()) { dialog.querySelector('[role="alert"]').textContent = 'La terminal no está emparejada en este navegador. Empareja o reempareja antes de volver.'; button.disabled = false; return; }
+              location.hash = ''; dialog.close(); dialog.remove(); window.removeEventListener('hashchange', update); resolve(); return;
+            }
             if (action === 'open') await request('shifts', 'POST', { stationId });
             if (['suspend','resume','close'].includes(action)) await request('shifts/' + shift.id + '/' + action, 'POST', {});
             if (action === 'enable') await request('terminals/' + button.dataset.terminal + '/enable', 'POST', { shiftId: shift.id });
-            if (action === 'pair') {
+            if (action === 'pair' || action === 'rotate') {
               if (!current?.authenticated) {
                 current = await sessionRequest('');
                 const boot = await fetch('/api/supervisor/bootstrap', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-FuelFlow-Request':'1', 'X-CSRF-Token':current.csrfToken, Authorization:'Bearer ' + jwt }, body:'{}', cache:'no-store' });
                 const data = await boot.json(); if (!boot.ok) throw Error(data.message || 'No se pudo preparar la sesión técnica'); current = data;
               }
-              const paired = await fetch('/api/v1/supervisor/terminals/' + button.dataset.terminal + '/pair', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-FuelFlow-Request':'1', 'X-CSRF-Token':current.csrfToken, Authorization:'Bearer ' + jwt }, body:'{}', cache:'no-store' });
-              if (!paired.ok) throw Error((await paired.json()).message || 'No se pudo emparejar');
+              const paired = await fetch('/api/v1/supervisor/terminals/' + button.dataset.terminal + '/' + action, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-FuelFlow-Request':'1', 'X-CSRF-Token':current.csrfToken, Authorization:'Bearer ' + jwt }, body:'{}', cache:'no-store' });
+              const result = await paired.json();
+              if (action === 'pair' && paired.status === 409 && result.message === 'La terminal ya tiene sesión; usa rotación') {
+                if (await terminalReady()) { rotateTerminalId = null; await render('✓ Terminal lista para operar. Pulsa Volver a FuelFlow.'); return; }
+                rotateTerminalId = button.dataset.terminal;
+                await render('Esta terminal está emparejada en otro navegador. Reemparejar revocará esa sesión anterior.'); return;
+              }
+              if (!paired.ok || result.paired !== true) throw Error(result.message || 'No se pudo emparejar');
+              if (!await terminalReady()) throw Error('La sesión técnica no quedó establecida en este navegador. Reintenta o solicita asistencia.');
+              rotateTerminalId = null;
               await render('✓ Terminal lista para operar. Pulsa Volver a FuelFlow.'); return;
             }
             await render();

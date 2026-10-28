@@ -153,3 +153,25 @@ test('local pairing consumes the credential into an HttpOnly cookie and exposes 
   assert.match(result.headers['set-cookie'][1], /^primax-terminal-csrf-local=/);
   assert.doesNotMatch(result.headers['set-cookie'][1], /HttpOnly/);
 });
+test('existing credential requires rotation; rotation installs a new local browser cookie', async () => {
+  const id = '33333333-3333-4333-8333-333333333333', technical = 'e'.repeat(64);
+  const localEnv = { ...env, FUELFLOW_PUBLIC_ORIGIN: 'http://127.0.0.1:26081', BACKEND_ORIGIN: 'http://backend:3000', FUELFLOW_LOCAL_HTTP: 'true' };
+  const headers = { origin: localEnv.FUELFLOW_PUBLIC_ORIGIN, authorization: 'Bearer supervisor.jwt.token', cookie: 'primax-kiosk-local=' + token };
+  const conflict = await invoke(`/api/v1/supervisor/terminals/${id}/pair`, {
+    method: 'POST', body: {}, gatewayEnv: localEnv, headers,
+    fetcher: async () => Response.json({ message: 'La terminal ya tiene sesión; usa rotación' }, { status: 409 }),
+  });
+  assert.equal(conflict.statusCode, 409);
+  assert.equal(conflict.headers['set-cookie'], undefined);
+  const rotated = await invoke(`/api/v1/supervisor/terminals/${id}/rotate`, {
+    method: 'POST', body: {}, gatewayEnv: localEnv, headers,
+    fetcher: async () => Response.json({ token: technical, terminalId: id, expiresAt: '2030-01-01T00:00:00Z' }),
+  });
+  assert.equal(rotated.statusCode, 200);
+  assert.equal(rotated.body.paired, true);
+  assert.equal(rotated.body.token, undefined);
+  assert.match(rotated.headers['set-cookie'][0], /^primax-terminal-local=/);
+  assert.match(rotated.headers['set-cookie'][0], /Path=\/; HttpOnly; SameSite=Strict/);
+  assert.doesNotMatch(rotated.headers['set-cookie'][0], /Secure|Domain=/);
+  assert.match(rotated.headers['set-cookie'][1], /^primax-terminal-csrf-local=/);
+});
