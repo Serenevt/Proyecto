@@ -47,6 +47,7 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
     fuelAuthorization: {
       findUnique: jest.fn().mockResolvedValue({ stationId: foreignId }),
     },
+    terminalCredential: { findUnique: jest.fn() },
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -177,5 +178,26 @@ describe('Nest HTTP operator boundary (all persistence mocked)', () => {
       session.token,
       session.csrfToken,
     ).expect(401);
+  });
+  it('rejects missing, expired and revoked technical credentials over signed HTTP', async () => {
+    const path = '/api/v1/terminal/me';
+    function terminalRequest(token: string) {
+      const timestamp = String(Date.now());
+      const signature = createHmac('sha256', secret)
+        .update(JSON.stringify(['GET', path, timestamp, null, '', '', token, '']))
+        .digest('hex');
+      return request(app.getHttpServer()).get(path)
+        .set('x-kiosk-time', timestamp)
+        .set('x-kiosk-signature', signature)
+        .set('x-terminal-session', token);
+    }
+    await terminalRequest('invalid').expect(401);
+    const token = 'a'.repeat(64);
+    db.terminalCredential.findUnique.mockResolvedValueOnce(null);
+    await terminalRequest(token).expect(401);
+    db.terminalCredential.findUnique.mockResolvedValueOnce({ revokedAt: null, expiresAt: new Date(Date.now() - 1000), terminal: { lifecycle: 'REGISTRADA', revokedAt: null } });
+    await terminalRequest(token).expect(401);
+    db.terminalCredential.findUnique.mockResolvedValueOnce({ revokedAt: new Date(), expiresAt: new Date(Date.now() + 10000), terminal: { lifecycle: 'REGISTRADA', revokedAt: null } });
+    await terminalRequest(token).expect(401);
   });
 });

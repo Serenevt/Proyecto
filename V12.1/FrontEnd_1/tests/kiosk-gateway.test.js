@@ -127,3 +127,20 @@ test('terminal writes require technical cookie and matching CSRF without supervi
   assert.equal(calls[0].options.headers['x-terminal-session'], technical);
   assert.equal(calls[0].options.headers.authorization, '');
 });
+test('local pairing consumes the credential into an HttpOnly cookie and exposes only CSRF state', async () => {
+  const id = '33333333-3333-4333-8333-333333333333', technical = 'd'.repeat(64);
+  const localEnv = { ...env, FUELFLOW_PUBLIC_ORIGIN: 'http://127.0.0.1:26081', BACKEND_ORIGIN: 'http://backend:3000', FUELFLOW_LOCAL_HTTP: 'true' };
+  const result = await invoke(`/api/v1/supervisor/terminals/${id}/pair`, {
+    method: 'POST', body: {}, gatewayEnv: localEnv,
+    headers: { origin: localEnv.FUELFLOW_PUBLIC_ORIGIN, authorization: 'Bearer supervisor.jwt.token', cookie: 'primax-kiosk-local=' + token },
+    fetcher: async () => Response.json({ token: technical, terminalId: id, expiresAt: '2030-01-01T00:00:00Z' }),
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.token, undefined);
+  assert.equal(result.body.terminalId, undefined);
+  assert.match(result.headers['set-cookie'][0], /^primax-terminal-local=/);
+  assert.match(result.headers['set-cookie'][0], /HttpOnly/);
+  assert.doesNotMatch(result.headers['set-cookie'][0], /Secure/);
+  assert.match(result.headers['set-cookie'][1], /^primax-terminal-csrf-local=/);
+  assert.doesNotMatch(result.headers['set-cookie'][1], /HttpOnly/);
+});

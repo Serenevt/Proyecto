@@ -498,6 +498,12 @@ export class OperationsService {
         where: { terminalId, disabledAt: null, shift: { status: 'ABIERTO' } },
       });
       if (!enablement) throw new ForbiddenException('Terminal no habilitada');
+      if (enablement.stationId !== terminal.stationId)
+        throw new ConflictException('Habilitación de otra estación');
+      const active = await tx.terminalOperation.findFirst({
+        where: { terminalId, closedAt: null },
+      });
+      if (active) throw new ConflictException('Terminal con operación activa');
       const assignment = await tx.terminalPumpAssignment.findUnique({
         where: { id: enablement.terminalPumpAssignmentId },
         include: { pump: true },
@@ -506,7 +512,9 @@ export class OperationsService {
         !assignment ||
         assignment.endedAt ||
         !assignment.pump.active ||
-        assignment.stationId !== terminal.stationId
+        assignment.stationId !== terminal.stationId ||
+        assignment.terminalId !== terminalId ||
+        assignment.pump.stationId !== terminal.stationId
       )
         throw new ConflictException('Asignación de surtidor inválida');
       const operation = await tx.terminalOperation.create({

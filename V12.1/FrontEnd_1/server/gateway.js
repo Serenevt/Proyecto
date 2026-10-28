@@ -23,7 +23,7 @@ function cookieToken(value = '', name = COOKIE) {
   if (token && !/^[A-Za-z0-9_-]{43}$/.test(token)) fail(401, 'Sesión inválida');
   return token;
 }
-function terminalCookies(value = '') {
+function terminalCookies(value = '', local = false) {
   const entries = value.split(';').map(v => v.trim());
   function one(name, pattern) {
     const found = entries.filter(v => v.startsWith(name + '='));
@@ -32,7 +32,7 @@ function terminalCookies(value = '') {
     if (token && !pattern.test(token)) fail(401, 'Sesión técnica inválida');
     return token;
   }
-  return { technical: one(TERMINAL_COOKIE, /^[a-f0-9]{64}$/), terminalCsrf: one(TERMINAL_CSRF, /^[A-Za-z0-9_-]{43}$/) };
+  return { technical: one(local ? 'primax-terminal-local' : TERMINAL_COOKIE, /^[a-f0-9]{64}$/), terminalCsrf: one(local ? 'primax-terminal-csrf-local' : TERMINAL_CSRF, /^[A-Za-z0-9_-]{43}$/) };
 }
 function equal(a, b) {
   const left = Buffer.from(a), right = Buffer.from(b);
@@ -72,7 +72,7 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       const cookieName = local ? LOCAL_COOKIE : COOKIE;
       const cookieAttributes = `Path=/; HttpOnly; ${local ? '' : 'Secure; '}SameSite=Strict`;
       const token = cookieToken(req.headers.cookie, cookieName);
-      const { technical, terminalCsrf } = terminalCookies(req.headers.cookie);
+      const { technical, terminalCsrf } = terminalCookies(req.headers.cookie, local);
       const csrf = req.headers['x-csrf-token'] || '';
       if (typeof csrf !== 'string' || csrf.length > 100) fail(403, 'CSRF inválido');
       const body = await readBody(req);
@@ -126,11 +126,14 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
         if (!revoke && (!/^[a-f0-9]{64}$/.test(value.token || '') || typeof value.terminalId !== 'string')) fail(502, 'Respuesta inválida');
         const csrfValue = revoke ? '' : randomBytes(32).toString('base64url');
         const maxAge = revoke ? 0 : 28800;
+        const technicalName = local ? 'primax-terminal-local' : TERMINAL_COOKIE;
+        const csrfName = local ? 'primax-terminal-csrf-local' : TERMINAL_CSRF;
+        const secure = local ? '' : 'Secure; ';
         res.setHeader('Set-Cookie', [
-          `${TERMINAL_COOKIE}=${revoke ? '' : value.token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`,
-          `${TERMINAL_CSRF}=${csrfValue}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`,
+          `${technicalName}=${revoke ? '' : value.token}; Path=/; HttpOnly; ${secure}SameSite=Strict; Max-Age=${maxAge}`,
+          `${csrfName}=${csrfValue}; Path=/; ${secure}SameSite=Strict; Max-Age=${maxAge}`,
         ]);
-        res.statusCode = status; res.end(JSON.stringify(revoke ? { revoked: value.revoked } : { terminalId: value.terminalId, expiresAt: value.expiresAt, csrfToken: csrfValue })); return;
+        res.statusCode = status; res.end(JSON.stringify(revoke ? { revoked: value.revoked } : { paired: true, expiresAt: value.expiresAt })); return;
       }
       const terminalPath = url.pathname === '/api/v1/terminal/me' && req.method === 'GET' ||
         url.pathname === '/api/v1/terminal/operations' && req.method === 'POST' ||
@@ -140,7 +143,10 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
         if (!technical) fail(401, 'Sesión técnica requerida');
         if (req.method === 'POST' && (!terminalCsrf || !csrf || !equal(terminalCsrf, csrf))) fail(403, 'CSRF inválido');
         const { value, status } = await call(req.method, url.pathname, body, { terminal: technical });
-        res.statusCode = status; res.end(JSON.stringify(value)); return;
+        const safe = url.pathname === '/api/v1/terminal/me'
+          ? { prepared: true, canStart: value.canStart === true, operationalStatus: value.operationalStatus }
+          : { operationId: value.operationId, status: value.status, closedAt: value.closedAt };
+        res.statusCode = status; res.end(JSON.stringify(safe)); return;
       }
       if (!kioskRoute(req.method, url.pathname)) fail(403, 'Operación de terminal no permitida');
       if (!token || !csrf) fail(401, 'Inicia sesión de operador');

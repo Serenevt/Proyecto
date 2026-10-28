@@ -17,9 +17,15 @@ import {createPrimeBalanceRetry, prepaidAmountFromPostpaid} from './primeBalance
 import { paymentState } from './paymentState.js';
 import {customerIdentity} from './customerIdentity.js';
 import {adminService, renderAlerts} from './adminService.js';
-import {apiClient, catalogService, authorizationService} from './apiClient.js';
+import {apiClient, catalogService, authorizationService, terminalService} from './apiClient.js';
 import {transactionsService} from './transactionsService.js';
+import {ensureTerminalOperation} from './terminalOperation.js';
 let catalog, submitting=false, backendResult=null;
+async function cerrarYDescartar() {
+  const operationId=transactionsService.current()?.operationId;
+  if(operationId)await terminalService.close(operationId);
+  transactionsService.discard();
+}
 const refreshInventory=mountInventory(()=>catalog);
 
 // ---------- Estado global de la aplicación ----------
@@ -1383,6 +1389,7 @@ function guardarTransaccion(tx) {
 async function iniciar() {
   try {
     const pending=transactionsService.current();
+    if(!pending?.result)await ensureTerminalOperation();
     if(pending?.intervention || (!pending?.payload && pending?.authorizationRequest)){
       Object.assign(state,pending.snapshot||{});
       state.autorizacionId = pending.authorization?.authorization?.id || state.autorizacionId;
@@ -1398,7 +1405,7 @@ async function iniciar() {
       if(check.action==='discard'){
         // Solo se descarta esta operación obsoleta; el resto del
         // almacenamiento local (idioma, historial de ejemplo) se conserva.
-        transactionsService.discard();
+        await cerrarYDescartar();
         limpiarEstadoOperacion();
         mostrarModal('Operación descartada',check.reason+' Ya puede iniciar una nueva compra.','ℹ️',
           ()=>{void iniciar();});
@@ -1957,7 +1964,7 @@ async function manejarFalloConfirmacion(error) {
     return;
   }
   if(check.action !== 'discard'){mostrarModal('Operación conservada',check.reason || 'Reintenta la consulta de estado.','⚠️');return;}
-  transactionsService.discard();
+  try{await cerrarYDescartar();}catch(closeError){mostrarModal('Operación conservada',closeError.message,'⚠️');return;}
   limpiarEstadoOperacion();
   mostrarModal('Operación descartada',
     'La reserva de saldo se cerró sin confirmar la compra. Puede iniciar una nueva operación.','ℹ️',
@@ -2033,11 +2040,11 @@ async function imprimirYFinalizar() {
 }
 
 // Reinicia toda la aplicación al estado inicial
-function finalizar() {
+async function finalizar() {
   if(receiptPrinting)return;
   $('print-error').classList.add('hidden');
   $('save-receipt-profile').checked = false;
-  try{transactionsService.finish(backendResult?.transaction?.id);backendResult=null;}catch(error){$('print-error').textContent=error.message;$('print-error').classList.remove('hidden');return;}
+  try{const operationId=transactionsService.current()?.operationId;transactionsService.assertCanFinish(backendResult?.transaction?.id);if(operationId)await terminalService.close(operationId);transactionsService.finish(backendResult?.transaction?.id);backendResult=null;}catch(error){$('print-error').textContent=error.message;$('print-error').classList.remove('hidden');return;}
   clearInterval(state.despachoTimer);
   detenerProgresoAyuda();
   $('help-overlay').classList.add('hidden');
@@ -2454,7 +2461,7 @@ async function elegirMetodoPago(metodo) {
   if(state.onlineOrderId){
     if(state.metodoPago===metodo)return;
     state.changingMethod=true;
-    try{await apiClient('/online-orders/'+state.onlineOrderId+'/cancel',{method:'POST'});transactionsService.discard();state.onlineOrderId=null;state.onlineOrderAmount=null;}
+    try{await apiClient('/online-orders/'+state.onlineOrderId+'/cancel',{method:'POST'});await cerrarYDescartar();state.onlineOrderId=null;state.onlineOrderAmount=null;}
     catch(error){mostrarModal('Orden conservada',error.message,'⚠️');return;}
     finally{state.changingMethod=false;}
   }
@@ -2487,7 +2494,7 @@ async function elegirMetodoPago(metodo) {
 /** Vuelve a la lista de métodos dejando el panel abierto cerrado. */
 async function volverAMetodos() {
   if(state.creatingOrder||state.confirmingQR)return;
-  if(state.onlineOrderId){try{await apiClient('/online-orders/'+state.onlineOrderId+'/cancel',{method:'POST'});transactionsService.discard();state.onlineOrderId=null;state.onlineOrderAmount=null;}catch(error){mostrarModal('Orden conservada',error.message,'⚠️');return;}}
+  if(state.onlineOrderId){try{await apiClient('/online-orders/'+state.onlineOrderId+'/cancel',{method:'POST'});await cerrarYDescartar();state.onlineOrderId=null;state.onlineOrderAmount=null;}catch(error){mostrarModal('Orden conservada',error.message,'⚠️');return;}}
   state.metodoPago = null;
   ['panel-qr', 'panel-nfc', 'panel-efectivo'].forEach((id) => $(id).classList.add('hidden'));
   $('btn-nfc-tap').disabled = false;

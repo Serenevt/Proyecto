@@ -101,7 +101,7 @@ La lista actual de migraciones se obtiene localmente con `find Backend/prisma/mi
 
 ## Pendientes concretos antes de la primera revisión de staging
 
-0. **Bloqueante funcional:** integrar FuelFlow con el inicio/cierre de `TerminalOperation` y la credencial técnica de la terminal mediante el gateway seguro. El Compose actual permite compra por rutas Kiosk compatibles y no aplica la habilitación/cierre del turno a esas ventas. La cobertura de servicios Phase 1A no sustituye esta integración HTTP del cliente.
+0. **Bloqueante funcional pendiente, Fase 4D-3:** Compose ya ejecuta el BFF HMAC y FuelFlow puede iniciar, recuperar y cerrar `TerminalOperation` con cookie técnica HttpOnly tras pairing Supervisor. El E2E HTTP local cubre turno, habilitación, pairing, operación, bloqueo, fuera de servicio, asignación inválida, rotación, revocación y suspensión; Phase 1A pasó en PostgreSQL aislado. En staging HTTPS, la cookie técnica debe conservar `Secure` y el prefijo `__Host-`; el modo HTTP está limitado a loopback local. Las rutas Kiosk compatibles de autorización y pago todavía admiten una venta nueva sin vínculo terminal. Exigir el contexto técnico en esas rutas antes de staging; no considerar resuelto el bloqueo global.
 1. Elegir y aprobar dominios HTTPS y alojamiento para Backend persistente, Redis, OCR y SMTP. No se eligieron en esta fase.
 2. Crear Neon y Redis dedicados, revisar aislamiento/backups/restore point y guardar secretos nuevos en un gestor. Ninguno se consultó ni se creó aquí.
 3. Revisar el flujo del gateway HMAC de FuelFlow en un host HTTPS real, sus cookies Secure y revocación Redis. Compose local usa proxy Nginx loopback, no pretende simular esta frontera pública.
