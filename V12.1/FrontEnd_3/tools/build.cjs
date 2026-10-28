@@ -1,8 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'dist');
+for (const file of fs.readdirSync(path.join(root, 'js')).filter((name) => name.endsWith('.js'))) {
+  execFileSync(process.execPath, ['--check', path.join(root, 'js', file)]);
+}
 if (path.dirname(output) !== root) throw new Error('Invalid build directory');
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });

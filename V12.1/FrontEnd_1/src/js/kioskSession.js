@@ -1,4 +1,4 @@
-// No credentials or session cookies are stored in JavaScript/localStorage.
+// Kiosk and terminal credentials remain in HttpOnly cookies; JavaScript only sees status.
 let current = null;
 let waiting = null;
 export const kioskAuthEnabled = () => globalThis.FUELFLOW_KIOSK_AUTH === true;
@@ -13,60 +13,63 @@ async function sessionRequest(path, body) {
   if (!response.ok) throw Error(value.message || 'No se pudo verificar la sesión');
   return value;
 }
+async function terminalReady() {
+  const response = await fetch('/api/v1/terminal/me', {
+    credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(20000),
+    headers: { ...kioskHeaders() },
+  });
+  return response.ok;
+}
 export function kioskHeaders() {
   return kioskAuthEnabled() ? { 'X-FuelFlow-Request': '1', 'X-CSRF-Token': current?.csrfToken || '' } : {};
 }
 export function expireKioskSession() {
   if (!kioskAuthEnabled()) return;
   current = null;
-  void ensureKioskSession().catch(() => { /* dialog remains locked until verified */ });
+  void ensureKioskSession();
 }
 export function ensureKioskSession() {
   if (!kioskAuthEnabled()) return Promise.resolve();
-  // Administrative capabilities are separate from the public operator role.
   const adminButton = document.getElementById('btn-admin-open');
-  if (adminButton) adminButton.style.display = 'none';
+  if (adminButton) adminButton.hidden = true;
   if (current?.authenticated && current.expiresAt > Date.now()) return Promise.resolve();
   if (waiting) return waiting;
   waiting = new Promise((resolve) => {
     const dialog = document.createElement('dialog');
-    dialog.setAttribute('aria-label', 'Acceso de operador');
-    dialog.innerHTML = '<form><h2>Acceso de operador</h2><p>Demostración académica. Todos los pagos son simulados.</p><label>Usuario <input name="username" autocomplete="username" required maxlength="80"></label><br><label>Contraseña <input name="password" type="password" autocomplete="current-password" required maxlength="72"></label><p role="alert"></p><button>Iniciar sesión</button></form>';
+    dialog.className = 'terminal-access';
+    dialog.setAttribute('aria-label', 'Estado de la terminal');
     dialog.addEventListener('cancel', event => event.preventDefault());
-    document.body.append(dialog); dialog.showModal();
-    const form = dialog.querySelector('form'), message = dialog.querySelector('[role=alert]');
-    form.querySelector('button').disabled = true;
-    form.addEventListener('submit', async event => {
-      event.preventDefault(); const button = form.querySelector('button'); button.disabled = true;
-      try {
-        if (!current?.csrfToken) current = await sessionRequest('');
-        const data = new FormData(form);
-        const body = { username: data.get('username'), password: data.get('password') };
+    document.body.append(dialog);
+    dialog.showModal();
+    const unavailable = () => {
+      dialog.innerHTML = '<div class="terminal-access-card"><div class="terminal-access-brand">PRIMAX <span>FuelFlow</span></div><div class="terminal-access-icon" aria-hidden="true">⛽</div><h1>Terminal no disponible</h1><p>Solicita asistencia al personal de la estación.</p><p class="terminal-access-note">Volveremos a estar disponibles en breve.</p></div>';
+    };
+    const supervisorLogin = () => {
+      dialog.innerHTML = '<form class="terminal-access-card"><div class="terminal-access-brand">PRIMAX <span>Personal autorizado</span></div><h1>Acceso de operador</h1><label>Usuario<input name="username" autocomplete="username" required maxlength="80"></label><label>Contraseña<input name="password" type="password" autocomplete="current-password" required maxlength="72"></label><p class="terminal-access-error" role="alert"></p><button type="submit">Iniciar sesión</button></form>';
+      const form = dialog.querySelector('form');
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = form.querySelector('button'); button.disabled = true;
+        const body = { username: form.elements.username.value, password: form.elements.password.value };
         form.elements.password.value = '';
-        try { current = await sessionRequest('/login', body); } finally { body.password = ''; }
-        if (!current.authenticated) throw Error('Sesión no confirmada');
-        dialog.close(); dialog.remove(); installLogout(); resolve();
-      } catch (error) { current = null; message.textContent = error.message; }
-      finally { button.disabled = false; }
-    });
-    sessionRequest('').then(value => {
+        try {
+          if (!current?.csrfToken) current = await sessionRequest('');
+          current = await sessionRequest('/login', body);
+          if (!current.authenticated || !await terminalReady()) { unavailable(); return; }
+          dialog.close(); dialog.remove(); window.removeEventListener('hashchange', update); resolve();
+        } catch { form.querySelector('[role="alert"]').textContent = 'No se pudo confirmar el acceso. Solicita asistencia.'; }
+        finally { body.password = ''; button.disabled = false; }
+      });
+    };
+    const update = () => location.hash === '#supervisor-access' ? supervisorLogin() : unavailable();
+    update();
+    window.addEventListener('hashchange', update);
+    sessionRequest('').then(async value => {
       current = value;
-      if (value.authenticated) { dialog.close(); dialog.remove(); installLogout(); resolve(); }
-    }).catch(() => { message.textContent = 'Verifica la conexión e inicia sesión para continuar.'; })
-      .finally(() => { form.querySelector('button').disabled = false; });
+      if (value.authenticated && await terminalReady()) {
+        dialog.close(); dialog.remove(); window.removeEventListener('hashchange', update); resolve();
+      }
+    }).catch(() => { current = null; });
   }).finally(() => { waiting = null; });
   return waiting;
-}
-function installLogout() {
-  if (document.getElementById('kiosk-logout')) return;
-  const button = document.createElement('button'); button.id = 'kiosk-logout'; button.textContent = 'Cerrar sesión de operador';
-  button.addEventListener('click', async () => {
-    button.disabled = true;
-    try {
-      await sessionRequest('/logout', {}); current = null;
-      button.remove(); await ensureKioskSession();
-    } catch { button.textContent = 'No se confirmó el cierre. Reintentar'; }
-    finally { button.disabled = false; }
-  });
-  (document.querySelector('.topbar-right') || document.body).append(button);
 }

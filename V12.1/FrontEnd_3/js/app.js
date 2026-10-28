@@ -298,7 +298,7 @@ document.addEventListener('submit', async (event) => {
   }
   if (form.id === 'supply-form') {
     event.preventDefault(); busy = true;
-    const button = form.querySelector('button[type="submit']'); button.disabled = true;
+    const button = form.querySelector('button[type="submit"]'); button.disabled = true;
     const errorBox = form.querySelector('.error'); const successBox = form.querySelector('.success-message'); errorBox.textContent = '';
     try {
       const body = Object.fromEntries(new FormData(form));
