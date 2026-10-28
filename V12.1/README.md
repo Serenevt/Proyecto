@@ -53,6 +53,8 @@ El seed incluye cuentas DEMO descritas por `DEMO_PASSWORD`, `DEMO_CONTROL_ADMIN_
 
 El proxy local de FuelFlow es Nginx y añade `KIOSK_API_KEY` en el servidor; bloquea rutas no incluidas y peticiones cross-site. El BFF HMAC de `FrontEnd_1/server/gateway.js` es el adaptador de sesión segura del perfil académico y se prepara por separado para un host HTTPS. No se simula HTTPS ni se habilitan cookies `Secure` sobre HTTP local. La operación local DEMO no equivale a una estación de producción ni habilita operación desde la LAN.
 
+**Bloqueo de integración previo a staging:** el FuelFlow servido por el Compose local aún usa las rutas Kiosk compatibles y no inicia una `TerminalOperation` con el token técnico de surtidor. Por ello habilitar o cerrar el turno del Supervisor no gobierna las ventas de FuelFlow local. El ciclo Supervisor → terminal → compra está cubierto en la suite Phase 1A del Backend, pero el enlace del cliente local no está integrado; resolverlo antes de llamar al sistema completo o iniciar staging.
+
 ## Componentes opcionales
 
 - **PlateRecognition** se inicia en Compose. Recibe imágenes por Backend y es solo candidato OCR; nunca autoriza el pago.
