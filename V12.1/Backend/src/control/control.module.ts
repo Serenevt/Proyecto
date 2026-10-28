@@ -4,9 +4,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { RecoveryDelivery } from '../auth/recovery-delivery';
 import { ControlController } from './control.controller';
 import { ControlService } from './control.service';
+import { InventoryModule } from '../inventory/inventory.module';
+import { ControlOperationsController } from './control-operations.controller';
+import { ControlOperationsService } from './control-operations.service';
 
 @Module({
   imports: [
+    InventoryModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -24,7 +28,7 @@ import { ControlService } from './control.service';
       }),
     }),
   ],
-  controllers: [ControlController],
-  providers: [ControlService, RecoveryDelivery],
+  controllers: [ControlController, ControlOperationsController],
+  providers: [ControlService, ControlOperationsService, RecoveryDelivery],
 })
 export class ControlModule {}

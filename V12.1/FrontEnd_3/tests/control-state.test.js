@@ -11,6 +11,9 @@ test('global user and explicit station assignment define allowed scope', () => {
 test('route guard maps unknown route to dashboard and permits known views', () => {
   assert.equal(initialView('#incidents'), 'incidents');
   assert.equal(initialView('#accounts'), 'accounts');
+  for (const view of ['operations', 'terminals', 'inventory', 'movements', 'supply', 'audit']) {
+    assert.equal(initialView(`#${view}`), view);
+  }
   assert.equal(initialView('#unlisted'), 'dashboard');
 });
 test('API errors show safe, actionable messages', () => {

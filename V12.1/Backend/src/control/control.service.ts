@@ -210,10 +210,16 @@ export class ControlService {
   }
   async pending(actor: ControlActor) {
     await this.assertGlobal(actor);
-    return this.db.adminControlAccount.findMany({
+    const accounts = await this.db.adminControlAccount.findMany({
       where: {
         status: {
-          in: ['PENDING_APPROVAL', 'APPROVED', 'DISABLED', 'REJECTED'],
+          in: [
+            'PENDING_EMAIL',
+            'PENDING_APPROVAL',
+            'APPROVED',
+            'DISABLED',
+            'REJECTED',
+          ],
         },
       },
       include: {
@@ -228,6 +234,21 @@ export class ControlService {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+    const grants = await this.db.adminControlGrant.findMany({
+      where: { userId: { in: accounts.map((account) => account.userId) }, revokedAt: null },
+      select: { userId: true, permission: true },
+    });
+    const permissionsByUser = new Map<string, string[]>();
+    for (const grant of grants) {
+      permissionsByUser.set(grant.userId, [
+        ...(permissionsByUser.get(grant.userId) ?? []),
+        grant.permission,
+      ]);
+    }
+    return accounts.map((account) => ({
+      ...account,
+      grants: permissionsByUser.get(account.userId) ?? [],
+    }));
   }
   async approve(
     actor: ControlActor,
@@ -240,6 +261,8 @@ export class ControlService {
     updateExisting = false,
   ) {
     await this.assertGlobal(actor);
+    if (userId === actor.userId)
+      throw new ForbiddenException('No puedes modificar tu propio acceso administrativo');
     const account = await this.db.adminControlAccount.findUnique({
       where: { userId },
       include: { user: true },
@@ -247,7 +270,7 @@ export class ControlService {
     if (
       !account ||
       (updateExisting
-        ? account.status !== 'APPROVED'
+        ? !['APPROVED', 'DISABLED'].includes(account.status)
         : account.status !== 'PENDING_APPROVAL') ||
       !account.emailVerifiedAt ||
       !account.user.active
@@ -262,8 +285,8 @@ export class ControlService {
         'SUPER_ADMIN se asigna mediante SYSTEM_ADMIN',
       );
     const stationIds = [...new Set(input.stationIds)];
-    if (input.role === 'ENCARGADO' && stationIds.length === 0)
-      throw new BadRequestException('ENCARGADO requiere al menos una estación');
+    if (stationIds.length === 0)
+      throw new BadRequestException('La cuenta requiere al menos una estación autorizada');
     const stations = await this.db.station.findMany({
       where: { id: { in: stationIds }, active: true },
       select: { id: true },
@@ -345,6 +368,8 @@ export class ControlService {
     reason: string,
   ) {
     await this.assertGlobal(actor);
+    if (userId === actor.userId)
+      throw new ForbiddenException('No puedes cambiar tu propio estado administrativo');
     const current = await this.db.adminControlAccount.findUnique({
       where: { userId },
     });
@@ -460,10 +485,15 @@ export class ControlService {
           liters: true,
           reservedLiters: true,
           fuel: { select: { code: true, name: true } },
+          activation: { select: { status: true, reason: true } },
         },
         orderBy: [{ stationId: 'asc' }, { fuelId: 'asc' }],
       }),
     ]);
+    const inventoryRows = inventory.map((row) => ({
+      ...row,
+      availableLiters: row.liters.minus(row.reservedLiters),
+    }));
     return {
       stations,
       operationsToday,
@@ -473,7 +503,8 @@ export class ControlService {
         count: x._count._all,
       })),
       openIncidents,
-      inventory,
+      inventory: inventoryRows,
+      reviewPairs: inventoryRows.filter((row) => row.activation?.status === 'REVIEW').length,
     };
   }
   async incidents(

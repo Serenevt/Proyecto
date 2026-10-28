@@ -343,6 +343,18 @@ suite('Primax Control foundation on isolated PostgreSQL', () => {
     const actor = await auth(rootId);
     expect(actor.global).toBe(true);
     expect(actor.role).toBe('SUPER_ADMIN');
+    expect(actor.permissions).toEqual(expect.arrayContaining([
+      'ADMIN_TERMINAL_VIEW',
+      'ADMIN_TERMINAL_MANAGE',
+      'ADMIN_INVENTORY_RECEIVE',
+      'ADMIN_INVENTORY_MOVEMENT_VIEW',
+      'ADMIN_INVENTORY_RECONCILE',
+    ]));
+    await expect(service.approve(actor, rootId, {
+      role: 'ADMIN',
+      stationIds: [stationA],
+      permissions: ['ADMIN_CONTROL_ACCESS', 'ADMIN_DASHBOARD_VIEW'],
+    })).rejects.toBeInstanceOf(ForbiddenException);
     const result = await service.dashboard(actor, stationB);
     expect(result.stations.map((station) => station.id)).toEqual([stationB]);
   });
@@ -425,6 +437,17 @@ suite('Primax Control foundation on isolated PostgreSQL', () => {
         },
       }),
     ).toBe(1);
+    await db.adminControlAccount.update({
+      where: { userId: encargadoId },
+      data: { status: 'DISABLED' },
+    });
+    await expect(auth(encargadoId)).rejects.toBeInstanceOf(ForbiddenException);
+    await service.approve(root, encargadoId, {
+      role: 'ADMIN',
+      stationIds: [stationB],
+      permissions: ['ADMIN_CONTROL_ACCESS', 'ADMIN_DASHBOARD_VIEW', 'ADMIN_INCIDENT_VIEW'],
+    }, true);
+    expect((await auth(encargadoId)).role).toBe('ADMIN');
     await db.adminControlAccount.update({
       where: { userId: encargadoId },
       data: { status: 'DISABLED' },

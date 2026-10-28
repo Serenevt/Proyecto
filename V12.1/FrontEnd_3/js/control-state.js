@@ -4,7 +4,7 @@ export function canViewStation(session, stationId) {
 
 export function initialView(hash = '') {
   const view = hash.replace(/^#\/?/, '').split('/')[0];
-  return ['dashboard', 'incidents', 'accounts'].includes(view) ? view : 'dashboard';
+  return ['dashboard', 'operations', 'terminals', 'inventory', 'movements', 'supply', 'incidents', 'accounts', 'audit'].includes(view) ? view : 'dashboard';
 }
 
 export function incidentMessage(error) {

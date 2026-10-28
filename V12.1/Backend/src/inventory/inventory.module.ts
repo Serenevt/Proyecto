@@ -7,5 +7,6 @@ import {
 @Module({
   controllers: [InventoryReconciliationController],
   providers: [InventoryReconciliationService],
+  exports: [InventoryReconciliationService],
 })
 export class InventoryModule {}
