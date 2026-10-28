@@ -730,7 +730,27 @@ model FuelInventory {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   reservations InventoryReservation[]
   movements InventoryMovement[]
+  activation InventoryActivation?
   @@id([stationId, fuelId])
+}
+
+enum InventoryActivationStatus {
+  LEGACY
+  REVIEW
+  RECONCILED
+  REQUIRED
+}
+
+model InventoryActivation {
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  inventory FuelInventory @relation(fields: [stationId, fuelId], references: [stationId, fuelId], onDelete: Restrict)
+  status InventoryActivationStatus @default(LEGACY)
+  reason String? @db.VarChar(200)
+  reconciledAt DateTime? @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@id([stationId, fuelId])
+  @@index([status, updatedAt])
 }
 
 model InventoryReservation {

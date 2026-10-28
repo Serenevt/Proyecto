@@ -15,7 +15,9 @@ const args = process.argv.slice(2);
 const command = args.shift();
 const entries = {
   prisma: 'prisma/build/index.js',
-  jest: 'jest/bin/jest.js',
+  // Jest exposes this public subpath; resolving the physical .js path is
+  // blocked by Jest's package exports map.
+  jest: 'jest/bin/jest',
   seed: 'ts-node/dist/bin.js',
 };
 if (!Object.hasOwn(entries, command))
