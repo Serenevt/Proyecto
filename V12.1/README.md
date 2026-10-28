@@ -51,15 +51,15 @@ El seed incluye cuentas DEMO descritas por `DEMO_PASSWORD`, `DEMO_CONTROL_ADMIN_
 - **Supervisor** abre y cierra turnos, habilita o bloquea terminales. Su rol operacional no concede permisos de Control.
 - **Incidencias** registra, entre otros casos, pago confirmado sin despacho. Resolver una incidencia no representa reembolso.
 
-El proxy local de FuelFlow es Nginx y añade `KIOSK_API_KEY` en el servidor; bloquea rutas no incluidas y peticiones cross-site. El BFF HMAC de `FrontEnd_1/server/gateway.js` es el adaptador de sesión segura del perfil académico y se prepara por separado para un host HTTPS. No se simula HTTPS ni se habilitan cookies `Secure` sobre HTTP local. La operación local DEMO no equivale a una estación de producción ni habilita operación desde la LAN.
+FuelFlow local usa Nginx same-origin → servicio `fuelflow-gateway` → Backend. El gateway firma las llamadas con HMAC, usa la sesión Kiosk de Redis del Backend y aplica la política de rutas y métodos. Nginx ya no añade `KIOSK_API_KEY`. La cookie Kiosk local es HttpOnly y SameSite=Strict sin `Secure` sobre HTTP loopback; el perfil HTTPS conserva `__Host-primax-kiosk` y `Secure`. La operación local DEMO no equivale a una estación de producción ni habilita operación desde la LAN.
 
-**Bloqueo de integración previo a staging:** el FuelFlow servido por el Compose local aún usa las rutas Kiosk compatibles y no inicia una `TerminalOperation` con el token técnico de surtidor. Por ello habilitar o cerrar el turno del Supervisor no gobierna las ventas de FuelFlow local. El ciclo Supervisor → terminal → compra está cubierto en la suite Phase 1A del Backend, pero el enlace del cliente local no está integrado; resolverlo antes de llamar al sistema completo o iniciar staging.
+**Bloqueo de integración previo a staging:** aunque el BFF ya participa en el runtime local, FuelFlow aún usa rutas Kiosk compatibles sin iniciar una `TerminalOperation` con identidad técnica de surtidor. Por ello habilitar o cerrar el turno del Supervisor todavía no gobierna las ventas. Resolver el pairing y el vínculo completo antes de llamar al sistema completo o iniciar staging.
 
 ## Componentes opcionales
 
 - **PlateRecognition** se inicia en Compose. Recibe imágenes por Backend y es solo candidato OCR; nunca autoriza el pago.
 - **PrintAgent** no es un contenedor ni servicio remoto. El adaptador actual de impresión física usa PowerShell y el driver PeriPage confirmado; en Linux solo se validan contrato, idempotencia y fallback navegador. FuelFlow y Control tienen comprobante navegable; la falta del agente no altera la transacción. El historial de trabajos de esta versión queda aislado en `data-v12_1` y no reutiliza datos de versiones anteriores.
-- **Gateway/BFF**: Compose publica proxies Nginx del mismo origen para el MVP local. El gateway HMAC de FuelFlow está en `FrontEnd_1/server/gateway.js`; requiere orígenes HTTPS y los secretos `KIOSK_GATEWAY_SECRET` concordantes. No se inicia como un servicio separado en Compose.
+- **Gateway/BFF**: Compose inicia `fuelflow-gateway` en la red privada `web`, sin puerto publicado. Backend y BFF comparten solo `KIOSK_GATEWAY_SECRET`; el Backend usa el Redis local existente. El modo HTTP del gateway se limita al origin público loopback y al host privado `backend`.
 
 ## Validación local
 

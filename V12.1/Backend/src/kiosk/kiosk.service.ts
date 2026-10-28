@@ -56,7 +56,7 @@ export class KioskService {
       .digest('hex');
   }
   verifyGateway(req: Request) {
-    if (this.config.get('APP_MODE') !== 'academic')
+    if (!['academic', 'local'].includes(this.config.get<string>('APP_MODE') || ''))
       throw new ForbiddenException();
     const timestamp = req.header('x-kiosk-time') || '';
     const signature = req.header('x-kiosk-signature') || '';

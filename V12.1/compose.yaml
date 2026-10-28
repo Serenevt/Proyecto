@@ -9,6 +9,10 @@ x-backend-env: &backend-env
   DATABASE_PURPOSE: local-v12.1-demo
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
   KIOSK_API_KEY: ${KIOSK_API_KEY:?Set KIOSK_API_KEY}
+  KIOSK_GATEWAY_SECRET: ${KIOSK_GATEWAY_SECRET:?Set KIOSK_GATEWAY_SECRET}
+  KIOSK_OPERATOR_USER: ${KIOSK_OPERATOR_USER:?Set KIOSK_OPERATOR_USER}
+  KIOSK_OPERATOR_PASSWORD_HASH: ${KIOSK_OPERATOR_PASSWORD_HASH:?Set KIOSK_OPERATOR_PASSWORD_HASH}
+  KIOSK_STATION_ID: ${KIOSK_STATION_ID:?Set KIOSK_STATION_ID}
   KIOSK_REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
   KIOSK_SESSION_NAMESPACE: local-v12-1
   PRIME_DEBT_LIMIT: ${PRIME_DEBT_LIMIT:-200}
@@ -165,20 +169,40 @@ services:
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
 
+  fuelflow-gateway:
+    build:
+      context: ./FrontEnd_1
+      target: gateway
+    environment:
+      FUELFLOW_PUBLIC_ORIGIN: http://127.0.0.1:${FRONTEND1_PORT:-26081}
+      BACKEND_ORIGIN: http://backend:3000
+      FUELFLOW_LOCAL_HTTP: "true"
+      KIOSK_GATEWAY_SECRET: ${KIOSK_GATEWAY_SECRET:?Set KIOSK_GATEWAY_SECRET}
+    networks: [web]
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+
   frontend1:
     build:
       context: ./FrontEnd_1
       args:
         FUELFLOW_DEMO: "0"
+        FUELFLOW_KIOSK_AUTH: "true"
     environment:
-      KIOSK_API_KEY: ${KIOSK_API_KEY:?Set KIOSK_API_KEY}
-      BACKEND_UPSTREAM: http://backend:3000
+      FUELFLOW_GATEWAY_UPSTREAM: http://fuelflow-gateway:3001
       PRIME_WEB_PORT: ${FRONTEND2_PORT:-26082}
     ports:
       - "127.0.0.1:${FRONTEND1_PORT:-26081}:80"
     networks: [web]
     depends_on:
-      backend: { condition: service_healthy }
+      fuelflow-gateway: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
       interval: 10s

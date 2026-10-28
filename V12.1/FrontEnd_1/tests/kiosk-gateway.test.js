@@ -9,11 +9,11 @@ import { kioskRoute } from '../server/policy.js';
 
 const env = { FUELFLOW_PUBLIC_ORIGIN: 'https://fuel.example', BACKEND_ORIGIN: 'https://backend.example', KIOSK_GATEWAY_SECRET: randomBytes(32).toString('hex') };
 const token = 's'.repeat(43), csrf = 'c'.repeat(43), stationId = '11111111-1111-4111-8111-111111111111';
-async function invoke(url, { method = 'GET', body, headers = {}, fetcher = async () => Response.json([]) } = {}) {
+async function invoke(url, { method = 'GET', body, headers = {}, fetcher = async () => Response.json([]), gatewayEnv = env } = {}) {
   const req = Readable.from([]);
   Object.assign(req, { method, url, body, headers: { 'x-fuelflow-request': '1', 'sec-fetch-site': 'same-origin', origin: env.FUELFLOW_PUBLIC_ORIGIN, 'content-type': 'application/json', cookie: '__Host-primax-kiosk=' + token, 'x-csrf-token': csrf, ...headers } });
   const res = { statusCode: 200, headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, end(value) { this.body = JSON.parse(value); } };
-  await createGateway({ env, fetcher })(req, res);
+  await createGateway({ env: gatewayEnv, fetcher })(req, res);
   return res;
 }
 function backend(calls, special) {
@@ -63,6 +63,22 @@ test('session tokens stay in host-only secure cookies and are stripped from JSON
   assert.equal(response.body.internalCredential, undefined);
   for (const attribute of ['HttpOnly', 'Secure', 'SameSite=Strict', 'Path=/', 'Max-Age=1800']) assert(response.headers['set-cookie'].includes(attribute));
   assert(!response.headers['set-cookie'].includes('Domain='));
+});
+test('loopback Compose mode uses an HttpOnly local cookie and a private backend origin', async () => {
+  const localEnv = { ...env, FUELFLOW_PUBLIC_ORIGIN: 'http://127.0.0.1:26081', BACKEND_ORIGIN: 'http://backend:3000', FUELFLOW_LOCAL_HTTP: 'true' };
+  const response = await invoke('/api/kiosk/session', {
+    gatewayEnv: localEnv,
+    headers: { origin: localEnv.FUELFLOW_PUBLIC_ORIGIN },
+    fetcher: async (url) => {
+      assert.equal(url, 'http://backend:3000/api/v1/kiosk/session');
+      return Response.json({ authenticated: false, token, ttl: 300, csrfToken: csrf });
+    },
+  });
+  assert.equal(response.statusCode, 200);
+  assert.match(response.headers['set-cookie'], /^primax-kiosk-local=/);
+  assert.match(response.headers['set-cookie'], /HttpOnly; SameSite=Strict/);
+  assert.doesNotMatch(response.headers['set-cookie'], /Secure/);
+  assert.equal(response.body.token, undefined);
 });
 test('logout clears the cookie only after shared revocation succeeds', async () => {
   const success = await invoke('/api/kiosk/session/logout', { method: 'POST', body: {}, fetcher: backend([], () => Response.json({ authenticated: false })) });

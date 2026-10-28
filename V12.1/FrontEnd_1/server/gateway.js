@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { kioskRoute } from './policy.js';
 
+const LOCAL_COOKIE = 'primax-kiosk-local';
 const COOKIE = '__Host-primax-kiosk';
 const TERMINAL_COOKIE = '__Host-primax-terminal';
 const TERMINAL_CSRF = '__Host-primax-terminal-csrf';
@@ -9,15 +10,16 @@ class GatewayError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 function fail(status, message) { throw new GatewayError(status, message); }
-function originOnly(value) {
+function originOnly(value, local = false, backend = false) {
   let url; try { url = new URL(value); } catch { fail(503, 'Configuración de terminal pendiente'); }
-  if (url.protocol !== 'https:' || url.origin !== value || url.username || url.password) fail(503, 'Configuración de terminal pendiente');
+  const localOrigin = local && url.protocol === 'http:' && (backend ? url.hostname === 'backend' : ['127.0.0.1', 'localhost'].includes(url.hostname));
+  if (url.protocol !== 'https:' && !localOrigin || url.origin !== value || url.username || url.password) fail(503, 'Configuración de terminal pendiente');
   return value;
 }
-function cookieToken(value = '') {
-  const cookies = value.split(';').map(v => v.trim()).filter(v => v.startsWith(COOKIE + '='));
+function cookieToken(value = '', name = COOKIE) {
+  const cookies = value.split(';').map(v => v.trim()).filter(v => v.startsWith(name + '='));
   if (cookies.length > 1) fail(400, 'Cookie inválida');
-  const token = cookies[0]?.slice(COOKIE.length + 1) || '';
+  const token = cookies[0]?.slice(name.length + 1) || '';
   if (token && !/^[A-Za-z0-9_-]{43}$/.test(token)) fail(401, 'Sesión inválida');
   return token;
 }
@@ -58,15 +60,18 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     try {
-      const publicOrigin = originOnly(env.FUELFLOW_PUBLIC_ORIGIN);
-      const backend = originOnly(env.BACKEND_ORIGIN);
+      const local = env.FUELFLOW_LOCAL_HTTP === 'true';
+      const publicOrigin = originOnly(env.FUELFLOW_PUBLIC_ORIGIN, local);
+      const backend = originOnly(env.BACKEND_ORIGIN, local, true);
       if (!env.KIOSK_GATEWAY_SECRET || env.KIOSK_GATEWAY_SECRET.length < 32 || env.KIOSK_GATEWAY_SECRET.includes('REPLACE_')) fail(503, 'Configuración de terminal pendiente');
       if (req.headers['x-fuelflow-request'] !== '1' || req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin') fail(403, 'Origen no autorizado');
       if (req.headers.origin && req.headers.origin !== publicOrigin || req.method !== 'GET' && req.headers.origin !== publicOrigin) fail(403, 'Origen no autorizado');
       const url = new URL(req.url, publicOrigin);
       // No client-controlled destination, headers, cookies or query forwarding.
       if (url.search || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
-      const token = cookieToken(req.headers.cookie);
+      const cookieName = local ? LOCAL_COOKIE : COOKIE;
+      const cookieAttributes = `Path=/; HttpOnly; ${local ? '' : 'Secure; '}SameSite=Strict`;
+      const token = cookieToken(req.headers.cookie, cookieName);
       const { technical, terminalCsrf } = terminalCookies(req.headers.cookie);
       const csrf = req.headers['x-csrf-token'] || '';
       if (typeof csrf !== 'string' || csrf.length > 100) fail(403, 'CSRF inválido');
@@ -105,9 +110,9 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
           ...(value.authenticated === true ? { stationId: value.stationId } : {}) };
         if (replacement) {
           if (!/^[A-Za-z0-9_-]{43}$/.test(replacement) || !Number.isInteger(ttl) || ttl < 1 || ttl > 1800) fail(502, 'Respuesta inválida');
-          res.setHeader('Set-Cookie', `${COOKIE}=${replacement}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${ttl}`);
+          res.setHeader('Set-Cookie', `${cookieName}=${replacement}; ${cookieAttributes}; Max-Age=${ttl}`);
         }
-        if (url.pathname.endsWith('/logout')) res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
+        if (url.pathname.endsWith('/logout')) res.setHeader('Set-Cookie', `${cookieName}=; ${cookieAttributes}; Max-Age=0`);
         res.statusCode = status; res.end(JSON.stringify(safe)); return;
       }
       const uuid = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
