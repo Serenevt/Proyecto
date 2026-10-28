@@ -114,4 +114,4 @@ export function ensureKioskSession() {
   }).finally(() => { waiting = null; });
   return waiting;
 }
-window.addEventListener('hashchange', () => { if (location.hash === '#supervisor-access') void ensureKioskSession(); });
+if (typeof window !== 'undefined') window.addEventListener('hashchange', () => { if (location.hash === '#supervisor-access') void ensureKioskSession(); });

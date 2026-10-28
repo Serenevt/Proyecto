@@ -2962,8 +2962,9 @@ function init() {
   $('input-placa').addEventListener('keydown', (e) => { if (e.key === 'Enter') continuarIdentificacion(); });
 }
 
-// Arranque por HTTP; la API se publica a través del proxy.
-document.addEventListener('DOMContentLoaded', init);
+// La sesión técnica puede resolverse después de DOMContentLoaded.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+else init();
 
 $('prep-input-placa').addEventListener('change', async () => {
   const plate = formatearPlaca($('prep-input-placa').value);
