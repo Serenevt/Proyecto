@@ -31,7 +31,7 @@ export function openPlateCamera(onRecognized, kind = 'plate') {
    const result=results.find(r=>r.recognized&&results.filter(other=>other.recognized&&key(other)===key(r)).length>=(source===video?2:1));
    if(!result){status.textContent='No pudimos reconocer con suficiente confianza. Vuelve a capturar o usa el ingreso manual.';return;}
    input.value=key(result);review.hidden=false;status.textContent='Revisa o corrige el resultado antes de confirmarlo.';input.focus();
-  }catch(error){if(!closed)status.textContent=error.message;}
+  }catch(error){if(!closed)status.textContent=error.status===503?'Reconocimiento no disponible. Usa el ingreso manual.':error.message;}
   finally{busy=false;if(!closed)capture.disabled=!stream;}
  }
  confirm.onclick=async()=>{

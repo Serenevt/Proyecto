@@ -12,7 +12,11 @@ fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
 for (const file of ['index.html', 'styles', 'js', 'assets']) fs.cpSync(path.join(root, file), path.join(output, file), { recursive: true });
 const api = process.env.PRIMAX_CONTROL_API_URL || '/api/v1';
-if (process.env.NODE_ENV === 'production' && !api.startsWith('https://')) throw new Error('Primax Control production API must use HTTPS');
+if (api !== '/api/v1') {
+  let url;
+  try { url = new URL(api); } catch { throw new Error('Primax Control API must be /api/v1 or an HTTPS /api/v1 URL'); }
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.pathname.replace(/\/$/, '') !== '/api/v1') throw new Error('Primax Control API must be /api/v1 or an HTTPS /api/v1 URL');
+}
 fs.writeFileSync(path.join(output, 'js/config.js'), `export const API_BASE_URL = ${JSON.stringify(api.replace(/\/$/, ''))};\n`);
 const hash = crypto.createHash('sha256');
 function scan(dir) { for (const item of fs.readdirSync(dir, { withFileTypes: true }).sort((a,b)=>a.name.localeCompare(b.name))) { const file=path.join(dir,item.name); if(item.isDirectory()) scan(file); else if(/\.(js|css|html)$/.test(file)) hash.update(path.relative(output,file)).update(fs.readFileSync(file)); } }

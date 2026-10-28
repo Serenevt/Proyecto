@@ -1,6 +1,6 @@
 # V12.1 — arquitectura de staging (fase 5A)
 
-Auditoría del estado local de `feature/primax-v12-1-dkos` en `a74f8de`. Documento de diseño: no se aprovisionó, desplegó ni migró recurso remoto. `V12/` permanece congelada. Las URL siguientes son marcadores conceptuales, no dominios reservados.
+Auditoría inicial del estado local en `a74f8de`, actualizada en fase 5A.1 con límites de runtime preparados localmente. No se aprovisionó, desplegó ni migró recurso remoto. `V12/` permanece congelada. Las URL siguientes son marcadores conceptuales, no dominios reservados. Las decisiones y estados de 5A.1 al final de este documento sustituyen los pendientes originales de 5A cuando se refieren al mismo código.
 
 ## 1. Arquitectura objetivo y componentes
 
@@ -8,7 +8,7 @@ Auditoría del estado local de `feature/primax-v12-1-dkos` en `a74f8de`. Documen
 Browser FuelFlow ─HTTPS─> origin FuelFlow ─/api/*─> BFF Node Function ─HMAC/HTTPS─> Backend NestJS
                        └─/supervisor-api/*─> proxy acotado ─HTTPS─> Backend
 Browser Prime ─HTTPS/CORS exacto/Bearer─> Backend
-Browser Control ─HTTPS─> origin Control ─/api/v1/*─> proxy ─HTTPS─> Backend
+Browser Control ─HTTPS─> origin Control ─/api/v1/control/*─> proxy ─HTTPS─> Backend
 Backend ─TLS─> Neon PostgreSQL; ─HTTPS REST─> Upstash Redis; ─TLS─> SMTP de pruebas
 Backend ─HTTPS privado/autenticado, si se habilita─> OCR Python/Tesseract
 PC de estación ─loopback solamente─> PrintAgent (separado de los hosts públicos)
@@ -20,7 +20,7 @@ PC de estación ─loopback solamente─> PrintAgent (separado de los hosts púb
 | FuelFlow | `V12.1/FrontEnd_1` | Nginx, HTML/JS/CSS | BFF, supervisor API, PrintAgent opcional | funcional local | no, browser local | sí | estático Vercel con Function BFF en el mismo proyecto |
 | FuelFlow BFF | `V12.1/FrontEnd_1/server/gateway.js`, `api/[...path].js` | Node detrás de Nginx; adaptador Function ya existe | Backend HMAC, cookies | funcional local | Redis a través del Backend | solo `/api/*` bajo origin FuelFlow | Vercel Node Function; probar contrato de red antes de 5B |
 | Prime | `V12.1/FrontEnd_2` | HTML/JS estático/Capacitor | Backend | funcional local | browser y DB vía API | sí | Vercel estático; API HTTPS explícita |
-| Primax Control | `V12.1/FrontEnd_3` | HTML/JS estático, proxy local Node | Backend, SMTP para verificación | funcional local | cookie/browser y DB vía API | sí | Vercel estático con proxy `/api/v1/*` |
+| Primax Control | `V12.1/FrontEnd_3` | HTML/JS estático, proxy local Node | Backend, SMTP para verificación | funcional local | cookie/browser y DB vía API | sí | Vercel estático con proxy `/api/v1/control/*` |
 | PostgreSQL | `V12.1/PostgreSQL`, `Backend/prisma` | contenedor local | Prisma | funcional local | sí | no | Neon rama/base dedicada |
 | Redis | `V12.1/compose.yaml`, `Backend/src/kiosk/redis-store.ts` | TCP local; REST en perfil académico | sesiones y límites Kiosk | funcional local | TTL de sesiones | no | Upstash Redis REST dedicado |
 | PlateRecognition | `V12.1/PlateRecognition` | Flask/Gunicorn/Tesseract en contenedor | OpenCV, modelos Tesseract, tempfiles | funcional local | temporal, sin retención | no | deshabilitar inicialmente; si es requisito E2E, contenedor privado autenticado |
@@ -41,20 +41,20 @@ No se copia Docker Compose 1:1: DB, Redis, estáticos, Function, proceso Nest y 
 
 **Destino principal: Function Node del mismo proyecto Vercel que los estáticos FuelFlow.** Así el navegador usa `https://<fuelflow-staging>/api/...` y nunca llama al Backend para ventas sensibles. Function a Backend usa HTTPS y secreto HMAC solo servidor. `FUELFLOW_PUBLIC_ORIGIN` debe coincidir exactamente con el host efectivo; Preview URLs variables requieren configuración por deployment o alias estable. No habilitar `FUELFLOW_LOCAL_HTTP` en staging. Probar que Vercel entregue `req.body` y `Set-Cookie` múltiple como espera el handler, con límite del proveedor y 18 s de upstream; el código acepta body ya parseado o stream. El `maxDuration` actual de 60 s debe contrastarse con plan/límites vigentes. No requiere Node persistente, streaming ni Redis directo.
 
-**Brecha obligatoria:** Nginx local ofrece `/supervisor-api/login` y `/supervisor-api/supervisor/*` hacia Backend; `FrontEnd_1/vercel.json` no ofrece esas rutas. Añadir Function/proxy de rutas explícitas con autenticación Bearer y límites, o alojar la UI de Supervisor en otro origin con adaptación de cliente; mantener `/api/*` exclusivamente en BFF. No crear proxy Backend genérico para ventas. Las rutas Supervisor no deben aceptar cookies Kiosk como auth.
+**Resuelto localmente en 5A.1:** Nginx mantiene `/supervisor-api/login` y `/supervisor-api/supervisor/*` en Compose. Para staging, `vercel.json` reescribe `/supervisor-api/:path*` a `api/supervisor-proxy.js`: allowlist GET/POST de rutas humanas, JWT Supervisor para acciones protegidas y sin forward de cookies Kiosk. Pairing/rotación y ventas continúan exclusivamente bajo `/api/*` BFF. La ruta se verificará además en el host real durante 5B.
 
 ## 4. Frontends y rutas
 
 | Proyecto Vercel / Root Directory | Build / salida | API y routing | Ajuste antes de 5B |
 |---|---|---|---|
-| FuelFlow / `V12.1/FrontEnd_1` | `npm run build` / `dist` | `/` redirige a `/src/index.html`; assets relativos; `/api/*` Function | añadir `/supervisor-api/*` acotado y probar fallback de rutas estáticas/SPA |
+| FuelFlow / `V12.1/FrontEnd_1` | `npm run build` / `dist` | `/` redirige a `/src/index.html`; assets relativos; `/api/*` BFF y `/supervisor-api/*` proxy Function | validar rutas en Preview HTTPS estable en 5B |
 | Prime / `V12.1/FrontEnd_2` | `npm run build` / `www` | `PRIME_API_BASE_URL` requiere URL absoluta HTTPS en Vercel; hash routing | fijar URL API y CORS exacto; no inyectar credenciales |
-| Control / `V12.1/FrontEnd_3` | `npm run build` / `dist` | hash routing; `credentials: include` | crear `vercel.json`/proxy `/api/v1/*`, o diseñar API absoluta de mismo sitio; probar refresh y correo |
+| Control / `V12.1/FrontEnd_3` | `npm run build` / `dist` | hash routing; `credentials: include`; Function `/api/v1/control/*` | validar cookie y rutas en Preview HTTPS estable en 5B |
 | Backend | servicio Node, root `V12.1/Backend` | `npm run prisma:generate && npm run build`; `node dist/src/main.js` | health `/api/v1/health`; configurar proceso, TLS y pool |
 
-Prime usa Bearer JWT en `localStorage` (también caché/idempotencia local), no cookie de auth; refresh rehidrata desde API. API absoluta pública queda en bundle y debe contener solo URL. `PAYMENT_ENV=demo` y `DEMO_WALLET_ENABLED` pertenecen al Backend. Control usa cookie HttpOnly; el diseño recomendado es proxy same-origin y `PRIMAX_CONTROL_API_URL` relativo, pero `tools/build.cjs` rechaza URL relativa cuando `NODE_ENV=production`: ajustar esa validación para aceptar `/api/v1` con proxy probado. Alternativa API absoluta en mismo *site* HTTPS y CORS exacto requiere validar cookie Strict, `credentials: include` y host; proxy es más sencillo. El enlace de verificación usa `PRIMAX_CONTROL_PUBLIC_URL/#/verify?token=...`; token hash en DB y expiración 30 min.
+Prime usa Bearer JWT en `localStorage` (también caché/idempotencia local), no cookie de auth; refresh rehidrata desde API. API absoluta pública queda en bundle y debe contener solo URL. `PAYMENT_ENV=demo` y `DEMO_WALLET_ENABLED` pertenecen al Backend. Control usa cookie HttpOnly; en 5A.1 `tools/build.cjs` admite `/api/v1` incluso con `NODE_ENV=production`, y el proyecto Vercel tiene Function same-origin limitada a `/api/v1/control/*`. El enlace de verificación usa `PRIMAX_CONTROL_PUBLIC_URL/#/verify?token=...`; token hash en DB y expiración 30 min.
 
-FuelFlow en HTTPS no puede invocar PrintAgent actual: `printReceipt.js` solo admite page origin HTTP loopback. Control tiene la misma restricción y botón separado de impresión de navegador. En FuelFlow, el error permite terminar sin imprimir; pago y operación permanecen guardados. Para demostración staging, documentar impresión física no disponible y probar ese camino. Habilitar impresión desde HTTPS requiere diseño posterior de origen autorizado, LNA/CORS/preflight y compatibilidad de navegador; no abrir PrintAgent a Internet ni relajar sus controles para 5B. Chrome documenta permisos de acceso a red local para páginas públicas HTTPS; el resultado depende del navegador y entorno.
+FuelFlow en HTTPS no puede invocar PrintAgent actual: `printReceipt.js` solo admite page origin HTTP loopback. Control tiene la misma restricción y botón separado de impresión de navegador. FuelFlow ahora ofrece impresión del ticket confirmado mediante `window.print()` y cierre sin imprimir; pago y operación permanecen guardados si PrintAgent falta. En staging inicial, probar esas dos rutas y mantener la impresión física local fuera de Internet. Habilitar PrintAgent desde HTTPS requiere diseño posterior de origen autorizado, LNA/CORS/preflight y compatibilidad de navegador; no abrir su puerto ni relajar sus controles para 5B.
 
 ## 5. Datos: Neon y migraciones
 
@@ -187,7 +187,7 @@ Rollback: frontends a deployment anterior (incluyendo config de proxy); Backend 
 
 ## 12. Cambios necesarios y costo/complejidad
 
-**BLOQUEANTE DE STAGING:** (1) ruta `/supervisor-api/*` same-origin en FuelFlow con allowlist y prueba E2E; (2) Control cookie `Secure` en `APP_MODE=academic` HTTPS, proxy same-origin de `/api/v1/*` y validación de build que permita esa URL relativa; (3) decisión explícita de impresión: demo sin PrintAgent físico desde HTTPS y prueba de cierre sin impresión; (4) decidir OCR deshabilitado o implementar red privada/auth de servicio antes de habilitarlo; (5) verificar tamaños/headers/cookies/latencia del BFF Function y configuración estable de origin antes de crear proyectos. Son cambios/configuración de código obligatorios antes de aprovisionamiento o publicación de una topología funcional.
+**Registro original de bloqueantes de 5A:** ruta Supervisor same-origin; cookie Control `Secure` y proxy same-origin; impresión sin PrintAgent; decisión OCR; contrato BFF Function. Su estado actualizado está en la sección 5A.1 de abajo. La validación sobre hosting real y proveedores corresponde a 5B, luego del aprovisionamiento.
 
 **RECOMENDADO:** protección CSRF/Origin adicional para POST Control; límites distribuidos de auth no Kiosk; smoke de migraciones en clon vacío; métricas sin PII; límites de conexiones/pool Prisma; proxy restringido por rutas y headers; test de impresión local en navegador/Windows objetivo.
 
@@ -200,3 +200,17 @@ Rollback: frontends a deployment anterior (incluyendo config de proxy); Backend 
 | Todo en contenedores persistentes | media-baja | alta para Compose | mayor base fija y operación | más servicios, TLS/proxy/rollbacks propios |
 
 Fuentes de compatibilidad de proveedor consultadas sin usar cuentas: [Vercel Node Functions](https://vercel.com/docs/functions/runtimes/node-js), [duración de Functions](https://vercel.com/docs/functions/configuring-functions/duration), [Upstash REST](https://upstash.com/docs/redis/features/restapi), [Upstash comandos](https://upstash.com/docs/redis/overall/compatibility), [Chrome Local Network Access](https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access). Validar límites y precios del plan escogido en 5B.
+
+## 13. Fase 5A.1 — límites preparados localmente
+
+| Bloqueante de 5A | Estado local 5A.1 | Implementación / criterio |
+|---|---|---|
+| `/supervisor-api/*` FuelFlow | **RESUELTO** | `FrontEnd_1/vercel.json` reescribe al Function `api/supervisor-proxy.js`. `server/supervisorProxy.js` acepta solo login, estaciones, turno y habilitación usados por la UI, con método, Origin y JWT Supervisor; no reenvía cookies ni rutas de venta. Pair/rotate permanecen en BFF. |
+| Proxy Control same-origin | **RESUELTO** | `FrontEnd_3/vercel.json` y `api/v1/[...path].js` llaman a `server/controlProxy.js`, limitado a `/api/v1/control/*`, GET/POST, Origin exacto, body JSON y cookie `primax_control`; mantiene `Set-Cookie` validada. Build de producción acepta `PRIMAX_CONTROL_API_URL` relativo `/api/v1`. |
+| Cookie Control `Secure` académico | **RESUELTO** | Backend emite y borra `primax_control` con `Secure` cuando `APP_MODE` no es `local`, conservando HttpOnly, Strict, Path y ocho horas. Test de modos local/academic/production; proxy HTTPS rechaza cookie upstream insegura. |
+| BFF Node Function | **RESUELTO para preparación local** | `api/[...path].js` reutiliza `createGateway()`; `server/local.js` es el único listener. Tests de request con body preparseado, Origin, query, HMAC, timeout mediante `AbortSignal`, status, dos `Set-Cookie`, prefijo `__Host-` y política de ruta. No hay socket/archivo/estado mutable de proceso en el BFF. La integración en un deployment HTTPS es validación de 5B. |
+| OCR primer staging | **RESUELTO por política OFF** | Configurar `PLATE_RECOGNITION_ENABLED=false` en Backend académico inicial. `RecognitionService` devuelve 503 antes de `fetch` OCR; FuelFlow comunica ingreso manual. No configurar `PLATE_RECOGNITION_URL` pública ni desplegar Flask/Tesseract. OCR solo se habilitaría luego de red privada/autenticación y prueba de tiempos. |
+
+Variables de Function **solo servidor**: FuelFlow `BACKEND_ORIGIN`, `FUELFLOW_PUBLIC_ORIGIN`, `KIOSK_GATEWAY_SECRET`; Control `BACKEND_ORIGIN`, `PRIMAX_CONTROL_PUBLIC_URL`. No se añadieron nombres de variables. En FrontEnd_3, `PRIMAX_CONTROL_API_URL` es pública y debe ser `/api/v1`; Prime conserva `PRIME_API_BASE_URL` HTTPS explícita y Bearer. Backend académico usa `CORS_ORIGINS` con los origins HTTPS exactos definidos en 5B. Nunca `*` con credentials. Preview URL variable sin alias estable exigiría ajustar origins y cookies por deployment; fijar alias antes de pruebas compartidas.
+
+En 5B verificar routing Vercel real, límites del plan (body/duración), `Set-Cookie`/logout bajo HTTPS, SMTP de prueba, Redis/DB dedicados y E2E. Esta verificación depende de los recursos que 5A.1 prohíbe crear; no es un cambio de código pendiente. Ninguna Function de Control/Supervisor reemplaza la ruta de ventas BFF HMAC.

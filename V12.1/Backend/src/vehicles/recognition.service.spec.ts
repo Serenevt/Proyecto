@@ -52,6 +52,15 @@ describe('OCR gateway', () => {
       status: 503,
     });
   });
+  it('staging inicial deshabilita OCR sin llamar al servicio remoto', async () => {
+    global.fetch = jest.fn();
+    const disabled = new RecognitionService(
+      vehicles as unknown as VehiclesService,
+      new ConfigService({ PLATE_RECOGNITION_ENABLED: 'false' }),
+    );
+    await expect(disabled.recognize('a'.repeat(16))).rejects.toThrow('Ingresa la placa manualmente');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
   it('resultado malformado no tiene confianza', async () => {
     output('bad', 2);
     expect((await service.recognize('a'.repeat(16))).recognized).toBe(false);

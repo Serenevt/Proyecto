@@ -117,7 +117,7 @@ export class ControlController {
     const result = await this.service.login(dto.email, dto.password);
     response.cookie('primax_control', result.token, {
       httpOnly: true,
-      secure: this.config.get('APP_MODE') === 'production',
+      secure: this.config.get('APP_MODE') !== 'local',
       sameSite: 'strict',
       path: '/api/v1/control',
       maxAge: 8 * 60 * 60 * 1000,
@@ -131,7 +131,7 @@ export class ControlController {
   logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie('primax_control', {
       httpOnly: true,
-      secure: this.config.get('APP_MODE') === 'production',
+      secure: this.config.get('APP_MODE') !== 'local',
       sameSite: 'strict',
       path: '/api/v1/control',
     });
