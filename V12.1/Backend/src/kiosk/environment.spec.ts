@@ -27,6 +27,16 @@ describe('public academic configuration fails closed', () => {
   it('accepts isolated simulated configuration without Culqi, SMTP or OCR', () => {
     expect(validateEnvironment(env).PORT).toBe(3000);
   });
+  it('accepts authenticated Redis only for the local profile', () => {
+    const validated = validateEnvironment({
+      ...env,
+      APP_MODE: 'local',
+      KIOSK_REDIS_URL: `redis://:${'p'.repeat(48)}@redis:6379/0`,
+    });
+    expect((validated as Record<string, unknown>).KIOSK_REDIS_URL).toContain('@redis:6379/0');
+    expect(() => validateEnvironment({ ...env, KIOSK_REDIS_URL: `redis://:${'p'.repeat(48)}@redis:6379/0` })).toThrow('local Redis URL');
+    expect(() => validateEnvironment({ ...env, APP_MODE: 'local', KIOSK_REDIS_URL: 'redis://:short@redis:6379/0' })).toThrow('local Redis URL');
+  });
   for (const [key, value] of Object.entries({
     CULQI_SECRET_KEY: 'fictional-key',
     PAYMENT_ENV: 'production',

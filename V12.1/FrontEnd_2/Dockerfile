@@ -8,6 +8,8 @@ COPY index.html ./
 COPY styles ./styles
 COPY js ./js
 COPY assets ./assets
+ARG PRIME_API_BASE_URL=/api/v1
+ENV PRIME_API_BASE_URL=$PRIME_API_BASE_URL
 # La cuenta de demostración (correo + contraseña) solo se incrusta en el
 # bundle cuando el despliegue es local. Un build de producción no publica
 # ninguna credencial. Compose lo activa con FUELFLOW_DEMO=1.

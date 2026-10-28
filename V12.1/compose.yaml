@@ -1,91 +1,109 @@
-name: primax-v12
+name: primax-v12-1
+
+x-backend-env: &backend-env
+  NODE_ENV: production
+  APP_MODE: local
+  PORT: 3000
+  DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB}?schema=public
+  DATABASE_URL_UNPOOLED: postgresql://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB}?schema=public
+  DATABASE_PURPOSE: local-v12.1-demo
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  KIOSK_API_KEY: ${KIOSK_API_KEY:?Set KIOSK_API_KEY}
+  KIOSK_REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+  KIOSK_SESSION_NAMESPACE: local-v12-1
+  PRIME_DEBT_LIMIT: ${PRIME_DEBT_LIMIT:-200}
+  PLATE_CONFIDENCE_THRESHOLD: ${PLATE_CONFIDENCE_THRESHOLD:-0.75}
+  PLATE_RECOGNITION_URL: http://plate-recognition:8000
+  PLATE_RECOGNITION_ENABLED: "true"
+  PASSWORD_RESET_DELIVERY: mailpit
+  PASSWORD_RESET_TTL_MINUTES: 10
+  PASSWORD_RESET_MAX_ATTEMPTS: 5
+  SMTP_HOST: mailpit
+  SMTP_PORT: 1025
+  SMTP_SECURE: "false"
+  SMTP_FROM: Primax Prime <no-reply@primax.local>
+  PAYMENT_ENV: demo
+  DEMO_WALLET_ENABLED: "true"
+  DEMO_PASSWORD: ${DEMO_PASSWORD:?Set DEMO_PASSWORD}
+  DEMO_CONTROL_ADMIN_ENABLED: ${DEMO_CONTROL_ADMIN_ENABLED:-true}
+  DEMO_CONTROL_ADMIN_EMAIL: ${DEMO_CONTROL_ADMIN_EMAIL:-control-admin@primax.local}
+  DEMO_CONTROL_ADMIN_PASSWORD: ${DEMO_CONTROL_ADMIN_PASSWORD:?Set DEMO_CONTROL_ADMIN_PASSWORD}
+  DEMO_OPERATIONS_ENABLED: ${DEMO_OPERATIONS_ENABLED:-true}
+  DEMO_SUPERVISOR_EMAIL: ${DEMO_SUPERVISOR_EMAIL:-supervisor@primax.local}
+  DEMO_SUPERVISOR_PASSWORD: ${DEMO_SUPERVISOR_PASSWORD:?Set DEMO_SUPERVISOR_PASSWORD}
+  SHOW_DEMO_ADMIN_CREDENTIALS: "false"
+  SOLES_PER_POINT: ${SOLES_PER_POINT:-9}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:26081,http://127.0.0.1:26081,http://localhost:26082,http://127.0.0.1:26082,http://localhost:26083,http://127.0.0.1:26083}
 
 services:
-  frontend1:
-    build:
-      context: ./FrontEnd_1
-    ports:
-      - "127.0.0.1:${FRONTEND1_PORT:-26081}:80"
-    environment:
-      KIOSK_API_KEY: ${KIOSK_SECRET:-${KIOSK_API_KEY:-LOCAL_DEMO_V10_KIOSK_CHANGE_ME_32_CHARS}}
-      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://backend:3000}
-      PRIME_WEB_PORT: ${FRONTEND2_PORT:-26082}
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks: [app]
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-
-  frontend2:
-    environment:
-      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://backend:3000}
-    build:
-      context: ./FrontEnd_2
-    ports:
-      - "127.0.0.1:${FRONTEND2_PORT:-26082}:80"
-    restart: unless-stopped
-    networks: [app]
-    security_opt:
-      - no-new-privileges:true
-
-  # Defaults are for local demo only. Production requires real secrets.
   postgres:
     image: postgres:17.6-bookworm
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-primax_v11_1_1}
-      POSTGRES_USER: ${POSTGRES_USER:-primax}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-primax_demo_local}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks: [data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 3s
       retries: 20
     restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping 2>/dev/null | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    networks: [data]
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-26025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+
+  plate-recognition:
+    build: ./PlateRecognition
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
 
   migrate:
     build:
       context: ./Backend
       target: build
-    environment: &backend-env
-      DATABASE_URL: postgresql://${POSTGRES_USER:-primax}:${POSTGRES_PASSWORD:-primax_demo_local}@postgres:5432/${POSTGRES_DB:-primax_v11_1_1}?schema=public
-      JWT_SECRET: ${JWT_SECRET:-LOCAL_DEMO_V10_JWT_CHANGE_ME_32_CHARS}
-      KIOSK_API_KEY: ${KIOSK_SECRET:-${KIOSK_API_KEY:-LOCAL_DEMO_V10_KIOSK_CHANGE_ME_32_CHARS}}
-      PRIME_DEBT_LIMIT: ${PRIME_DEBT_LIMIT:-200}
-      PLATE_CONFIDENCE_THRESHOLD: ${PLATE_CONFIDENCE_THRESHOLD:-0.75}
-      PLATE_RECOGNITION_URL: ${PLATE_RECOGNITION_URL:-http://plate-recognition:8000}
-      # Mailpit captures local mail; select smtp explicitly for external delivery.
-      PASSWORD_RESET_DELIVERY: ${PASSWORD_RESET_DELIVERY:-mailpit}
-      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-10}
-      PASSWORD_RESET_MAX_ATTEMPTS: ${PASSWORD_RESET_MAX_ATTEMPTS:-5}
-      SMTP_HOST: ${SMTP_HOST:-mailpit}
-      SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-Primax Prime <no-reply@primax.local>}
-      APP_MODE: ${APP_MODE:-local}
-      SHOW_DEMO_ADMIN_CREDENTIALS: ${SHOW_DEMO_ADMIN_CREDENTIALS:-true}
-      DEMO_ADMIN_USER: ${DEMO_ADMIN_USER:-admin-demo}
-      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-LocalAdminV10!}
-      ADMIN_USER: ${ADMIN_USER:-}
-      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
-      SOLES_PER_POINT: ${SOLES_PER_POINT:-9}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:${FRONTEND1_PORT:-26081},http://localhost:${FRONTEND2_PORT:-26082},http://localhost:5180,http://localhost,https://localhost}
-      DEMO_PASSWORD: ${DEMO_PASSWORD:-Prime123}
-      PAYMENT_ENV: ${PAYMENT_ENV:-demo}
-      DEMO_WALLET_ENABLED: ${DEMO_WALLET_ENABLED:-true}
-      CULQI_SECRET_KEY: ${CULQI_SECRET_KEY:-}
-      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
-      PORT: 3000
-    depends_on:
-      postgres:
-        condition: service_healthy
+    environment: *backend-env
     command: ["npm", "run", "prisma:migrate"]
+    depends_on:
+      postgres: { condition: service_healthy }
     networks: [data]
     restart: "no"
 
@@ -94,10 +112,31 @@ services:
       context: ./Backend
       target: build
     environment: *backend-env
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
     command: ["node", "scripts/seed-local-demo.cjs"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [data]
+    restart: "no"
+
+  seed-control-admin:
+    build:
+      context: ./Backend
+      target: build
+    environment: *backend-env
+    command: ["node", "scripts/seed-control-admin.cjs"]
+    depends_on:
+      seed: { condition: service_completed_successfully }
+    networks: [data]
+    restart: "no"
+
+  seed-operations:
+    build:
+      context: ./Backend
+      target: build
+    environment: *backend-env
+    command: ["node", "scripts/seed-local-operations.cjs"]
+    depends_on:
+      seed: { condition: service_completed_successfully }
     networks: [data]
     restart: "no"
 
@@ -106,64 +145,89 @@ services:
       context: ./Backend
       target: runtime
     environment: *backend-env
-    networks: [app, data]
     ports:
-      - "127.0.0.1:${PORT:-26000}:3000"
+      - "127.0.0.1:${BACKEND_PORT:-26000}:3000"
+    networks: [web, data]
     depends_on:
-      mailpit:
-        condition: service_healthy
-      plate-recognition:
-        condition: service_healthy
-      seed:
-        condition: service_completed_successfully
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
+      plate-recognition: { condition: service_healthy }
+      seed-control-admin: { condition: service_completed_successfully }
+      seed-operations: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 15s
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    security_opt: [no-new-privileges:true]
 
-  mailpit:
-    image: axllent/mailpit:v1.27.4
-    networks: [data]
-    ports:
-      - "127.0.0.1:${MAILPIT_PORT:-26025}:8025"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "/mailpit", "readyz"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  plate-recognition:
-    build: ./PlateRecognition
-    networks: [data]
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp:size=64m,mode=1777
-
-  tests:
-    profiles: ["test"]
+  frontend1:
     build:
-      context: ./Backend
-      target: test
-    environment: *backend-env
-    networks: [app, data]
+      context: ./FrontEnd_1
+      args:
+        FUELFLOW_DEMO: "0"
+    environment:
+      KIOSK_API_KEY: ${KIOSK_API_KEY:?Set KIOSK_API_KEY}
+      BACKEND_UPSTREAM: http://backend:3000
+      PRIME_WEB_PORT: ${FRONTEND2_PORT:-26082}
+    ports:
+      - "127.0.0.1:${FRONTEND1_PORT:-26081}:80"
+    networks: [web]
     depends_on:
-      backend:
-        condition: service_healthy
-    command: ["sh", "-c", "npm test && KEEP_E2E_SCHEMA=1 npm run test:e2e && npm run lint && npm run build"]
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+
+  frontend2:
+    build:
+      context: ./FrontEnd_2
+      args:
+        PRIME_API_BASE_URL: /api/v1
+    environment:
+      BACKEND_UPSTREAM: http://backend:3000
+    ports:
+      - "127.0.0.1:${FRONTEND2_PORT:-26082}:80"
+    networks: [web]
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+
+  frontend3:
+    build:
+      context: ./FrontEnd_3
+    environment:
+      BACKEND_UPSTREAM: http://backend:3000
+    ports:
+      - "127.0.0.1:${FRONTEND3_PORT:-26083}:80"
+    networks: [web]
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
-  app:
-  # Database and OCR have no published host ports.
+  web:
   data:

@@ -103,6 +103,13 @@ export function validateEnvironment(env: Record<string, unknown>) {
     throw new Error('DATABASE_URL must be PostgreSQL');
   if (String(env.APP_MODE ?? 'local') === 'local' && !['localhost', '127.0.0.1', '[::1]', 'postgres'].includes(database.hostname))
     throw new Error('Local profile cannot connect to a remote database');
+  if (env.KIOSK_REDIS_URL) {
+    let redis: URL;
+    try { redis = new URL(String(env.KIOSK_REDIS_URL)); }
+    catch { throw new Error('Invalid KIOSK_REDIS_URL'); }
+    if (env.APP_MODE !== 'local' || redis.protocol !== 'redis:' || !['redis', 'localhost', '127.0.0.1'].includes(redis.hostname) || redis.pathname !== '/0' || redis.search || redis.hash || !redis.password || redis.password.length < 32)
+      throw new Error('KIOSK_REDIS_URL must be an authenticated local Redis URL');
+  }
   for (const key of ['JWT_SECRET', 'KIOSK_API_KEY']) {
     if (String(env[key]).length < 32 || String(env[key]).includes('REPLACE_'))
       throw new Error(`${key} must be a random secret (32+ characters)`);
