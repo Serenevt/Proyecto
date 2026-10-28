@@ -9,3 +9,5 @@ process.env.DEMO_PASSWORD ||= 'Prime123';
 
 process.env.PORT ||= '22000';
 process.env.MAILPIT_PORT ||= '22025';
+
+require('./local-targets.cjs').assertLocalTargets();

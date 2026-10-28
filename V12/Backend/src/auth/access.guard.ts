@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { timingSafeEqual } from 'node:crypto';
 import { Request } from 'express';
 import { demoAdminEnabled } from './admin.controller';
+import { KioskService } from '../kiosk/kiosk.service';
 import { Actor } from './access';
 import { UsersService } from '../users/users.service';
 
@@ -21,16 +22,26 @@ export class AccessGuard implements CanActivate {
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
     private readonly users: UsersService,
+    private readonly kiosk: KioskService,
   ) {}
   async canActivate(context: ExecutionContext) {
     const access = this.reflector.getAllAndOverride<string>('access', [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (access === 'public') return true;
     const req = context.switchToHttp().getRequest<Request & { actor: Actor }>();
+    if (
+      req.header('x-kiosk-signature') &&
+      !req.path.startsWith('/api/v1/kiosk/session')
+    ) {
+      req.actor = await this.kiosk.authorize(req);
+      return true;
+    }
+    if (access === 'public') return true;
     const key = req.header('x-kiosk-key');
     if (key && (access === 'kiosk' || access === 'either')) {
+      if (this.config.get('APP_MODE') === 'academic')
+        throw new UnauthorizedException('Se requiere una sesión de operador');
       const expected = Buffer.from(
         this.config.getOrThrow<string>('KIOSK_API_KEY'),
       );

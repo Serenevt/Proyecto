@@ -1,0 +1,1005 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TransactionStatus {
+  PAYMENT_PENDING
+  PAID
+  REFUNDED
+}
+
+enum PurchaseMode {
+  PREPAGO
+  POSTPAGO
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TARJETA
+  YAPE
+  PLIN
+  SALDO_PRIME
+}
+
+enum PaymentStatus {
+  REJECTED
+  ERROR
+  PENDING
+  PARTIAL
+  CAPTURED
+  CANCELLED
+  REFUNDED
+}
+
+enum ReceiptType {
+  BOLETA
+  FACTURA
+}
+
+enum RewardKind {
+  EARN
+  REDEEM
+  REFUND
+}
+
+enum AuthorizationStatus {
+  RESERVED
+  SETTLED
+  RELEASED
+  DISPENSING
+  INTERVENTION_REQUIRED
+}
+
+enum AuthorizationOutcome {
+  /// El surtidor alcanzÃƒÂ³ el tope sin intervenciÃƒÂ³n del cliente.
+  AUTO
+  /// El cliente pulsÃƒÂ³ "Detener".
+  MANUAL
+  /// El cliente Detener tras consumir 0 galones: se libera todo.
+  CANCELLED
+}
+
+enum WalletMovementKind {
+  DEBT_SETTLEMENT
+  RECHARGE
+  RESERVE
+  RELEASE
+}
+
+enum RedemptionStatus {
+  ISSUED
+}
+
+enum GlobalPermission {
+  SYSTEM_ADMIN
+}
+enum AdminControlRole {
+  SUPER_ADMIN
+  ADMIN
+  ENCARGADO
+}
+enum AdminControlStatus {
+  PENDING_EMAIL
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISABLED
+}
+enum AdminControlPermission {
+  ADMIN_CONTROL_ACCESS
+  ADMIN_DASHBOARD_VIEW
+  ADMIN_INCIDENT_VIEW
+  ADMIN_INCIDENT_MANAGE
+  ADMIN_INVENTORY_VIEW
+  ADMIN_OPERATION_VIEW
+  ADMIN_USER_MANAGE
+  ADMIN_STATION_MANAGE
+  ADMIN_AUDIT_VIEW
+  ADMIN_TERMINAL_VIEW
+  ADMIN_TERMINAL_MANAGE
+  ADMIN_INVENTORY_RECEIVE
+  ADMIN_INVENTORY_MOVEMENT_VIEW
+  ADMIN_INVENTORY_RECONCILE
+  ADMIN_CUSTOMER_VIEW
+  ADMIN_MEMBERSHIP_VIEW
+  ADMIN_VEHICLE_VIEW
+  ADMIN_TRANSACTION_VIEW
+  ADMIN_RECEIPT_VIEW
+}
+enum TerminalLifecycle {
+  REGISTRADA
+  REVOCADA
+}
+enum TerminalOperationalStatus {
+  BLOQUEADA
+  DISPONIBLE
+  EN_USO
+  ASISTENCIA
+  FUERA_DE_SERVICIO
+}
+enum ShiftStatus {
+  ABIERTO
+  SUSPENDIDO
+  CIERRE_PENDIENTE
+  CERRADO
+}
+enum TerminalOperationStatus {
+  ACTIVE
+  INTERVENTION_REQUIRED
+  CLOSED
+}
+enum OperationalIncidentCode {
+  INC_001
+  TERMINAL_UNAVAILABLE
+  OPERATION_REVIEW
+  RECONCILIATION_MISMATCH
+  PAYMENT_AMBIGUOUS
+}
+enum OperationalIncidentStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+enum OperationalIncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+enum EnablementEndReason {
+  SHIFT_CLOSED
+  SUPERVISOR_BLOCK
+  INCIDENT
+  TERMINAL_REVOKED
+  ADMIN_ACTION
+}
+enum OperationalActorKind {
+  USER
+  TERMINAL
+  LEGACY_KIOSK
+  SYSTEM
+}
+enum InventoryReservationSource {
+  TERMINAL
+  LEGACY
+}
+enum InventoryReservationStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  REVIEW
+  CLOSED
+  CANCELLED
+}
+enum InventoryMovementKind {
+  OPENING_BALANCE
+  RESERVE
+  DISPENSE
+  LEGACY_DISPENSE
+  RELEASE
+  ADJUST_IN
+  ADJUST_OUT
+}
+enum InventoryActorKind {
+  SYSTEM
+  USER
+  TERMINAL
+  LEGACY_KIOSK
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @db.VarChar(254)
+  name         String      @db.VarChar(80)
+  passwordHash String      @db.VarChar(100)
+  active       Boolean     @default(true)
+  authVersion  Int         @default(0)
+  passwordReset PasswordReset?
+  membership   Membership?
+  permissionGrants UserPermissionGrant[] @relation("PermissionOwner")
+  grantedPermissions UserPermissionGrant[] @relation("PermissionGrantor")
+  supervisorAssignments SupervisorStationAssignment[] @relation("SupervisorOwner")
+  grantedSupervisorAssignments SupervisorStationAssignment[] @relation("SupervisorGrantor")
+  adminControlAccount AdminControlAccount?
+  adminControlGrants AdminControlGrant[] @relation("AdminGrantOwner")
+  grantedAdminControlGrants AdminControlGrant[] @relation("AdminGrantor")
+  adminStationAssignments AdminStationAssignment[] @relation("AdminStationOwner")
+  grantedAdminStationAssignments AdminStationAssignment[] @relation("AdminStationGrantor")
+  approvedAdminAccounts AdminControlAccount[] @relation("AdminAccountApprover")
+  emailVerification AdminEmailVerification?
+  supervisorShifts SupervisorShift[]
+  pumpAssignments TerminalPumpAssignment[]
+  terminalEnablements TerminalEnablement[]
+  operationalAuditEvents OperationalAuditEvent[]
+  resolvedOperationalIncidents OperationalIncident[] @relation("IncidentResolver")
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+}
+
+model MembershipNumberCounter {
+  id    Int    @id
+  value BigInt @default(0)
+}
+
+model Membership {
+  welcomeReservedOperationId String? @unique @db.Uuid
+  welcomeAvailable Boolean @default(false)
+  welcomeTransactionId String? @unique @db.Uuid
+  alerts BusinessAlert[]
+  id           String           @id @default(uuid()) @db.Uuid
+  number       String           @unique @db.VarChar(30)
+  userId       String           @unique @db.Uuid
+  user         User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status       MembershipStatus @default(ACTIVE)
+  // Saldo disponible en soles. Es la ÃƒÂºnica fuente de verdad del postpago.
+  balance      Decimal          @default(0) @db.Decimal(12, 2)
+  passport String? @unique @db.VarChar(20)
+  dni String? @unique @db.VarChar(8)
+  ruc String? @unique @db.VarChar(11)
+  businessName String? @db.VarChar(160)
+  debts MembershipDebt[]
+  vehicles     Vehicle[]
+  transactions Transaction[]
+  movements    RewardMovement[]
+  redemptions  Redemption[]
+  authorizations FuelAuthorization[]
+  walletMovements WalletMovement[]
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+}
+
+model Vehicle {
+  id           String        @id @default(uuid()) @db.Uuid
+  plate        String        @unique @db.VarChar(7)
+  label        String        @db.VarChar(80)
+  membershipId String?       @db.Uuid
+  membership   Membership?   @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  authorizations FuelAuthorization[]
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId])
+}
+
+model Station {
+  inventory FuelInventory[]
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique @db.VarChar(30)
+  name         String        @db.VarChar(100)
+  address      String        @db.VarChar(200)
+  active       Boolean       @default(true)
+  transactions Transaction[]
+  authorizations FuelAuthorization[]
+  pumps Pump[]
+  terminals Terminal[]
+  supervisorAssignments SupervisorStationAssignment[]
+  adminAssignments AdminStationAssignment[]
+  supervisorShifts SupervisorShift[]
+  terminalPumpAssignments TerminalPumpAssignment[]
+  terminalEnablements TerminalEnablement[]
+  terminalOperations TerminalOperation[]
+  operationalAuditEvents OperationalAuditEvent[]
+  operationalIncidents OperationalIncident[]
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model Fuel {
+  inventory FuelInventory[]
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @unique @db.VarChar(30)
+  name           String        @db.VarChar(80)
+  pricePerGallon Decimal       @db.Decimal(10, 2)
+  active         Boolean       @default(true)
+  transactions   Transaction[]
+  authorizations FuelAuthorization[]
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model Transaction {
+  originalAmount Decimal? @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  alerts BusinessAlert[]
+  id             String            @id @default(uuid()) @db.Uuid
+  operationId    String            @unique @db.Uuid
+  requestHash    String            @db.Char(64)
+  plate          String            @db.VarChar(7)
+  vehicleId      String?           @db.Uuid
+  vehicle        Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  // CÃƒÂ³digo de membresÃƒÂ­a capturado en el terminal. Se valida contra la placa
+  // antes de autorizar; queda como evidencia auditable de la operaciÃƒÂ³n.
+  membershipCode String?           @db.VarChar(30)
+  membershipId   String?           @db.Uuid
+  membership     Membership?       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  stationId      String            @db.Uuid
+  station        Station           @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuelId         String            @db.Uuid
+  fuel           Fuel              @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  amount         Decimal           @db.Decimal(12, 2)
+  currency       String            @default("PEN") @db.Char(3)
+  unitPrice      Decimal           @db.Decimal(10, 2)
+  gallons        Decimal?          @db.Decimal(12, 3)
+  solesPerPoint  Decimal?          @db.Decimal(10, 4)
+  pointsRate     Decimal           @db.Decimal(10, 4)
+  pointsEarned   Int
+  mode           PurchaseMode
+  receiptType    ReceiptType       @default(BOLETA)
+  status         TransactionStatus @default(PAID)
+  receiptDni String? @db.VarChar(8)
+  receiptRuc String? @db.VarChar(11)
+  receiptBusinessName String? @db.VarChar(160)
+  debt MembershipDebt?
+  payment        Payment?
+  rewardMovement RewardMovement?
+  // Liga cada nueva compra con su autorizaciÃƒÂ³n y avance validado.
+  authorizationId String?          @unique @db.Uuid
+  authorization   FuelAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  terminalOperationId String? @unique @db.Uuid
+  terminalOperation TerminalOperation? @relation(fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  terminalId String? @db.Uuid
+  terminal Terminal? @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  pumpId String? @db.Uuid
+  pump Pump? @relation(fields: [pumpId], references: [id], onDelete: Restrict)
+  terminalPumpAssignmentId String? @db.Uuid
+  terminalPumpAssignment TerminalPumpAssignment? @relation(fields: [terminalPumpAssignmentId], references: [id], onDelete: Restrict)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+  @@index([vehicleId, createdAt])
+  @@index([stationId, createdAt])
+  @@index([fuelId])
+  @@index([terminalId, createdAt])
+  @@index([pumpId, createdAt])
+  inventoryReservation InventoryReservation? @relation("ReservationTransaction")
+  inventoryMovements InventoryMovement[] @relation("MovementTransaction")
+  operationalIncidents OperationalIncident[]
+}
+
+/// AutorizaciÃƒÂ³n previa al abastecimiento; prepago exige Payment persistido.
+/// El saldo se descuenta al crear (RESERVE) y se libera la diferencia al liquidar (RELEASE).
+model FuelAuthorization {
+  id               String             @id @default(uuid()) @db.Uuid
+  operationId      String             @unique @db.Uuid
+  requestHash      String             @db.Char(64)
+  membershipId     String?            @db.Uuid
+  membership       Membership?        @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  plate            String             @db.VarChar(7)
+  vehicleId        String?            @db.Uuid
+  vehicle          Vehicle?           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  stationId        String             @db.Uuid
+  station          Station            @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuelId           String             @db.Uuid
+  fuel             Fuel               @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  unitPrice        Decimal?           @db.Decimal(10, 2)
+  paymentId        String?            @unique @db.Uuid
+  payment          Payment?           @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  interventionReason String?          @db.VarChar(200)
+  authorizedAmount Decimal            @db.Decimal(12, 2)
+  reservedAmount   Decimal            @db.Decimal(12, 2)
+  consumedAmount   Decimal?           @db.Decimal(12, 2)
+  releasedAmount   Decimal            @default(0) @db.Decimal(12, 2)
+  balanceAfter     Decimal            @db.Decimal(12, 2)
+  // Avance validado: fuente autoritativa para el cierre de la operaciÃƒÂ³n.
+  dispensedAmount  Decimal            @default(0) @db.Decimal(12, 2)
+  dispensedGallons Decimal            @default(0) @db.Decimal(12, 3)
+  inventoryManaged Boolean            @default(false)
+  mode             PurchaseMode       @default(POSTPAGO)
+  status           AuthorizationStatus @default(RESERVED)
+  outcome          AuthorizationOutcome?
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
+  transaction      Transaction?
+  terminalOperationId String? @db.Uuid
+  terminalOperation TerminalOperation? @relation(fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  terminalId String? @db.Uuid
+  terminal Terminal? @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  pumpId String? @db.Uuid
+  pump Pump? @relation(fields: [pumpId], references: [id], onDelete: Restrict)
+  terminalPumpAssignmentId String? @db.Uuid
+  terminalPumpAssignment TerminalPumpAssignment? @relation(fields: [terminalPumpAssignmentId], references: [id], onDelete: Restrict)
+  movements        WalletMovement[]
+  inventoryReservation InventoryReservation? @relation("ReservationAuthorization")
+  inventoryMovements InventoryMovement[] @relation("MovementAuthorization")
+  operationalIncidents OperationalIncident[]
+
+  @@index([membershipId, createdAt])
+  @@index([status, createdAt])
+  @@index([vehicleId, createdAt])
+  @@index([terminalId, createdAt])
+  @@index([pumpId, createdAt])
+}
+
+model UserPermissionGrant {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation("PermissionOwner", fields: [userId], references: [id], onDelete: Restrict)
+  permission GlobalPermission
+  grantedByUserId String? @db.Uuid
+  grantedBy User? @relation("PermissionGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  reason String @db.VarChar(200)
+  grantedAt DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  @@index([userId, permission, revokedAt])
+}
+
+model AdminControlAccount {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role AdminControlRole
+  status AdminControlStatus @default(PENDING_EMAIL)
+  emailVerifiedAt DateTime? @db.Timestamptz(3)
+  approvedAt DateTime? @db.Timestamptz(3)
+  approvedByUserId String? @db.Uuid
+  approvedBy User? @relation("AdminAccountApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  rejectionReason String? @db.VarChar(300)
+  stations AdminStationAssignment[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@index([status, createdAt])
+}
+
+model AdminControlGrant {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation("AdminGrantOwner", fields: [userId], references: [id], onDelete: Restrict)
+  permission AdminControlPermission
+  grantedByUserId String? @db.Uuid
+  grantedBy User? @relation("AdminGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  reason String @db.VarChar(200)
+  grantedAt DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  @@unique([userId, permission, revokedAt])
+  @@index([userId, revokedAt])
+}
+
+model AdminStationAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation("AdminStationOwner", fields: [userId], references: [id], onDelete: Restrict)
+  accountId String @db.Uuid
+  account AdminControlAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  grantedByUserId String? @db.Uuid
+  grantedBy User? @relation("AdminStationGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  reason String @db.VarChar(200)
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  @@index([userId, stationId, endedAt])
+  @@index([stationId, endedAt])
+}
+
+model AdminEmailVerification {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String @unique @db.Char(64)
+  expiresAt DateTime @db.Timestamptz(3)
+  verifiedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model SupervisorStationAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation("SupervisorOwner", fields: [userId], references: [id], onDelete: Restrict)
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  grantedByUserId String? @db.Uuid
+  grantedBy User? @relation("SupervisorGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  reason String @db.VarChar(200)
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  shifts SupervisorShift[]
+  @@unique([id, userId, stationId])
+  @@index([userId, stationId, endedAt])
+  @@index([stationId, endedAt])
+}
+
+model Pump {
+  id String @id @default(uuid()) @db.Uuid
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  code String @db.VarChar(30)
+  name String @db.VarChar(80)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  assignments TerminalPumpAssignment[]
+  operations TerminalOperation[]
+  operationalIncidents OperationalIncident[]
+  authorizations FuelAuthorization[]
+  transactions Transaction[]
+  @@unique([stationId, code])
+  @@unique([id, stationId])
+  @@index([stationId, active])
+}
+
+model Terminal {
+  id String @id @default(uuid()) @db.Uuid
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  code String @db.VarChar(30)
+  lifecycle TerminalLifecycle @default(REGISTRADA)
+  operationalStatus TerminalOperationalStatus @default(BLOQUEADA)
+  statusVersion Int @default(0)
+  registeredAt DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  assignments TerminalPumpAssignment[]
+  enablements TerminalEnablement[]
+  credentials TerminalCredential[]
+  operations TerminalOperation[]
+  operationalIncidents OperationalIncident[]
+  auditEvents OperationalAuditEvent[]
+  authorizations FuelAuthorization[]
+  transactions Transaction[]
+  @@unique([stationId, code])
+  @@unique([id, stationId])
+  @@index([stationId, lifecycle, operationalStatus])
+}
+
+model TerminalPumpAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  terminalId String @db.Uuid
+  terminal Terminal @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  pumpId String @db.Uuid
+  pump Pump @relation(fields: [pumpId], references: [id], onDelete: Restrict)
+  assignedByUserId String? @db.Uuid
+  assignedBy User? @relation(fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  startedAt DateTime @default(now()) @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  endReason String? @db.VarChar(200)
+  enablements TerminalEnablement[]
+  operations TerminalOperation[]
+  authorizations FuelAuthorization[]
+  transactions Transaction[]
+  @@unique([id, stationId, terminalId, pumpId])
+  @@unique([id, stationId, terminalId])
+  @@index([terminalId, startedAt])
+  @@index([pumpId, startedAt])
+}
+
+model SupervisorShift {
+  id String @id @default(uuid()) @db.Uuid
+  supervisorUserId String @db.Uuid
+  supervisor User @relation(fields: [supervisorUserId], references: [id], onDelete: Restrict)
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  assignmentId String @db.Uuid
+  assignment SupervisorStationAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  status ShiftStatus @default(ABIERTO)
+  openedAt DateTime @default(now()) @db.Timestamptz(3)
+  suspendedAt DateTime? @db.Timestamptz(3)
+  closeRequestedAt DateTime? @db.Timestamptz(3)
+  closedAt DateTime? @db.Timestamptz(3)
+  version Int @default(0)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  enablements TerminalEnablement[]
+  auditEvents OperationalAuditEvent[]
+  @@unique([id, stationId])
+  @@unique([id, supervisorUserId, stationId])
+  @@index([supervisorUserId, openedAt])
+  @@index([stationId, status])
+}
+
+model TerminalEnablement {
+  id String @id @default(uuid()) @db.Uuid
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  terminalId String @db.Uuid
+  terminal Terminal @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  terminalPumpAssignmentId String @db.Uuid
+  terminalPumpAssignment TerminalPumpAssignment @relation(fields: [terminalPumpAssignmentId], references: [id], onDelete: Restrict)
+  shiftId String @db.Uuid
+  shift SupervisorShift @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  enabledByUserId String @db.Uuid
+  enabledBy User @relation(fields: [enabledByUserId], references: [id], onDelete: Restrict)
+  enabledAt DateTime @default(now()) @db.Timestamptz(3)
+  disabledAt DateTime? @db.Timestamptz(3)
+  disableReason EnablementEndReason?
+  operations TerminalOperation[]
+  @@unique([id, terminalId])
+  @@index([terminalId, enabledAt])
+  @@index([shiftId, disabledAt])
+}
+
+model TerminalCredential {
+  id String @id @default(uuid()) @db.Uuid
+  terminalId String @db.Uuid
+  terminal Terminal @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  tokenHash String @unique @db.Char(64)
+  issuedAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  lastUsedAt DateTime? @db.Timestamptz(3)
+  rotatedFromId String? @db.Uuid
+  @@index([terminalId, revokedAt, expiresAt])
+}
+
+model TerminalOperation {
+  id String @id @default(uuid()) @db.Uuid
+  operationId String @unique @db.Uuid
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  pumpId String @db.Uuid
+  pump Pump @relation(fields: [pumpId], references: [id], onDelete: Restrict)
+  terminalId String @db.Uuid
+  terminal Terminal @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  terminalPumpAssignmentId String @db.Uuid
+  terminalPumpAssignment TerminalPumpAssignment @relation(fields: [terminalPumpAssignmentId], references: [id], onDelete: Restrict)
+  enablementId String @db.Uuid
+  enablement TerminalEnablement @relation(fields: [enablementId], references: [id], onDelete: Restrict)
+  status TerminalOperationStatus @default(ACTIVE)
+  openedAt DateTime @default(now()) @db.Timestamptz(3)
+  closedAt DateTime? @db.Timestamptz(3)
+  version Int @default(0)
+  authorizations FuelAuthorization[]
+  inventoryReservation InventoryReservation? @relation("ReservationTerminalOperation")
+  inventoryMovements InventoryMovement[] @relation("MovementTerminalOperation")
+  transaction Transaction?
+  operationalIncidents OperationalIncident[]
+  @@unique([id, terminalId, pumpId, stationId])
+  @@index([terminalId, openedAt])
+  @@index([status, openedAt])
+}
+
+model OperationalAuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(160)
+  actorKind OperationalActorKind
+  actorUserId String? @db.Uuid
+  actorUser User? @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  stationId String? @db.Uuid
+  station Station? @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  terminalId String? @db.Uuid
+  terminal Terminal? @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  shiftId String? @db.Uuid
+  shift SupervisorShift? @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  action String @db.VarChar(80)
+  targetId String? @db.VarChar(100)
+  outcome String @db.VarChar(30)
+  details Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([stationId, createdAt])
+  @@index([terminalId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+/// Incidencias operativas persistidas, enlazadas a evidencia financiera y terminal.
+model OperationalIncident {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(160)
+  code OperationalIncidentCode
+  status OperationalIncidentStatus @default(OPEN)
+  severity OperationalIncidentSeverity @default(HIGH)
+  stationId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  terminalId String? @db.Uuid
+  terminal Terminal? @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  pumpId String? @db.Uuid
+  pump Pump? @relation(fields: [pumpId], references: [id], onDelete: Restrict)
+  operationId String? @db.Uuid
+  terminalOperationId String? @db.Uuid
+  terminalOperation TerminalOperation? @relation(fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  authorizationId String? @db.Uuid
+  authorization FuelAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  transactionId String? @db.Uuid
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  paymentId String? @db.Uuid
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  summary String @db.VarChar(300)
+  context Json?
+  resolution String? @db.VarChar(500)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  resolvedByUserId String? @db.Uuid
+  resolvedBy User? @relation("IncidentResolver", fields: [resolvedByUserId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@unique([code, operationId])
+  @@index([stationId, status, createdAt])
+  @@index([terminalId, createdAt])
+  @@index([operationId])
+  @@index([authorizationId])
+  @@index([paymentId])
+}
+
+/// Libro mayor append-only del saldo de la membresÃƒÂ­a.
+model WalletMovement {
+  id               String             @id @default(uuid()) @db.Uuid
+  membershipId     String?            @db.Uuid
+  membership       Membership?        @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  debtId String? @db.Uuid
+  debt MembershipDebt? @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  kind             WalletMovementKind
+  amount           Decimal            @db.Decimal(12, 2)
+  balanceAfter     Decimal            @db.Decimal(12, 2)
+  operationId      String?            @db.VarChar(100)
+  authorizationId  String?            @db.Uuid
+  authorization    FuelAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  transactionId    String?            @db.Uuid
+  note             String?            @db.VarChar(200)
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@unique([operationId, kind])
+  @@index([membershipId, createdAt])
+  @@index([authorizationId])
+}
+
+model Payment {
+  rewardRefund RewardMovement?
+  operationalIncidents OperationalIncident[]
+  originalAmount Decimal? @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  refundedAmount Decimal @default(0) @db.Decimal(12, 2)
+  id            String        @id @default(uuid()) @db.Uuid
+  operationId   String?       @unique @db.Uuid
+  requestHash   String?       @db.Char(64)
+  unitPrice     Decimal?      @db.Decimal(10, 2)
+  authorization FuelAuthorization?
+  transactionId String?       @unique @db.Uuid
+  transaction   Transaction?  @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(CAPTURED)
+  provider      String        @default("DEMO") @db.VarChar(30)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model RewardMovement {
+  refundPaymentId String? @unique @db.Uuid
+  refundPayment Payment? @relation(fields: [refundPaymentId], references: [id], onDelete: Restrict)
+  id            String       @id @default(uuid()) @db.Uuid
+  membershipId  String       @db.Uuid
+  membership    Membership   @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  kind          RewardKind
+  points        Int
+  transactionId String?      @unique @db.Uuid
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  redemptionId  String?      @unique @db.Uuid
+  redemption    Redemption?  @relation(fields: [redemptionId], references: [id], onDelete: Restrict)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+}
+
+model Benefit {
+  id          String       @id @default(uuid()) @db.Uuid
+  code        String       @unique @db.VarChar(30)
+  title       String       @db.VarChar(120)
+  description String       @db.VarChar(500)
+  category    String       @db.VarChar(80)
+  pointsCost  Int
+  active      Boolean      @default(true)
+  redemptions Redemption[]
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+}
+
+model Redemption {
+  id             String           @id @default(uuid()) @db.Uuid
+  operationId    String           @unique @db.Uuid
+  membershipId   String           @db.Uuid
+  membership     Membership       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  benefitId      String           @db.Uuid
+  benefit        Benefit          @relation(fields: [benefitId], references: [id], onDelete: Restrict)
+  pointsSpent    Int
+  status         RedemptionStatus @default(ISSUED)
+  rewardMovement RewardMovement?
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([membershipId, createdAt])
+  @@index([benefitId])
+}
+
+
+enum DebtStatus {
+  PENDING
+  PARTIAL
+  SETTLED
+}
+
+model MembershipDebt {
+  alerts BusinessAlert[]
+  id String @id @default(uuid()) @db.Uuid
+  membershipId String @db.Uuid
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactionId String @unique @db.Uuid
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  amountOriginal Decimal @db.Decimal(12, 2)
+  amountPaid Decimal @default(0) @db.Decimal(12, 2)
+  amountPending Decimal @db.Decimal(12, 2)
+  status DebtStatus @default(PENDING)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  settledAt DateTime? @db.Timestamptz(3)
+  movements WalletMovement[]
+  @@index([membershipId, createdAt, id])
+}
+
+model PasswordReset {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String @db.Char(64)
+  tokenHash String? @unique @db.Char(64)
+  attempts Int @default(0)
+  expiresAt DateTime @db.Timestamptz(3)
+  verifiedAt DateTime? @db.Timestamptz(3)
+  usedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+enum AlertType {
+  PLATE_MISMATCH
+  PENDING_BALANCE
+}
+enum AlertStatus {
+  OPEN
+  RESOLVED
+}
+model BusinessAlert {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(200)
+  type AlertType
+  status AlertStatus @default(OPEN)
+  plate String @db.VarChar(7)
+  expectedPlates String[]
+  userName String @db.VarChar(80)
+  description String @db.VarChar(500)
+  operationId String @db.Uuid
+  membershipId String @db.Uuid
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  transactionId String? @db.Uuid
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  debtId String? @db.Uuid
+  debt MembershipDebt? @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  amountPending Decimal? @db.Decimal(12, 2)
+  occurredAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  resolvedBy String? @db.VarChar(80)
+  @@index([status, occurredAt])
+  @@index([membershipId])
+  @@index([transactionId])
+  @@index([debtId])
+}
+
+model FuelInventory {
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  station Station @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  fuel Fuel @relation(fields: [fuelId], references: [id], onDelete: Restrict)
+  liters Decimal @default(0) @db.Decimal(14, 6)
+  reservedLiters Decimal @default(0) @db.Decimal(14, 6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  reservations InventoryReservation[]
+  movements InventoryMovement[]
+  activation InventoryActivation?
+  @@id([stationId, fuelId])
+}
+
+enum InventoryActivationStatus {
+  LEGACY
+  REVIEW
+  RECONCILED
+  REQUIRED
+}
+
+model InventoryActivation {
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  inventory FuelInventory @relation(fields: [stationId, fuelId], references: [stationId, fuelId], onDelete: Restrict)
+  status InventoryActivationStatus @default(LEGACY)
+  reason String? @db.VarChar(200)
+  reconciledAt DateTime? @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@id([stationId, fuelId])
+  @@index([status, updatedAt])
+}
+
+model InventoryReservation {
+  id String @id @default(uuid()) @db.Uuid
+  operationId String @unique @db.Uuid
+  terminalOperationId String? @unique @db.Uuid
+  authorizationId String? @unique @db.Uuid
+  transactionId String? @unique @db.Uuid
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  inventory FuelInventory @relation(fields: [stationId, fuelId], references: [stationId, fuelId], onDelete: Restrict)
+  terminalOperation TerminalOperation? @relation("ReservationTerminalOperation", fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  authorization FuelAuthorization? @relation("ReservationAuthorization", fields: [authorizationId], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation("ReservationTransaction", fields: [transactionId], references: [id], onDelete: Restrict)
+  source InventoryReservationSource
+  status InventoryReservationStatus @default(ACTIVE)
+  maxGallons Decimal @db.Decimal(12, 3)
+  initialLiters Decimal @db.Decimal(14, 6)
+  remainingLiters Decimal @db.Decimal(14, 6)
+  consumedLiters Decimal @default(0) @db.Decimal(14, 6)
+  releasedLiters Decimal @default(0) @db.Decimal(14, 6)
+  requestHash String @db.Char(64)
+  version Int @default(0)
+  reviewReason String? @db.VarChar(200)
+  actorKind InventoryActorKind @default(SYSTEM)
+  actorId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  movements InventoryMovement[]
+  @@index([stationId, fuelId, status])
+  @@index([status, createdAt])
+}
+
+model InventoryMovement {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(200)
+  stationId String @db.Uuid
+  fuelId String @db.Uuid
+  inventory FuelInventory @relation(fields: [stationId, fuelId], references: [stationId, fuelId], onDelete: Restrict)
+  sequence BigInt
+  reservationId String? @db.Uuid
+  reservation InventoryReservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  authorizationId String? @db.Uuid
+  authorization FuelAuthorization? @relation("MovementAuthorization", fields: [authorizationId], references: [id], onDelete: Restrict)
+  terminalOperationId String? @db.Uuid
+  terminalOperation TerminalOperation? @relation("MovementTerminalOperation", fields: [terminalOperationId], references: [id], onDelete: Restrict)
+  transactionId String? @db.Uuid
+  transaction Transaction? @relation("MovementTransaction", fields: [transactionId], references: [id], onDelete: Restrict)
+  kind InventoryMovementKind
+  physicalDeltaLiters Decimal @db.Decimal(14, 6)
+  reservedDeltaLiters Decimal @db.Decimal(14, 6)
+  litersAfter Decimal @db.Decimal(14, 6)
+  reservedLitersAfter Decimal @db.Decimal(14, 6)
+  actorKind InventoryActorKind
+  actorId String? @db.Uuid
+  reason String? @db.VarChar(200)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([stationId, fuelId, sequence])
+  @@index([reservationId, createdAt])
+}
+
+model OnlineOrder {
+  id String @id @default(uuid()) @db.Uuid
+  operationId String @unique @db.Uuid
+  requestHash String @db.Char(64)
+  userId String? @db.Uuid
+  transactionId String? @db.Uuid
+  paymentId String? @unique @db.Uuid
+  method PaymentMethod
+  amount Decimal @db.Decimal(12,2)
+  providerId String? @unique @db.VarChar(80)
+  qr String?
+  status String @default("CREATING") @db.VarChar(24)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// Append-only financial transition evidence. Event keys are globally idempotent.
+model PaymentEvent {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @db.VarChar(160)
+  orderId String? @db.Uuid
+  paymentId String? @db.Uuid
+  kind String @db.VarChar(32)
+  detail String @db.VarChar(300)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([paymentId, createdAt])
+}

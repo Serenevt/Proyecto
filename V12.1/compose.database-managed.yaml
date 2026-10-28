@@ -1,0 +1,11 @@
+# Optional managed-DB override. Never point validation tests at a production database.
+services:
+  backend:
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set the managed PostgreSQL connection string}
+  migrate:
+    command: ["node", "-e", "console.log('Managed database migrations disabled')"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set the managed PostgreSQL connection string}
+  seed:
+    command: ["node", "-e", "console.log('Demo seed disabled for managed database')"]

@@ -3,10 +3,10 @@ const {execFileSync,spawnSync}=require('node:child_process');
 const net=require('node:net');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
-const args=['compose','--project-name','primax-v11-1-1','--file',path.join(root,'compose.yaml')];
+const args=['compose','--project-name','primax-v12','--file',path.join(root,'compose.yaml')];
 function inspect(){
  const c=JSON.parse(execFileSync('docker',[...args,'config','--format','json'],{cwd:root,encoding:'utf8',windowsHide:true}));
- if(c.name!=='primax-v11-1-1'||c.volumes.postgres_data.name!=='primax-v11-1-1_postgres_data'||c.volumes.postgres_data.external)throw Error('Almacenamiento no aislado. No se inició ningún servicio.');
+ if(c.name!=='primax-v12'||c.volumes.postgres_data.name!=='primax-v12_postgres_data'||c.volumes.postgres_data.external)throw Error('Almacenamiento no aislado. No se inició ningún servicio.');
  for(const name of ['backend','migrate','seed']){
   const u=new URL(c.services[name].environment.DATABASE_URL);
   if(u.hostname!=='postgres'||u.port!=='5432'||u.pathname!=='/primax_v11_1_1')throw Error('Se rechazó una base distinta a primax_v11_1_1 interna.');
@@ -24,13 +24,13 @@ function inspect(){
 }
 async function available(port){await new Promise((resolve,reject)=>{const s=net.createServer();s.once('error',()=>reject(Error('Puerto '+port+' ocupado. No se detuvo el servicio que lo usa.')));s.listen(port,'127.0.0.1',()=>s.close(resolve));});}
 (async()=>{
- const ports=inspect();console.log('V11_1.1: proyecto, base y volumen propios; puertos locales '+Object.values(ports).join(', '));
+ const ports=inspect();console.log('V12: proyecto, base y volumen propios; puertos locales '+Object.values(ports).join(', '));
  if(process.argv.includes('--check'))return;
  if(process.argv.includes('--stop')){const r=spawnSync('docker',[...args,'stop'],{cwd:root,stdio:'inherit',windowsHide:true});process.exitCode=r.status??1;return;}
  const status=execFileSync('docker',[...args,'ps','--format','json'],{cwd:root,encoding:'utf8',windowsHide:true}).trim();
  const running=!status?[]:status.startsWith('[')?JSON.parse(status):status.split(/\r?\n/).map(line=>JSON.parse(line));
  for(const [service,port] of Object.entries(ports)){
-  const own=running.some(c=>c.Project==='primax-v11-1-1'&&c.Service===service&&c.State==='running'&&c.Publishers?.some(p=>p.URL==='127.0.0.1'&&p.Protocol==='tcp'&&p.PublishedPort===port));
+  const own=running.some(c=>c.Project==='primax-v12'&&c.Service===service&&c.State==='running'&&c.Publishers?.some(p=>p.URL==='127.0.0.1'&&p.Protocol==='tcp'&&p.PublishedPort===port));
   if(!own)await available(port);
  }
  const result=spawnSync('docker',[...args,'up','-d',...(process.argv.includes('--rebuild')?['--build']:[])],{cwd:root,stdio:'inherit',windowsHide:true});process.exitCode=result.status??1;

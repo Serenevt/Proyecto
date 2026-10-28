@@ -1,0 +1,4 @@
+# Compatibility entrypoint for the isolated copy.
+name: primax-v12-1
+include:
+  - ../compose.yaml

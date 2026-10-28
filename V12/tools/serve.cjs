@@ -4,6 +4,7 @@ const root=path.resolve(__dirname,'..'),kiosk=process.env.FRONTEND==='1';
 const site=path.join(root,kiosk?'FrontEnd_1':'FrontEnd_2',!kiosk&&process.env.SERVE_BUILD==='1'?'www':'.');
 if(kiosk&&fs.existsSync(path.join(root,'Backend/.env')))process.loadEnvFile(path.join(root,'Backend/.env'));
 const port=Number(process.env.FRONTEND_PORT||(kiosk?5181:5180));
+require('./local-targets.cjs').assertLocalTargets({...process.env,FRONTEND:kiosk?'1':'2'});
 const target=process.env.BACKEND_URL||'http://127.0.0.1:3000';
 const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.webp':'image/webp'};
 http.createServer(async(req,res)=>{
@@ -15,7 +16,7 @@ http.createServer(async(req,res)=>{
     (req.method==='GET'&&/^\/api\/v1\/(fuels\/inventory|online-orders\/[a-f0-9-]+|transactions\/[a-f0-9-]+)$/.test(url.pathname))||
     (req.method==='POST'&&/^\/api\/v1\/online-orders(\/[a-f0-9-]+\/(demo-confirm|cancel))?$/.test(url.pathname))||
     (req.method==='GET'&&/^\/api\/v1\/authorizations\/[a-f0-9-]+$/.test(url.pathname))||
-    (req.method==='POST'&&/^\/api\/v1\/authorizations\/[a-f0-9-]+\/(progress|release)$/.test(url.pathname))):url.pathname.startsWith('/api/v1/');
+    (req.method==='POST'&&/^\/api\/v1\/authorizations\/[a-f0-9-]+\/(progress|release|intervention)$/.test(url.pathname))):url.pathname.startsWith('/api/v1/');
   if(!allowed){res.writeHead(403).end();return;}
   if(kiosk&&((req.headers.origin&&req.headers.origin!=='http://'+req.headers.host)||['cross-site','same-site'].includes(req.headers['sec-fetch-site']))){res.writeHead(403).end();return;}
   let size=0,chunks=[];

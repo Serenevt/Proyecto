@@ -34,7 +34,7 @@ describe('V11 internal closure against PostgreSQL (provider is explicitly mocked
   refund:jest.fn(async id=>{Object.assign(remote.get(id)!,{state:'refunded',refunded_at:1});}),
  };
  beforeAll(async()=>{
-  const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString();
+  const url=new URL(original);url.searchParams.set('schema',schema);process.env.DATABASE_URL=url.toString(); process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
   execFileSync(process.execPath,[require.resolve('prisma/build/index.js'),'migrate','deploy'],{env:process.env,stdio:'pipe'});
   db=new PrismaService();await db.$connect();
   stationId=(await db.station.create({data:{code:'CLOSURE',name:'Station fixture',address:'Local test'}})).id;
@@ -45,7 +45,7 @@ describe('V11 internal closure against PostgreSQL (provider is explicitly mocked
   purchases=new TransactionsService(new TransactionsRepository(db),new PointsPolicyService(new ConfigService({SOLES_PER_POINT:'9'})),payments,repo,wallet);
   orders=new OnlineOrdersService(db,provider);refunds=new PaymentLifecycleService(db);
  },90000);
- afterAll(async()=>{await db?.$disconnect();process.env.DATABASE_URL=original;console.log('Retained V11 evidence schema:',schema);});
+ afterAll(async()=>{await db?.$disconnect();process.env.DATABASE_URL=original; process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;console.log('Retained V11 evidence schema:',schema);});
  async function member(eligible=true){
   const n=++sequence,plate='TST-'+String(n).padStart(3,'0');
   const user=await db.user.create({data:{email:randomUUID()+'@example.test',name:'Fixture',passwordHash:'unused',membership:{create:{number:'PRIM'+n,welcomeAvailable:eligible,balance:1000,vehicles:{create:{plate,label:"Fixture"}}}}},include:{membership:true}});

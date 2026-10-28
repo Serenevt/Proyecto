@@ -18,7 +18,18 @@ import { AlertsModule } from './alerts/alerts.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     PrismaModule,
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    // Signed gateway requests are independently authenticated and throttled in Redis.
+    // A forged signature is rejected by AccessGuard/KioskService, never treated as a member request.
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 120,
+        skipIf: (context) =>
+          Boolean(
+            context.switchToHttp().getRequest().headers['x-kiosk-signature'],
+          ),
+      },
+    ]),
     AlertsModule,
     AuthModule,
     MembershipsModule,

@@ -1,9 +1,11 @@
+import { kioskHeaders, expireKioskSession, kioskAuthEnabled } from './kioskSession.js';
 export const API_BASE_URL = globalThis.FUELFLOW_API_BASE_URL || '/api/v1';
 export async function apiClient(path, {method='GET',body,token}={}) {
   let response;
-  try { response=await fetch(API_BASE_URL+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000),cache:'no-store'}); }
+  try { response=await fetch(API_BASE_URL+path,{method,headers:{...kioskHeaders(),...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(kioskAuthEnabled()?45000:15000),cache:'no-store'}); }
   catch (error) { throw Object.assign(Error('No pudimos conectar. Reintenta para confirmar tu compra.'), {kind: ['TimeoutError','AbortError'].includes(error.name) ? 'timeout' : 'network'}); }
   const result=await response.json().catch(()=>null);
+  if(response.status===401)expireKioskSession();
   if(!response.ok)throw Object.assign(Error(response.status>=500?'No pudimos confirmar la compra. Puedes reintentar.':(Array.isArray(result?.message)?result.message.join('. '):result?.message)||'No pudimos completar la operación.'),{status:response.status,details:result});
   return result;
 }
