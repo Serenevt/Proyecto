@@ -5,7 +5,12 @@
   "agentPort": 25443,
   "dpi": 203,
   "contentWidthMm": 48,
-  "origins": ["http://localhost:26081", "http://127.0.0.1:26081"],
+  "origins": [
+    "http://localhost:26081",
+    "http://127.0.0.1:26081",
+    "http://localhost:10083",
+    "http://127.0.0.1:10083"
+  ],
   "printerName": "PeriPage A6(1)",
   "driverName": "PeriPage A6",
   "portName": "USB001",

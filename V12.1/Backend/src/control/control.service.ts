@@ -454,6 +454,9 @@ export class ControlService {
       terminalGroups,
       openIncidents,
       inventory,
+      activeCustomers,
+      activeMemberships,
+      capturedRevenue,
     ] = await Promise.all([
       this.db.station.findMany({
         where: { active: true, ...(ids ? { id: { in: ids } } : {}) },
@@ -489,6 +492,44 @@ export class ControlService {
         },
         orderBy: [{ stationId: 'asc' }, { fuelId: 'asc' }],
       }),
+      actor.permissions.includes('ADMIN_CUSTOMER_VIEW')
+        ? this.db.user.count({
+            where: {
+              active: true,
+              membership: {
+                is: ids
+                  ? {
+                      OR: [
+                        { transactions: { some: { stationId: { in: ids } } } },
+                        { authorizations: { some: { stationId: { in: ids } } } },
+                      ],
+                    }
+                  : {},
+              },
+            },
+          })
+        : Promise.resolve(null),
+      actor.permissions.includes('ADMIN_MEMBERSHIP_VIEW')
+        ? this.db.membership.count({
+            where: {
+              status: 'ACTIVE',
+              ...(ids
+                ? {
+                    OR: [
+                      { transactions: { some: { stationId: { in: ids } } } },
+                      { authorizations: { some: { stationId: { in: ids } } } },
+                    ],
+                  }
+                : {}),
+            },
+          })
+        : Promise.resolve(null),
+      actor.permissions.includes('ADMIN_TRANSACTION_VIEW')
+        ? this.db.transaction.aggregate({
+            where: { ...where, createdAt: { gte: since }, payment: { is: { status: 'CAPTURED' } } },
+            _sum: { amount: true },
+          })
+        : Promise.resolve(null),
     ]);
     const inventoryRows = inventory.map((row) => ({
       ...row,
@@ -503,6 +544,9 @@ export class ControlService {
         count: x._count._all,
       })),
       openIncidents,
+      activeCustomers,
+      activeMemberships,
+      capturedRevenueToday: capturedRevenue?._sum.amount?.toFixed(2) ?? null,
       inventory: inventoryRows,
       reviewPairs: inventoryRows.filter((row) => row.activation?.status === 'REVIEW').length,
     };

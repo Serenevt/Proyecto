@@ -43,3 +43,11 @@ test('request surfaces backend authorization and service errors with status', as
   const api = createControlApi(async () => ({ ok: false, status: 403, json: async () => ({ message: 'Acceso denegado' }) }));
   await assert.rejects(api.request('/control/dashboard'), (error) => error.status === 403 && error.message === 'Acceso denegado');
 });
+
+test('navigation exposes each administrative module only to its explicit permission', async () => {
+  const { visibleModules } = await import('../js/control-state.js');
+  const session = { global: false, permissions: ['ADMIN_CUSTOMER_VIEW', 'ADMIN_TRANSACTION_VIEW'], stations: [{ id: 'station-a' }] };
+  assert.deepEqual(visibleModules(session).map(([id]) => id), ['dashboard', 'transactions', 'customers']);
+  assert.equal(initialView('#memberships'), 'memberships');
+  assert.equal(initialView('#vehicles'), 'vehicles');
+});

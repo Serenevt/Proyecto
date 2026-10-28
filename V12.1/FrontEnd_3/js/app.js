@@ -1,10 +1,12 @@
 import { API_BASE_URL } from './config.js';
-import { canViewStation, initialView, incidentMessage } from './control-state.js';
+import { canViewStation, initialView, incidentMessage, controlModules, visibleModules } from './control-state.js';
 import { createControlApi } from './control-api.js';
+import { createPrintAgent } from './print-agent.js';
 
 const app = document.querySelector('#app');
 const apiClient = createControlApi(window.fetch.bind(window), API_BASE_URL);
 const api = apiClient.request;
+const sendToPrintAgent = createPrintAgent();
 let session = null;
 let selectedStation = '';
 let busy = false;
@@ -31,21 +33,11 @@ function requestAccess(message = '') {
   app.innerHTML = `<main class="login-wrap"><section class="login-card"><div class="brand"><span class="brand-mark">P</span><span>PRIMAX <strong>CONTROL</strong></span></div><p class="eyebrow">SOLICITUD DE ACCESO</p><h1>Crear solicitud</h1><p class="muted">El acceso requiere verificar el correo y aprobación de SUPER_ADMIN.</p><form id="request-form"><label>Nombre<input name="name" autocomplete="name" required maxlength="80"></label><label>Correo<input name="email" type="email" autocomplete="email" required maxlength="254"></label><label>Contraseña<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="72"></label><label>Acceso solicitado<select name="role"><option value="ENCARGADO">Encargado de estación</option><option value="ADMIN">Administrador</option></select></label><p class="error" role="alert">${esc(message)}</p><button class="primary" type="submit">Enviar solicitud</button></form><div class="public-links"><a href="#login">Volver al acceso</a></div></section></main>`;
 }
 
-const nav = [
-  ['dashboard', 'Dashboard', null],
-  ['operations', 'Operaciones', 'ADMIN_OPERATION_VIEW'],
-  ['terminals', 'Terminales', 'ADMIN_TERMINAL_VIEW'],
-  ['inventory', 'Inventario', 'ADMIN_INVENTORY_VIEW'],
-  ['movements', 'Movimientos', 'ADMIN_INVENTORY_MOVEMENT_VIEW'],
-  ['supply', 'Abastecimiento', 'ADMIN_INVENTORY_RECEIVE'],
-  ['incidents', 'Incidencias', 'ADMIN_INCIDENT_VIEW'],
-  ['accounts', 'Personal / accesos', 'ADMIN_USER_MANAGE'],
-  ['audit', 'Auditoría', 'ADMIN_AUDIT_VIEW'],
-];
+const nav = controlModules;
 
 function shell(view) {
-  const visible = nav.filter(([id, , permission]) => id === 'accounts' ? session.global : !permission || has(permission));
-  app.innerHTML = `<div class="layout"><aside class="sidebar"><a class="brand" href="#dashboard"><span class="brand-mark">P</span><span>PRIMAX <strong>CONTROL</strong></span></a><div class="nav-label">ADMINISTRACIÓN</div><nav>${visible.map(([id, title]) => `<a href="#${id}" ${view === id ? 'aria-current="page"' : ''}><span aria-hidden="true">${({ dashboard:'▦', operations:'↗', terminals:'▣', inventory:'◫', movements:'⇅', supply:'＋', incidents:'◉', accounts:'♙', audit:'☷' })[id]}</span><span>${title}</span></a>`).join('')}</nav><div class="sidebar-foot"><span class="status-dot"></span> Backend conectado</div></aside><section class="workspace"><header class="topbar"><div class="station-picker"><label for="station">Alcance</label><select id="station"><option value="">${session.global ? 'Todas las estaciones' : 'Todas las asignadas'}</option>${session.stations.map((station) => `<option value="${esc(station.id)}" ${station.id === selectedStation ? 'selected' : ''}>${esc(station.name)} · ${esc(station.code)}</option>`).join('')}</select></div><div class="user-menu"><span class="avatar">${esc(session.user.name.slice(0, 1).toUpperCase())}</span><span><strong>${esc(session.user.name)}</strong><small>${esc(session.role)}</small></span><button id="logout" class="quiet">Cerrar sesión</button></div></header><main id="content" tabindex="-1"></main></section></div>`;
+  const visible = visibleModules(session);
+  app.innerHTML = `<div class="layout"><aside class="sidebar"><a class="brand" href="#dashboard"><span class="brand-mark">P</span><span>PRIMAX <strong>CONTROL</strong></span></a><div class="nav-label">ADMINISTRACIÓN</div><nav>${visible.map(([id, title]) => `<a href="#${id}" ${view === id ? 'aria-current="page"' : ''}><span aria-hidden="true">${({ dashboard:'▦', operations:'↗', transactions:'S/', customers:'♙', memberships:'★', vehicles:'⌑', terminals:'▣', inventory:'◫', movements:'⇅', supply:'＋', incidents:'◉', accounts:'♙', audit:'☷' })[id]}</span><span>${title}</span></a>`).join('')}</nav><div class="sidebar-foot"><span class="status-dot"></span> Backend conectado</div></aside><section class="workspace"><header class="topbar"><div class="station-picker"><label for="station">Alcance</label><select id="station"><option value="">${session.global ? 'Todas las estaciones' : 'Todas las asignadas'}</option>${session.stations.map((station) => `<option value="${esc(station.id)}" ${station.id === selectedStation ? 'selected' : ''}>${esc(station.name)} · ${esc(station.code)}</option>`).join('')}</select></div><div class="user-menu"><span class="avatar">${esc(session.user.name.slice(0, 1).toUpperCase())}</span><span><strong>${esc(session.user.name)}</strong><small>${esc(session.role)}</small></span><button id="logout" class="quiet">Cerrar sesión</button></div></header><main id="content" tabindex="-1"></main></section></div>`;
   document.querySelector('#station').addEventListener('change', (event) => { selectedStation = event.target.value; void route(); });
   document.querySelector('#logout').addEventListener('click', async () => { try { await apiClient.logout(); } finally { session = null; selectedStation = ''; login(); } });
 }
@@ -63,13 +55,84 @@ function stationsOptions(selected = selectedStation) {
   return session.stations.map((station) => `<option value="${esc(station.id)}" ${station.id === selected ? 'selected' : ''}>${esc(station.name)} · ${esc(station.code)}</option>`).join('');
 }
 
+const dateLabel = (value) => value ? new Date(value).toLocaleDateString('es-PE') : '—';
+const paymentLabel = (value) => ({ CAPTURED: 'Confirmado', PAID: 'Pagado', PENDING: 'Pendiente', PAYMENT_PENDING: 'Pendiente', PARTIAL: 'Parcial', REJECTED: 'Rechazado', REFUNDED: 'Reembolsado', CANCELLED: 'Cancelado', ERROR: 'Error', REVIEW: 'En revisión', INTERVENTION_REQUIRED: 'Intervención requerida' })[value] || value || '—';
+const permissionMask = (value) => value == null ? '—' : esc(value);
+
+async function renderCustomers(filters = {}) {
+  loading('Consultando clientes vinculados a Primax Prime…');
+  try {
+    const query = queryString({ stationId: filters.stationId ?? selectedStation, q: filters.q });
+    const rows = await api(`/control/customers${query ? `?${query}` : ''}`);
+    document.querySelector('#content').innerHTML = `${heading('CLIENTES', 'Clientes Prime', 'El backend solo expone usuarios Prime y, para cuentas con alcance de estación, únicamente si tienen actividad allí.')}<form id="customer-filters" class="filter-bar"><label>Nombre, correo, membresía o placa<input name="q" value="${esc(filters.q || '')}" maxlength="80"></label><button class="secondary">Buscar</button></form><section class="panel table-wrap"><table><thead><tr><th>Cliente</th><th>Estado</th><th>Membresía Prime</th><th>Estado Prime</th><th>Vehículos visibles</th><th>Última actividad</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td>${esc(row.name)}<small class="subcell">${esc(row.email)}</small></td><td>${row.active ? 'Activo' : 'Inactivo'}</td><td>${esc(row.membership?.number || '—')}</td><td>${esc(row.membership?.status || 'Sin permiso')}</td><td>${row.vehicles.length}</td><td>${stamp(row.lastActivityAt)}</td><td><button class="text-button" data-customer="${row.id}">Detalle</button></td></tr>`).join('') || '<tr><td colspan="7">No hay clientes Prime vinculados a este alcance.</td></tr>'}</tbody></table></section><dialog id="customer-dialog"></dialog><dialog id="receipt-dialog"></dialog>`;
+  } catch (error) { showError(error); }
+}
+
+async function renderMemberships(filters = {}) {
+  loading('Consultando membresías Prime…');
+  try {
+    const query = queryString({ stationId: filters.stationId ?? selectedStation, q: filters.q, status: filters.status });
+    const rows = await api(`/control/memberships${query ? `?${query}` : ''}`);
+    document.querySelector('#content').innerHTML = `${heading('PRIMAX PRIME', 'Membresías', 'Saldo consultado desde PostgreSQL. No hay acciones de recarga ni modificación financiera en Control.')}<form id="membership-filters" class="filter-bar"><label>Buscar cliente o número<input name="q" value="${esc(filters.q || '')}" maxlength="80"></label><label>Estado<select name="status"><option value="">Todos</option><option value="ACTIVE" ${filters.status === 'ACTIVE' ? 'selected' : ''}>Activa</option><option value="SUSPENDED" ${filters.status === 'SUSPENDED' ? 'selected' : ''}>Suspendida</option></select></label><button class="secondary">Filtrar</button></form><section class="panel table-wrap"><table><thead><tr><th>Número</th><th>Cliente</th><th>Estado</th><th>Saldo Prime</th><th>Creada</th><th>Última actividad</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td class="mono">${esc(row.number)}</td><td>${esc(row.customer.name)}<small class="subcell">${esc(row.customer.email)}</small></td><td><span class="badge">${esc(row.status)}</span></td><td>${row.balance == null ? 'Restringido por alcance' : `S/ ${fmt(row.balance)}`}</td><td>${dateLabel(row.createdAt)}</td><td>${stamp(row.lastActivityAt)}</td><td><button class="text-button" data-customer="${row.customer.id}">Cliente</button></td></tr>`).join('') || '<tr><td colspan="7">No hay membresías en este alcance.</td></tr>'}</tbody></table></section><dialog id="customer-dialog"></dialog><dialog id="receipt-dialog"></dialog>`;
+  } catch (error) { showError(error); }
+}
+
+async function renderVehicles(filters = {}) {
+  loading('Consultando vehículos y placas registradas…');
+  try {
+    const query = queryString({ stationId: filters.stationId ?? selectedStation, q: filters.q });
+    const rows = await api(`/control/vehicles${query ? `?${query}` : ''}`);
+    document.querySelector('#content').innerHTML = `${heading('VEHÍCULOS Y PLACAS', 'Vehículos', 'La placa es un dato registrado o capturado en operaciones; OCR no es autenticación ni autorización financiera.')}<form id="vehicle-filters" class="filter-bar"><label>Placa, modelo o cliente<input name="q" value="${esc(filters.q || '')}" maxlength="80"></label><button class="secondary">Buscar</button></form><section class="panel table-wrap"><table><thead><tr><th>Placa</th><th>Vehículo</th><th>Propietario</th><th>Membresía</th><th>Estado de placa</th><th>Última actividad</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="mono">${esc(row.plate)}</td><td>${esc(row.label)}</td><td>${esc(row.customer?.name || 'Sin propietario Prime asociado')}</td><td>${esc(row.membership?.number || '—')}</td><td><span class="badge">${esc(row.plateEvidence.replaceAll('_', ' '))}</span></td><td>${stamp(row.lastActivityAt)}</td></tr>`).join('') || '<tr><td colspan="6">No hay placas registradas dentro de este alcance.</td></tr>'}</tbody></table></section>`;
+  } catch (error) { showError(error); }
+}
+
+async function renderTransactions(filters = {}) {
+  loading('Consultando pagos y transacciones…');
+  try {
+    const query = queryString({ stationId: filters.stationId ?? selectedStation, q: filters.q, status: filters.status, method: filters.method, mode: filters.mode, from: filters.from, to: filters.to });
+    const rows = await api(`/control/transactions${query ? `?${query}` : ''}`);
+    document.querySelector('#content').innerHTML = `${heading('PAGOS', 'Transacciones', `${rows.length} transacciones y autorizaciones financieras visibles.`)}<form id="transaction-filters" class="filter-bar"><label>Operación o placa<input name="q" value="${esc(filters.q || '')}" maxlength="80"></label><label>Estado financiero<select name="status"><option value="">Todos</option>${['CAPTURED','PAID','PENDING','PAYMENT_PENDING','PARTIAL','REJECTED','REFUNDED','CANCELLED','ERROR','REVIEW'].map((status) => `<option ${filters.status === status ? 'selected' : ''}>${status}</option>`).join('')}</select></label><label>Método<select name="method"><option value="">Todos</option>${['YAPE','PLIN','TARJETA','EFECTIVO','SALDO_PRIME'].map((method) => `<option ${filters.method === method ? 'selected' : ''}>${method}</option>`).join('')}</select></label><label>Modalidad<select name="mode"><option value="">Todas</option><option value="PREPAGO" ${filters.mode === 'PREPAGO' ? 'selected' : ''}>Prepago</option><option value="POSTPAGO" ${filters.mode === 'POSTPAGO' ? 'selected' : ''}>Postpago</option></select></label>${dateInputs()}<button class="secondary">Filtrar</button></form><section class="panel table-wrap"><table><thead><tr><th>Fecha</th><th>Operación</th><th>Estación</th><th>Cliente / placa</th><th>Combustible</th><th>Modalidad</th><th>Pago</th><th>Estado físico</th><th>Importe</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td>${stamp(row.occurredAt)}</td><td class="mono">${esc(row.operationId.slice(0, 8))}</td><td>${esc(row.station.name)}</td><td>${esc(row.customer?.name || '—')}<small class="subcell">${esc(row.plate)}</small></td><td>${esc(row.fuel.name)}</td><td>${esc(row.mode)}</td><td><span class="badge ${row.financialStatus === 'CAPTURED' || row.financialStatus === 'PAID' ? '' : 'warning'}">${esc(paymentLabel(row.financialStatus))}${row.method ? ` · ${esc(row.method)}` : ''}</span></td><td>${esc(paymentLabel(row.reviewStatus || row.physicalStatus))}</td><td>S/ ${fmt(row.amount)}</td><td>${row.transactionId ? `<button class="text-button" data-transaction="${row.transactionId}">Detalle</button>` : 'Autorización'}</td></tr>`).join('') || '<tr><td colspan="10">No hay transacciones para esos filtros.</td></tr>'}</tbody></table></section><dialog id="transaction-dialog"></dialog><dialog id="receipt-dialog"></dialog>`;
+  } catch (error) { showError(error); }
+}
+
+function receiptMarkup(receipt) {
+  return `<div class="receipt-paper"><p class="eyebrow">COMPROBANTE ACADÉMICO · NO TRIBUTARIO</p><h2>PRIMAX · DEMO</h2><p>${esc(receipt.station)} · Surtidor ${esc(receipt.pump || '—')}</p><hr><p>Operación: <span class="mono">${esc(receipt.id)}</span></p><p>Fecha: ${stamp(receipt.issuedAt)}</p><p>Placa: ${esc(receipt.plate)}</p><p>Combustible: ${esc(receipt.fuel)}</p><p>Cantidad: ${fmt(receipt.gallons, 3)} gal</p><p>Precio unitario: S/ ${fmt(receipt.unitPrice)}</p><p>Modalidad / pago: ${esc(receipt.mode)} · ${esc(receipt.paymentMethod)}</p><p>Estado: <strong>${esc(receipt.state)}</strong></p><hr><p class="receipt-total">TOTAL S/ ${fmt(receipt.total)}</p>${receipt.dni ? `<p>DNI: ${esc(receipt.dni)}</p>` : ''}${receipt.ruc ? `<p>RUC: ${esc(receipt.ruc)} · ${esc(receipt.businessName)}</p>` : ''}</div>`;
+}
+
+function printReceiptBrowser(receipt) {
+  const popup = window.open('', '_blank');
+  if (!popup) throw Error('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes o reintenta.');
+  popup.document.write(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Comprobante académico Primax</title><style>body{font:14px system-ui,sans-serif;max-width:420px;margin:28px auto;padding:18px;color:#20242b}.receipt-paper{border:1px dashed #999;padding:20px}.eyebrow{font-size:11px;color:#d71920;font-weight:bold}.mono{overflow-wrap:anywhere}.receipt-total{font-size:20px;font-weight:bold;text-align:right}@media print{body{margin:0}}</style><body>${receiptMarkup(receipt)}</body></html>`);
+  popup.document.close();
+  popup.focus();
+  popup.print();
+}
+
+async function showReceipt(transactionId) {
+  try {
+    const receipt = await api(`/control/receipts/${encodeURIComponent(transactionId)}`);
+    const dialog = document.querySelector('#receipt-dialog');
+    dialog.innerHTML = `<form method="dialog"><button class="close" aria-label="Cerrar">×</button></form>${receiptMarkup(receipt)}<p class="muted">La copia refleja el estado guardado de la transacción. No tiene validez tributaria oficial.</p><p class="error" role="alert"></p><div class="actions"><button type="button" class="primary" data-print-agent="${receipt.id}" ${receipt.pump !== '03' ? 'disabled title="PrintAgent requiere el surtidor 03 en esta instalación"' : ''}>${receipt.pump === '03' ? 'Solicitar a PrintAgent local' : 'PrintAgent no disponible para este surtidor'}</button><button type="button" class="secondary" data-browser-print="${receipt.id}">Imprimir desde navegador</button></div>`;
+    dialog.showModal();
+    dialog.querySelector('[data-print-agent]').addEventListener('click', async (event) => {
+      const button = event.currentTarget; button.disabled = true;
+      try { await sendToPrintAgent(receipt); dialog.querySelector('.error').textContent = 'PrintAgent aceptó el trabajo; la salida física no está confirmada.'; }
+      catch (error) { dialog.querySelector('.error').textContent = incidentMessage(error); }
+      finally { button.disabled = false; }
+    });
+    dialog.querySelector('[data-browser-print]').addEventListener('click', () => {
+      try { printReceiptBrowser(receipt); } catch (error) { dialog.querySelector('.error').textContent = incidentMessage(error); }
+    });
+  } catch (error) { window.alert(incidentMessage(error)); }
+}
+
 async function renderDashboard() {
   loading();
   try {
     const suffix = selectedStation ? `?stationId=${encodeURIComponent(selectedStation)}` : '';
     const data = await api(`/control/dashboard${suffix}`);
     const unavailable = data.terminals.filter((entry) => ['ASISTENCIA', 'FUERA_DE_SERVICIO'].includes(entry.status)).reduce((sum, entry) => sum + entry.count, 0);
-    document.querySelector('#content').innerHTML = `${heading('RESUMEN OPERATIVO', 'Dashboard', 'Indicadores consultados en tiempo real desde Primax V12.1.')}<section class="metrics"><article class="metric"><span>Operaciones hoy</span><strong>${data.operationsToday}</strong><small>Transacciones registradas</small></article><article class="metric"><span>Operaciones activas</span><strong>${data.activeOperations}</strong><small>Despachos en curso</small></article><article class="metric"><span>Incidencias abiertas</span><strong>${data.openIncidents}</strong><small>Abiertas o en revisión</small></article><article class="metric"><span>Terminales en atención</span><strong>${unavailable}</strong><small>Asistencia o fuera de servicio</small></article></section><div class="grid"><section class="panel"><div class="panel-head"><h2>Combustible disponible</h2><span>${data.reviewPairs} pares en REVIEW</span></div><div class="table-wrap"><table><thead><tr><th>Estación</th><th>Combustible</th><th>Disponible L</th><th>Reservado L</th><th>Estado</th></tr></thead><tbody>${data.inventory.map((item) => `<tr><td>${esc(data.stations.find((station) => station.id === item.stationId)?.name || 'Estación')}</td><td>${esc(item.fuel.name)}</td><td>${fmt(item.availableLiters, 3)}</td><td>${fmt(item.reservedLiters, 3)}</td><td><span class="badge ${item.activation?.status === 'REVIEW' ? 'warning' : ''}">${esc(item.activation?.status || '—')}</span></td></tr>`).join('') || '<tr><td colspan="5">Sin inventario en este alcance.</td></tr>'}</tbody></table></div></section><section class="panel"><div class="panel-head"><h2>Estado de terminales</h2><span>${data.stations.length} estaciones visibles</span></div><div class="terminal-stats">${data.terminals.map((item) => `<div><span class="status-dot ${['ASISTENCIA','FUERA_DE_SERVICIO'].includes(item.status) ? 'red' : ''}"></span>${esc(item.status.replaceAll('_', ' '))}<strong>${item.count}</strong></div>`).join('') || '<p class="muted">Sin terminales registradas.</p>'}</div></section></div>`;
+    document.querySelector('#content').innerHTML = `${heading('RESUMEN OPERATIVO', 'Dashboard', 'Indicadores consultados en tiempo real desde Primax V12.1.')}<section class="metrics"><article class="metric"><span>Operaciones hoy</span><strong>${data.operationsToday}</strong><small>Transacciones registradas</small></article><article class="metric"><span>Operaciones activas</span><strong>${data.activeOperations}</strong><small>Despachos en curso</small></article><article class="metric"><span>Ingresos confirmados hoy</span><strong>S/ ${fmt(data.capturedRevenueToday)}</strong><small>Pagos CAPTURED</small></article><article class="metric"><span>Clientes activos</span><strong>${data.activeCustomers ?? '—'}</strong><small>Usuarios activos con actividad en alcance</small></article><article class="metric"><span>Membresías activas</span><strong>${data.activeMemberships ?? '—'}</strong><small>Prime ACTIVE</small></article><article class="metric"><span>Incidencias abiertas</span><strong>${data.openIncidents}</strong><small>Abiertas o en revisión</small></article><article class="metric"><span>Terminales en atención</span><strong>${unavailable}</strong><small>Asistencia o fuera de servicio</small></article></section><div class="grid"><section class="panel"><div class="panel-head"><h2>Combustible disponible</h2><span>${data.reviewPairs} pares en REVIEW</span></div><div class="table-wrap"><table><thead><tr><th>Estación</th><th>Combustible</th><th>Disponible L</th><th>Reservado L</th><th>Estado</th></tr></thead><tbody>${data.inventory.map((item) => `<tr><td>${esc(data.stations.find((station) => station.id === item.stationId)?.name || 'Estación')}</td><td>${esc(item.fuel.name)}</td><td>${fmt(item.availableLiters, 3)}</td><td>${fmt(item.reservedLiters, 3)}</td><td><span class="badge ${item.activation?.status === 'REVIEW' ? 'warning' : ''}">${esc(item.activation?.status || '—')}</span></td></tr>`).join('') || '<tr><td colspan="5">Sin inventario en este alcance.</td></tr>'}</tbody></table></div></section><section class="panel"><div class="panel-head"><h2>Estado de terminales</h2><span>${data.stations.length} estaciones visibles</span></div><div class="terminal-stats">${data.terminals.map((item) => `<div><span class="status-dot ${['ASISTENCIA','FUERA_DE_SERVICIO'].includes(item.status) ? 'red' : ''}"></span>${esc(item.status.replaceAll('_', ' '))}<strong>${item.count}</strong></div>`).join('') || '<p class="muted">Sin terminales registradas.</p>'}</div></section></div>`;
   } catch (error) { document.querySelector('#content').innerHTML = `${heading('RESUMEN OPERATIVO', 'Dashboard')}${panel(incidentMessage(error), 'denied')}`; }
 }
 
@@ -161,6 +224,10 @@ async function renderAudit(filters = {}) {
 async function renderView(view, filters = {}) {
   if (view === 'dashboard') return renderDashboard();
   if (view === 'operations') return renderOperations(filters);
+  if (view === 'transactions') return renderTransactions(filters);
+  if (view === 'customers') return renderCustomers(filters);
+  if (view === 'memberships') return renderMemberships(filters);
+  if (view === 'vehicles') return renderVehicles(filters);
   if (view === 'terminals') return renderTerminals();
   if (view === 'inventory') return renderInventory();
   if (view === 'movements') {
@@ -220,7 +287,7 @@ document.addEventListener('submit', async (event) => {
     finally { busy = false; }
     return;
   }
-  const filterViews = { 'operation-filters': renderOperations, 'movement-filters': renderMovements, 'incident-filters': renderIncidents, 'audit-filters': renderAudit };
+  const filterViews = { 'operation-filters': renderOperations, 'transaction-filters': renderTransactions, 'customer-filters': renderCustomers, 'membership-filters': renderMemberships, 'vehicle-filters': renderVehicles, 'movement-filters': renderMovements, 'incident-filters': renderIncidents, 'audit-filters': renderAudit };
   const filter = filterViews[form.id];
   if (filter) {
     event.preventDefault();
@@ -262,6 +329,24 @@ document.addEventListener('click', async (event) => {
     try { const result = await api('/control/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }); login(result.message); }
     catch (error) { login(incidentMessage(error)); }
     return;
+  }
+  if (target.dataset.customer) {
+    try {
+      const detail = await api(`/control/customers/${encodeURIComponent(target.dataset.customer)}`);
+      const dialog = document.querySelector('#customer-dialog');
+      const membership = detail.membership ? `<section class="panel"><h3>Membresía Prime</h3><p>${esc(detail.membership.number)} · ${esc(detail.membership.status)}</p>${detail.membership.balance != null ? `<p>Saldo real: S/ ${fmt(detail.membership.balance)} · puntos ${fmt(detail.membership.points, 0)}</p>` : '<p class="muted">El saldo no se expone fuera del alcance global.</p>'}</section>` : '<p class="muted">Sin permiso para ver membresía o sin membresía asociada.</p>';
+      dialog.innerHTML = `<form method="dialog"><button class="close" aria-label="Cerrar">×</button></form><p class="eyebrow">DETALLE DEL CLIENTE</p><h2>${esc(detail.name)}</h2><p>${esc(detail.email)} · ${detail.active ? 'Activo' : 'Inactivo'} · registrado ${dateLabel(detail.registeredAt)}</p>${membership}<section class="panel"><h3>Vehículos visibles en este alcance</h3>${detail.vehicles.map((vehicle) => `<p class="mono">${esc(vehicle.plate)} · ${esc(vehicle.label)}</p>`).join('') || '<p class="muted">No hay vehículos visibles.</p>'}</section><section class="panel table-wrap"><h3>Actividad y operaciones visibles</h3><table><thead><tr><th>Fecha</th><th>Operación</th><th>Estación</th><th>Placa</th><th>Pago</th><th>Físico</th><th></th></tr></thead><tbody>${detail.operations.map((row) => `<tr><td>${stamp(row.occurredAt)}</td><td class="mono">${esc(row.operationId.slice(0, 8))}</td><td>${esc(row.station.name)}</td><td>${esc(row.plate)}</td><td>${esc(paymentLabel(row.financialStatus))}</td><td>${esc(paymentLabel(row.physicalStatus))}</td><td>${row.transactionId && has('ADMIN_RECEIPT_VIEW') ? `<button class="text-button" data-show-receipt="${row.transactionId}">Comprobante</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="7">No hay operaciones visibles.</td></tr>'}</tbody></table></section>`;
+      dialog.showModal();
+    } catch (error) { window.alert(incidentMessage(error)); }
+  }
+  if (target.dataset.showReceipt) await showReceipt(target.dataset.showReceipt);
+  if (target.dataset.transaction) {
+    try {
+      const detail = await api(`/control/transactions/${encodeURIComponent(target.dataset.transaction)}`);
+      const dialog = document.querySelector('#transaction-dialog');
+      dialog.innerHTML = `<form method="dialog"><button class="close" aria-label="Cerrar">×</button></form><p class="eyebrow">PAGO Y TRANSACCIÓN</p><h2 class="mono">${esc(detail.operationId)}</h2><dl><dt>Estación</dt><dd>${esc(detail.station.name)}</dd><dt>Cliente</dt><dd>${esc(detail.customer?.name || 'Cliente no vinculado')}</dd><dt>Vehículo / placa</dt><dd>${esc(detail.vehicle?.label || '—')} · ${esc(detail.plate)}</dd><dt>Combustible</dt><dd>${esc(detail.fuel.name)}</dd><dt>Modalidad</dt><dd>${esc(detail.mode)}</dd><dt>Pago</dt><dd>${esc(paymentLabel(detail.financialStatus))} · ${esc(detail.method || 'Sin método')}</dd><dt>Estado físico</dt><dd>${esc(paymentLabel(detail.physicalStatus))}</dd><dt>Importe / cantidad</dt><dd>S/ ${fmt(detail.amount)} · ${fmt(detail.gallons, 3)} gal</dd><dt>Incidencias</dt><dd>${detail.incidents.map((incident) => `${esc(incident.code)} · ${esc(incident.status)}`).join(', ') || 'Ninguna registrada'}</dd></dl><p class="muted">Los estados se leen del backend. No se pueden marcar pagos como completados desde Control.</p>${has('ADMIN_RECEIPT_VIEW') ? `<button class="primary" data-show-receipt="${detail.transactionId}">Ver comprobante académico</button>` : ''}`;
+      dialog.showModal();
+    } catch (error) { window.alert(incidentMessage(error)); }
   }
   if (target.dataset.operation) {
     try {

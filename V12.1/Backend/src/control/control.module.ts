@@ -7,6 +7,8 @@ import { ControlService } from './control.service';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ControlOperationsController } from './control-operations.controller';
 import { ControlOperationsService } from './control-operations.service';
+import { ControlCustomersController } from './control-customers.controller';
+import { ControlCustomersService } from './control-customers.service';
 
 @Module({
   imports: [
@@ -28,7 +30,7 @@ import { ControlOperationsService } from './control-operations.service';
       }),
     }),
   ],
-  controllers: [ControlController, ControlOperationsController],
-  providers: [ControlService, ControlOperationsService, RecoveryDelivery],
+  controllers: [ControlController, ControlOperationsController, ControlCustomersController],
+  providers: [ControlService, ControlOperationsService, ControlCustomersService, RecoveryDelivery],
 })
 export class ControlModule {}

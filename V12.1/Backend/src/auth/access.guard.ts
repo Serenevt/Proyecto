@@ -213,6 +213,11 @@ export class AccessGuard implements CanActivate {
             'ADMIN_INVENTORY_RECEIVE',
             'ADMIN_INVENTORY_MOVEMENT_VIEW',
             'ADMIN_INVENTORY_RECONCILE',
+            'ADMIN_CUSTOMER_VIEW',
+            'ADMIN_MEMBERSHIP_VIEW',
+            'ADMIN_VEHICLE_VIEW',
+            'ADMIN_TRANSACTION_VIEW',
+            'ADMIN_RECEIPT_VIEW',
           ]
         : (
             await this.db.adminControlGrant.findMany({
