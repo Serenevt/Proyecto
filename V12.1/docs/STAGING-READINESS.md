@@ -29,6 +29,7 @@ Usar un gestor de secretos y variables independientes por entorno. Estos nombres
 - `KIOSK_OPERATOR_USER`, `KIOSK_OPERATOR_PASSWORD_HASH`, `KIOSK_STATION_ID`, `KIOSK_SESSION_NAMESPACE`, `KIOSK_SESSION_VERSION`.
 - `KIOSK_REDIS_REST_URL` HTTPS y `KIOSK_REDIS_REST_TOKEN`, compatibles con los comandos Redis requeridos (`GET/SET/DEL/EVAL`); el perfil académico actual no admite Redis TCP directo ni fallback in-memory.
 - `CORS_ORIGINS`: lista exacta de origins HTTPS finales, sin rutas, barra final ni comodín.
+- `PRIMAX_CONTROL_PUBLIC_URL`: origin público HTTPS de Control, usado para construir el enlace de verificación de correo; no dejar el fallback localhost en staging.
 - `PAYMENT_ENV=demo`, `DEMO_WALLET_ENABLED=true`; no configurar credenciales de proveedor real.
 - SMTP `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, con TLS requerido.
 - OCR opcional: `PLATE_RECOGNITION_ENABLED`, `PLATE_RECOGNITION_URL` privada y `PLATE_CONFIDENCE_THRESHOLD`.

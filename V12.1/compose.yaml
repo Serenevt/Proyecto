@@ -22,6 +22,7 @@ x-backend-env: &backend-env
   SMTP_PORT: 1025
   SMTP_SECURE: "false"
   SMTP_FROM: Primax Prime <no-reply@primax.local>
+  PRIMAX_CONTROL_PUBLIC_URL: ${PRIMAX_CONTROL_PUBLIC_URL:-http://localhost:${FRONTEND3_PORT:-26083}}
   PAYMENT_ENV: demo
   DEMO_WALLET_ENABLED: "true"
   DEMO_PASSWORD: ${DEMO_PASSWORD:?Set DEMO_PASSWORD}

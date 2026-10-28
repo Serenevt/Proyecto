@@ -41,7 +41,7 @@ docker compose stop
 
 No uses `docker compose down -v` sobre datos que quieras conservar. La base solo es local; no conectes `.env` a Neon ni a otra base compartida.
 
-El seed incluye cuentas DEMO descritas por `DEMO_PASSWORD`, `DEMO_CONTROL_ADMIN_PASSWORD` y `DEMO_SUPERVISOR_PASSWORD` del archivo local ignorado. Control permite solicitar acceso y verifica el correo mediante Mailpit. Consulta el buzón en la URL local.
+El seed incluye cuentas DEMO descritas por `DEMO_PASSWORD`, `DEMO_CONTROL_ADMIN_PASSWORD` y `DEMO_SUPERVISOR_PASSWORD` del archivo local ignorado. Control permite solicitar acceso y verifica el correo mediante Mailpit; `PRIMAX_CONTROL_PUBLIC_URL` fija el origin incluido en el enlace recibido. Consulta el buzón en la URL local.
 
 ## Actores y flujo
 
