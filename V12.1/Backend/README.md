@@ -1,59 +1,35 @@
-﻿# Backend Primax V10
+# Backend V12.1
 
-NestJS + TypeScript + Prisma + PostgreSQL, JWT y Swagger. La guía vigente de arquitectura, instalación, migraciones, puertos, variables, demo y pruebas está en [README V10](../README.md); los resultados están en [VALIDATION.md](../VALIDATION.md).
+NestJS, TypeScript, Prisma 6 y PostgreSQL. El Backend es la autoridad para autenticación, alcance administrativo, estado de pagos demo, reservas, inventario, movimientos, operaciones y recibos.
 
-## Cambios V9
+## Ejecución
 
-- `MembershipDebt` auditable y saldo disponible no negativo.
-- Autorizaciones con saldo real y capacidad de deuda explícita, limitada por `PRIME_DEBT_LIMIT`.
-- Recarga DEMO idempotente con liquidación FIFO, ledger por aplicación y actualización de Payment/Transaction.
-- Perfil DNI/RUC/razón social con DTOs, JWT y persistencia real; snapshots de comprobante en Transaction.
-- OCR interno vía `RecognitionService`; reconocimiento normalizado y umbral configurable.
-- Se conservan puntos, beneficios, rewards, canjes, vehículos y todos los modelos anteriores.
+Para la integración local completa, sigue [README V12.1](../README.md) y levanta `../compose.yaml`. No conectes el perfil local a V10, V11, Neon ni a bases compartidas. `.env` contiene únicamente secretos locales ignorados; el Compose los inyecta en contenedores.
 
-## Endpoints relevantes
-
-Todos bajo `/api/v1`:
-
-| Ruta                              | Autenticación / uso                     |
-| --------------------------------- | --------------------------------------- |
-| GET /health                       | Salud                                   |
-| POST /auth/register               | Registro real, Membership ACTIVE atómica |
-| POST /auth/login                  | Login demo, JWT                         |
-| GET /memberships/me               | JWT, perfil y saldo pendiente           |
-| PATCH /memberships/me/profile     | JWT, DNI/RUC/razón social               |
-| GET /memberships/me/wallet        | JWT, saldo y movimientos                |
-| POST /memberships/me/recharges    | JWT, recarga DEMO y FIFO                |
-| GET /memberships/me/transactions  | JWT, historial con estados              |
-| GET /vehicles/:plate              | JWT propio o terminal autorizado        |
-| POST /plate-recognition           | Terminal, imagen a OCR interno          |
-| POST /authorizations              | Terminal, reserva de saldo/crédito      |
-| POST /authorizations/:id/progress | Terminal, avance                        |
-| POST /authorizations/:id/release  | Terminal, abandono sin consumo          |
-| GET /authorizations/:id           | Terminal, recuperación de estado        |
-| POST /transactions                | Terminal, compra idempotente y snapshot |
-| GET /transactions/:id             | JWT propietario o terminal              |
-
-Swagger: `/api/docs`. Conserva los endpoints existentes de catálogo, puntos, beneficios y canjes. Los comprobantes son snapshots de demo, no emisión tributaria ante SUNAT; los pagos no cobran dinero real.
-
-## Desarrollo y validación
-
-Usa Node 22.21.1/npm 10.9.4 para reproducir Docker. `Backend/.env.example` documenta la conexión local; Compose construye su URL interna con `postgres:5432`. No publiques `.env`.
+Comandos de desarrollo desde este directorio:
 
 ```sh
 npm ci --no-audit --no-fund
 npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
 npm run build
-npm run lint
-npm run format:check
 npm test
-npm run test:e2e
+npm run test:safety
 ```
 
-Para desarrollo: `npm run start:dev`. Usa puertos libres y una base V10 propia. Las pruebas E2E crean y preservan esquemas aislados; no limpian `public`. La prueba de deuda inicial en la base de demo se prepara con `node scripts/v9-demo.cjs`, únicamente si la cuenta aún no tiene operaciones.
+`npm run prisma:migrate` usa el wrapper de seguridad y solo admite destino local. Migraciones remotas de staging se describen en [STAGING-READINESS](../docs/STAGING-READINESS.md) y requieren aprobación independiente. No usar `db push`, `migrate reset` ni eliminar volúmenes.
 
-Las dos migraciones V9 extienden tablas, enums y restricciones; no resetean ni eliminan datos. No uses `migrate reset`, `db push` ni elimines volúmenes para resolver errores.
+## Esquema y datos
 
-V10 usa SOLES_PER_POINT=9 y Decimal.floor(importe/9). La migración aditiva solesPerPoint conserva el divisor exacto sin recalcular puntos históricos. Una deuda autorizada conserva la elegibilidad heredada; pagarla no duplica puntos. Arranque Docker automático y puertos actuales: ver README raíz.
+Las migraciones ordenadas están en `prisma/migrations`. `prisma migrate deploy` debe aplicarlas en ese orden. Los seeds locales de demostración están limitados al perfil local y son repetibles. Los pagos Yape/Plin/NFC, recargas y comprobantes son académicos; no hay cobros ni facturación SUNAT.
+
+Las áreas principales incluyen memberships/wallet, autorizaciones de combustible, `TerminalOperation`, reservas/movimientos de inventario, transacciones, `OperationalIncident` y grants de Primax Control. Reutiliza servicios existentes; no persistas inventario o estados financieros paralelos.
+
+## Seguridad
+
+- `APP_MODE=local` valida destinos de DB/Redis locales y requiere secretos de longitud suficiente.
+- Los perfiles no locales no permiten fallback de sesión en memoria. El perfil académico requiere Redis REST HTTPS, namespace, estación, origen HTTPS exacto y firma del gateway.
+- El API aplica permisos y alcance en Backend; ocultar rutas en el navegador no concede acceso.
+- No registrar credenciales, cookies, JWT, tokens de verificación, URLs con contraseñas ni imágenes OCR.
+- No configures credenciales financieras comerciales para el perfil demo.
+
+La preparación futura y sus límites están en [STAGING-READINESS](../docs/STAGING-READINESS.md).

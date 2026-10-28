@@ -1,5 +1,7 @@
 # Recuperación mediante correo
 
+> Referencia histórica heredada de V10. No seguir sus URLs, rutas, puertos ni valores por defecto para V12.1. El Compose actual de V12.1 usa Mailpit en `http://127.0.0.1:26025`; las variables correctas están en `V12.1/.env.example`. Para staging futuro, usar únicamente [STAGING-READINESS.md](STAGING-READINESS.md). No hay envío SMTP externo configurado ni autorizado aquí.
+
 `docker compose up -d` usa `PASSWORD_RESET_DELIVERY=mailpit`. El Backend envía por SMTP a `mailpit:1025`; el mensaje queda atrapado localmente. Abre **http://localhost:10025** para leerlo. El puerto SMTP no se publica. Mailpit no reenvía mensajes a Internet, Gmail ni Outlook. Su interfaz está vinculada exclusivamente a `127.0.0.1` y los mensajes son temporales.
 
 En Prime: **¿Olvidaste tu contraseña? → correo → Solicitar código → leer Mailpit → introducir código → nueva contraseña**. Un correo inexistente recibe la misma respuesta pública. La API nunca devuelve el código. El código aleatorio tiene ocho dígitos; PostgreSQL almacena HMAC-SHA256 ligado al registro. Caduca en `PASSWORD_RESET_TTL_MINUTES` (10 por defecto, máximo 60), permite `PASSWORD_RESET_MAX_ATTEMPTS` (5 por defecto, máximo 10) y un solo intercambio por token. El token de cambio, aleatorio de 256 bits, se guarda como SHA256, dura como máximo cinco minutos y nunca más que el código original. Cambiar la contraseña invalida el token y las sesiones previas mediante `authVersion`. Hay cooldown de un minuto por cuenta y limitación por IP.

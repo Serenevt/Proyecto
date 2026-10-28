@@ -18,7 +18,7 @@ try {
   const probe=JSON.parse(stdout.replace(/^\uFEFF/, '').trim());
   verifyProbe(config,probe);
 } catch(error) { throw Error('No se pudo validar la instalación A6 (permisos de cola/ejecución PowerShell, driver y ancho). '+error.message); }
-const data=resolve(dirname(configPath),config.dataDirectory || 'data-v11_1_1');
+const data=resolve(dirname(configPath),config.dataDirectory || 'data-v12_1');
 function adapter(job) {
   return new Promise((resolveJob)=>{
     const input=join(data,job.id+'.input.json');
@@ -38,4 +38,4 @@ server.keepAliveTimeout=5000;
 server.maxConnections=32;
 // Bind first: a second agent cannot open the same port or submit to this store.
 server.on('error', error => { console.error(error.code === 'EADDRINUSE' ? 'El puerto 25443 ya está ocupado. No se inició un segundo agente.' : error.message); process.exitCode=1; });
-server.listen(config.agentPort,AGENT_HOST,()=>console.log('FuelFlow V11_1.1 print agent: '+AGENT_URL+(diagnosticOnly?' (diagnóstico: envío de trabajos bloqueado)':' (solo loopback; ninguna impresión de prueba)')));
+server.listen(config.agentPort,AGENT_HOST,()=>console.log('Primax V12.1 PrintAgent: '+AGENT_URL+(diagnosticOnly?' (diagnóstico: envío de trabajos bloqueado)':' (solo loopback; ninguna impresión de prueba)')));

@@ -1,53 +1,29 @@
-# Acceso PostgreSQL de V10
+# Acceso PostgreSQL local de V12.1
 
-Ejecuta los comandos desde `V10`. Compose usa PostgreSQL 17, servicio `postgres`, base `primax_v10`, usuario `primax` y contraseña local por defecto `primax_demo_local` **solamente si no existe una variable que los sustituya**. `.env.example` declara la misma base/usuario, pero exige sustituir `POSTGRES_PASSWORD=REPLACE_WITH_LOCAL_PASSWORD` si se copia a `.env`. La contraseña efectiva es la definida al crear el volumen; cambiar `.env` no cambia automáticamente una contraseña ya almacenada.
+Estas instrucciones corresponden únicamente a `V12.1/compose.yaml`. No describen V10/V11 ni una base remota. La contraseña se lee desde el `.env` local ignorado; no la copies a comandos, historial, capturas ni reportes.
 
-## A. Docker y psql
+## Sesión psql de solo lectura
 
-```sh
-docker compose exec postgres psql -U primax -d primax_v10
-```
-
-Si personalizaste usuario/base, usa esos valores. Para leerlos dentro del contenedor sin imprimir la contraseña:
+Desde `V12.1/`:
 
 ```sh
-docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose exec postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
-En psql: `\dt` lista tablas, `\d "Membership"` muestra columnas y `\q` sale. Las tablas Prisma conservan mayúsculas y requieren comillas dobles.
+Consultas de inspección:
 
 ```sql
 BEGIN READ ONLY;
-SELECT id, email, name, active, "createdAt" FROM "User" ORDER BY "createdAt" DESC LIMIT 50;
-SELECT id, number, "userId", status, balance FROM "Membership" LIMIT 50;
-SELECT id, plate, label, "membershipId" FROM "Vehicle" LIMIT 50;
-SELECT id, "operationId", plate, "membershipId", amount, "unitPrice", mode, status, "createdAt" FROM "Transaction" ORDER BY "createdAt" DESC LIMIT 50;
-SELECT id, "transactionId", amount, method, status, provider FROM "Payment" LIMIT 50;
-SELECT id, "membershipId", kind, points, "transactionId", "createdAt" FROM "RewardMovement" LIMIT 50;
-SELECT id, "membershipId", kind, amount, "balanceAfter", "debtId", "createdAt" FROM "WalletMovement" LIMIT 50;
-SELECT id, "membershipId", "transactionId", "amountOriginal", "amountPaid", "amountPending", status FROM "MembershipDebt" WHERE "amountPending" > 0;
-SELECT id, type, status, plate, "expectedPlates", "userName", "amountPending", "operationId", "occurredAt", "resolvedAt" FROM "BusinessAlert" ORDER BY "occurredAt" DESC LIMIT 100;
-SELECT id, "userId", attempts, "expiresAt", "verifiedAt", "usedAt" FROM "PasswordReset" LIMIT 50;
+\dt
+SELECT name, finished_at, rolled_back_at FROM "_prisma_migrations" ORDER BY finished_at NULLS LAST;
+SELECT code, status, "createdAt" FROM "OperationalIncident" ORDER BY "createdAt" DESC LIMIT 50;
+SELECT "stationId", "fuelId", liters, "reservedLiters" FROM "FuelInventory" ORDER BY "stationId", "fuelId";
+SELECT "stationId", "fuelId", status, "reconciledAt" FROM "InventoryActivation" ORDER BY "stationId", "fuelId";
 COMMIT;
 ```
 
-No selecciones hashes de contraseña, códigos o tokens para compartirlos. `WalletMovement.transactionId` es un identificador escalar, no una FK declarada en Prisma.
+El esquema Prisma evoluciona por migraciones. Si una consulta de ejemplo ya no coincide con el schema, consulta `Backend/prisma/schema.prisma`; no cambies datos manualmente. No selecciones hashes, tokens, códigos de verificación o credenciales para compartir.
 
-## B. DBeaver
+PostgreSQL no publica un puerto al host por defecto. Si necesitas una herramienta gráfica, prepara un override de loopback revisado y temporal; no abras la DB a la LAN. No ejecutes `docker compose down -v`, `migrate reset` o `db push` como herramienta de consulta.
 
-El Compose normal **no publica PostgreSQL**. Para habilitar acceso gráfico temporal exclusivamente desde el mismo PC:
-
-```sh
-docker compose -f compose.yaml -f compose.database-local.yaml up -d postgres
-```
-
-En DBeaver crea conexión PostgreSQL: host `127.0.0.1`, puerto `10543` (o `POSTGRES_LOCAL_PORT`), base `primax_v10`, usuario `primax`, contraseña local por defecto indicada arriba o la efectiva de tu instalación. Descarga el driver si lo solicita. No uses la dirección LAN ni abras el puerto en el router/firewall. Activa modo solo lectura en el cliente y utiliza las consultas anteriores.
-
-Al terminar, restaura el servicio sin puerto publicado:
-
-```sh
-docker compose up -d postgres
-docker compose ps
-```
-
-Modificar directamente saldos, deudas, pagos o movimientos puede saltarse transacciones, FIFO, idempotencia, puntos y auditoría. Normalmente deben modificarse mediante el Backend. No ejecutar reset de Prisma ni eliminar volúmenes para consultar datos.
+Para staging futuro, usa solo el checklist [STAGING-READINESS.md](STAGING-READINESS.md); esta fase no se conectó a Neon ni migró una base remota.

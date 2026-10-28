@@ -32,7 +32,7 @@ export function handler(config,store) {
       // Read-only health has no body. Origin/Host/loopback remain mandatory.
       if(req.headers['x-fuelflow-print']!==undefined&&req.headers['x-fuelflow-print']!=='1')return reply(403,{error:'Solicitud no autorizada: marcador de protocolo inválido.',code:'PRINT_MARKER_REQUIRED'});
       if(req.headers['content-type']!==undefined&&!isJsonContentType(req.headers['content-type']))return reply(403,{error:'Solicitud no autorizada: tipo JSON inválido.',code:'JSON_CONTENT_TYPE_REQUIRED'});
-      return reply(200,{version:'V11_1.1',ready:true,transport:'http-loopback',endpoint:AGENT_URL,diagnosticOnly:!!config.diagnosticOnly,printerName:config.printerName||'PeriPage A6(1)',dpi:203,paperMm:{width:56.896,height:100.076},physicalConfirmed:false});
+      return reply(200,{version:'V12.1',ready:true,transport:'http-loopback',endpoint:AGENT_URL,diagnosticOnly:!!config.diagnosticOnly,printerName:config.printerName||'PeriPage A6(1)',dpi:203,paperMm:{width:56.896,height:100.076},physicalConfirmed:false});
     }
     if(req.headers['x-fuelflow-print']!=='1')return reply(403,{error:'Solicitud no autorizada: falta X-FuelFlow-Print: 1.',code:'PRINT_MARKER_REQUIRED'});
     if((req.method==='POST'||req.headers['content-type']!==undefined)&&!isJsonContentType(req.headers['content-type']))return reply(403,{error:'Solicitud no autorizada: se requiere JSON UTF-8.',code:'JSON_CONTENT_TYPE_REQUIRED'});

@@ -11,7 +11,7 @@ const out=resolve(v.out);if(existsSync(out))throw Error('La configuración ya ex
 const root=dirname(fileURLToPath(import.meta.url));
 const {stdout}=await promisify(execFile)('powershell.exe',['-NoProfile','-NonInteractive','-File',join(root,'probe.ps1'),'-PrinterName',v.printer],{windowsHide:true,timeout:30000});
 const p=JSON.parse(stdout.replace(/^\uFEFF/,'').trim());
-const config={schemaVersion:2,transport:'http-loopback',agentHost:'127.0.0.1',agentPort:25443,dpi:203,origins:v.origin,printerName:p.printerName,driverName:p.driverName,portName:p.port,paperWidthHundredths:224,paperHeightHundredths:394,printableWidthMm:p.printableWidthMm,printableHeightMm:p.printableHeightMm,printableLeftMm:p.printableLeftMm,printableTopMm:p.printableTopMm,widthConfirmed:true,formatConfirmed:true,dataDirectory:'data-v11_1_1'};
+const config={schemaVersion:2,transport:'http-loopback',agentHost:'127.0.0.1',agentPort:25443,dpi:203,origins:v.origin,printerName:p.printerName,driverName:p.driverName,portName:p.port,paperWidthHundredths:224,paperHeightHundredths:394,printableWidthMm:p.printableWidthMm,printableHeightMm:p.printableHeightMm,printableLeftMm:p.printableLeftMm,printableTopMm:p.printableTopMm,widthConfirmed:true,formatConfirmed:true,dataDirectory:'data-v12_1'};
 const validated=validateConfig(config);verifyProbe(validated,p);
 writeFileSync(out,JSON.stringify(validated,null,2),{flag:'wx',mode:0o600});
 console.log(JSON.stringify({configuration:out,probe:p,physicalConfirmed:false},null,2));

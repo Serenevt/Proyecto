@@ -13,7 +13,7 @@ FrontEnd_1/node_modules/
 tools/test-results/
 tools/evidence/
 
-# Generated or local files anywhere inside V9.
+# Generated or local files anywhere inside V12.1.
 **/.env
 **/.env.*
 !**/.env.example
@@ -69,5 +69,5 @@ docs/publication-evidence/*.json
 docs/publication-evidence/*.png
 tools/_publication-*.cjs
 PrintAgent/private/
-PrintAgent/data-v11_1_1/
+PrintAgent/data-v12_1/
 PrintAgent/config.http.local.json
