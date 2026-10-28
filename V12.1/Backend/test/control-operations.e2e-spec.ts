@@ -83,6 +83,8 @@ suite('Primax Control operational modules on isolated PostgreSQL', () => {
     const after = await db.fuelInventory.findUniqueOrThrow({ where: { stationId_fuelId: { stationId: stationA, fuelId } } });
     expect(first.replayed).toBe(false);
     expect(second.replayed).toBe(true);
+    expect(typeof first.movement.sequence).toBe('string');
+    expect(() => JSON.stringify(first)).not.toThrow();
     expect(after.liters.toString()).toBe('125.5');
     expect(after.reservedLiters.eq(before.reservedLiters)).toBe(true);
     expect(first.movement.kind).toBe('ADJUST_IN');
@@ -91,6 +93,8 @@ suite('Primax Control operational modules on isolated PostgreSQL', () => {
     expect(await db.operationalAuditEvent.count({ where: { targetId: first.movement.id, action: 'INVENTORY_SUPPLY_RECEIVED' } })).toBe(1);
     const ledger = await service.movements(scoped, { stationId: stationA, fuelId, kind: 'ADJUST_IN' });
     expect(ledger.some((movement) => movement.id === first.movement.id && movement.fuel.id === fuelId)).toBe(true);
+    expect(typeof ledger[0].sequence).toBe('string');
+    expect(() => JSON.stringify(ledger)).not.toThrow();
     await expect(service.receiveInventory(scoped, { ...input, liters: '26' })).rejects.toBeInstanceOf(ConflictException);
     await expect(service.receiveInventory(scoped, { ...input, requestId: randomUUID(), liters: '0' })).rejects.toBeInstanceOf(BadRequestException);
   });

@@ -314,7 +314,7 @@ export class ControlOperationsService {
       include: { inventory: { include: { fuel: { select: { id: true, code: true, name: true } } } }, reservation: { select: { operationId: true } } },
       orderBy: [{ sequence: 'desc' }, { createdAt: 'desc' }],
       take: 200,
-    }).then((rows) => rows.map((row) => ({ ...row, fuel: row.inventory.fuel })));
+    }).then((rows) => rows.map((row) => ({ ...row, sequence: row.sequence.toString(), fuel: row.inventory.fuel })));
   }
 
   async receiveInventory(actor: ControlActor, input: { requestId: string; stationId: string; fuelId: string; liters: string; reference?: string }) {
@@ -329,7 +329,7 @@ export class ControlOperationsService {
       if (replay) {
         if (replay.actorId !== actor.userId || replay.stationId !== input.stationId || replay.fuelId !== input.fuelId || !replay.physicalDeltaLiters.eq(liters) || replay.reason !== reason)
           throw new ConflictException('El identificador de abastecimiento ya se usó con otros datos');
-        return { movement: replay, replayed: true };
+        return { movement: { ...replay, sequence: replay.sequence.toString() }, replayed: true };
       }
       await tx.$queryRaw`SELECT "stationId" FROM "FuelInventory" WHERE "stationId"=${input.stationId}::uuid AND "fuelId"=${input.fuelId}::uuid FOR UPDATE`;
       const inventory = await tx.fuelInventory.findUnique({ where: { stationId_fuelId: { stationId: input.stationId, fuelId: input.fuelId } }, include: { station: { select: { active: true } }, fuel: { select: { active: true } }, activation: true } });
@@ -345,7 +345,7 @@ export class ControlOperationsService {
       await tx.fuelInventory.update({ where: { stationId_fuelId: { stationId: input.stationId, fuelId: input.fuelId } }, data: { liters: updatedLiters } });
       const movement = await tx.inventoryMovement.create({ data: { eventKey, stationId: input.stationId, fuelId: input.fuelId, sequence: previous.sequence + 1n, kind: 'ADJUST_IN', physicalDeltaLiters: liters, reservedDeltaLiters: 0, litersAfter: updatedLiters, reservedLitersAfter: inventory.reservedLiters, actorKind: 'USER', actorId: actor.userId, reason } });
       await tx.operationalAuditEvent.create({ data: { eventKey: `control-audit:${movement.id}`, actorKind: 'USER', actorUserId: actor.userId, stationId: input.stationId, action: 'INVENTORY_SUPPLY_RECEIVED', targetId: movement.id, outcome: 'SUCCESS', details: { fuelId: input.fuelId, liters: liters.toFixed(6), reference: input.reference?.trim() || null, reservedLiters: inventory.reservedLiters.toFixed(6) } } });
-      return { movement, replayed: false };
+      return { movement: { ...movement, sequence: movement.sequence.toString() }, replayed: false };
     });
   }
 

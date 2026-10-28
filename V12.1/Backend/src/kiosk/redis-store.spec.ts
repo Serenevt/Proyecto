@@ -9,6 +9,14 @@ describe('Redis REST storage', () => {
     }),
   );
   afterEach(() => jest.restoreAllMocks());
+  it('closes an unused local Redis client without throwing', async () => {
+    const local = new KioskStore(new ConfigService({
+      APP_MODE: 'local',
+      KIOSK_REDIS_URL: 'redis://:fictional-password-at-least-32-chars@127.0.0.1:6379/0',
+      KIOSK_SESSION_NAMESPACE: 'test',
+    }));
+    await expect(local.onModuleDestroy()).resolves.toBeUndefined();
+  });
   it('uses an atomic increment with expiry for cross-instance throttling', async () => {
     const fetcher = jest
       .spyOn(globalThis, 'fetch')

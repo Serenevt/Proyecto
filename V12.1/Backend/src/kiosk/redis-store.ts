@@ -25,9 +25,13 @@ export class KioskStore implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    if (!this.localRedis) return;
-    if (this.localRedis.isOpen) await this.localRedis.close().catch(() => this.localRedis?.destroy());
-    else this.localRedis.destroy();
+    if (!this.localRedis || !this.localRedis.isOpen) return;
+    try {
+      await this.localRedis.close();
+    } catch {
+      // A socket may already have closed while Nest is shutting down.
+      try { this.localRedis.destroy(); } catch { /* already closed */ }
+    }
   }
 
   private async connectLocalRedis() {
