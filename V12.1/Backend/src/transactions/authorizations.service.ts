@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import {
   AuthorizationOutcome,
   AuthorizationStatus,
+  OperationalIncident,
   Prisma,
   WalletMovementKind,
 } from '@prisma/client';
@@ -29,6 +30,7 @@ import {
   reviewInventoryReservation,
 } from '../inventory/inventory-reservations';
 import { TransactionsService } from './transactions.service';
+import { IncidentsService } from '../incidents/incidents.service';
 
 /** Antigüedad máxima de una reserva sin liquidar antes de considerarla abandonada. */
 const RESERVATION_TTL_MINUTES = 30;
@@ -108,6 +110,7 @@ export class AuthorizationsService {
     private readonly wallet: WalletRepository,
     private readonly payments: PaymentsService,
     @Optional() private readonly transactions?: TransactionsService,
+    @Optional() private readonly incidents?: IncidentsService,
   ) {}
 
   /**
@@ -910,15 +913,17 @@ export class AuthorizationsService {
     });
   }
 
-  intervention(id: string) {
+  intervention(
+    id: string,
+  ): Promise<ReturnType<typeof authorizationResponse> & { incident?: OperationalIncident | null }> {
     return this.repo.atomic(async (tx) => {
       const auth = await this.repo.byId(id, tx);
       if (!auth) throw new NotFoundException('Autorización no encontrada');
-      if (
-        ['SETTLED', 'RELEASED', 'INTERVENTION_REQUIRED'].includes(auth.status)
-      )
+      if (['SETTLED', 'RELEASED'].includes(auth.status))
         return authorizationResponse(auth);
-      const updated = await this.repo.settle(
+      const updated = auth.status === 'INTERVENTION_REQUIRED'
+        ? auth
+        : await this.repo.settle(
           id,
           {
             status: 'INTERVENTION_REQUIRED',
@@ -927,7 +932,32 @@ export class AuthorizationsService {
           },
           tx,
         );
-      if (auth.inventoryManaged) {
+      if (updated.terminalOperationId) {
+        const operationUpdate = await tx.terminalOperation.updateMany({
+          where: {
+            id: updated.terminalOperationId,
+            operationId: updated.operationId,
+            stationId: updated.stationId,
+            status: 'ACTIVE',
+            closedAt: null,
+          },
+          data: { status: 'INTERVENTION_REQUIRED', version: { increment: 1 } },
+        });
+        if (operationUpdate.count) {
+          await tx.operationalAuditEvent.create({
+            data: {
+              eventKey: `operation:${updated.operationId}:intervention-required`,
+              actorKind: 'TERMINAL',
+              stationId: updated.stationId,
+              terminalId: updated.terminalId,
+              action: 'OPERATION_INTERVENTION_REQUIRED',
+              targetId: updated.terminalOperationId,
+              outcome: 'SUCCESS',
+            },
+          });
+        }
+      }
+      if (auth.inventoryManaged && auth.status !== 'INTERVENTION_REQUIRED') {
         const reservation = await tx.inventoryReservation.findUnique({
           where: { authorizationId: id },
         });
@@ -938,7 +968,13 @@ export class AuthorizationsService {
             updated.interventionReason ?? 'Operational intervention required',
           );
       }
-      return authorizationResponse(updated);
+      const incident = this.incidents
+        ? await this.incidents.recordConfirmedPaymentWithoutDispense(tx, updated)
+        : null;
+      return {
+        ...authorizationResponse(updated),
+        ...(incident ? { incident } : {}),
+      };
     });
   }
 

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PaymentsModule } from '../payments/payments.module';
+import { IncidentsModule } from '../incidents/incidents.module';
 import { RewardsModule } from '../rewards/rewards.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { AuthorizationsController } from './authorizations.controller';
@@ -12,7 +13,7 @@ import { TransactionsService } from './transactions.service';
 @Module({
   // RewardsModule aporta PointsPolicyService; WalletModule aporta WalletRepository;
   // PaymentsModule aporta PaymentsService.
-  imports: [WalletModule, RewardsModule, PaymentsModule],
+  imports: [WalletModule, RewardsModule, PaymentsModule, IncidentsModule],
   controllers: [TransactionsController, AuthorizationsController],
   providers: [
     TransactionsService,

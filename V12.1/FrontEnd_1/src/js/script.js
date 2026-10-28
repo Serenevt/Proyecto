@@ -1794,8 +1794,26 @@ function requerirIntervencion(error) {
   state.despachoTimer = null;
   marcarEstadoOperacion('INTERVENTION_REQUIRED');
   transactionsService.requireIntervention(error.message, {...state});
-  if (state.autorizacionId) authorizationService.intervention(state.autorizacionId).catch(() => {});
-  mostrarModal('Requiere intervención del personal', error.message + ' Operación detenida. El estado se conserva; no continúe abasteciendo.', '⚠️');
+  const incidentConfirmation = state.autorizacionId
+    ? authorizationService.intervention(state.autorizacionId).catch(() => null)
+    : Promise.resolve(null);
+  const prepaid = state.modalidad === 'PREPAGO';
+  mostrarModal(
+    'Requiere intervención del personal',
+    prepaid
+      ? 'La operación quedó detenida y conserva su estado. Contacta al personal de la estación; no continúes abasteciendo.'
+      : error.message + ' Operación detenida. El estado se conserva; no continúe abasteciendo.',
+    '⚠️',
+  );
+  if (prepaid)
+    void incidentConfirmation.then(result => {
+      if (result?.incident?.code === 'INC_001')
+        mostrarModal(
+          'Pago registrado para revisión',
+          'El pago fue registrado, pero el despacho no pudo completarse. La operación quedó registrada para revisión. Contacta al personal de la estación; no se ha confirmado un reembolso.',
+          '⚠️',
+        );
+    });
 }
 
 function pintarDespacho(esPre) {
