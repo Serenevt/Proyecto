@@ -58,6 +58,26 @@ export function createTransactionsService({
       }).finally(() => {authorizing = null;});
       return authorizing;
     },
+    /**
+     * Cambia una autorización Prime que el Backend rechazó definitivamente
+     * por saldo insuficiente a una solicitud prepago, conservando el mismo
+     * operationId. Solo es posible antes de que exista autorización o compra.
+     */
+    switchAuthorizationToPrepaid(snapshot) {
+      if (inFlight || authorizing) throw Error('Espera a que termine la autorización.');
+      const pending = current();
+      if (!pending || pending.payload || pending.result || pending.intervention ||
+          pending.authorization?.authorization) {
+        throw Error('La operación ya tiene un resultado y no puede cambiar de modalidad.');
+      }
+      if (pending.authorizationRequest && pending.authorizationRequest.mode !== 'POSTPAGO') {
+        throw Error('La solicitud actual no es una autorización Prime pendiente.');
+      }
+      const next = { ...pending, snapshot };
+      delete next.authorizationRequest;
+      delete next.authorization;
+      return save(next);
+    },
     begin() {
       return current() || save({ operationId: uuid() });
     },

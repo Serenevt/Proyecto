@@ -13,6 +13,7 @@ import {thermalReceipt} from './thermalReceipt.js';
 import {mountInventory} from './inventory.js';
 
 import {openPlateCamera, insufficientBalance} from './plateCamera.js';
+import {createPrimeBalanceRetry, prepaidAmountFromPostpaid} from './primeBalance.js';
 import { paymentState } from './paymentState.js';
 import {customerIdentity} from './customerIdentity.js';
 import {adminService, renderAlerts} from './adminService.js';
@@ -257,7 +258,7 @@ const I18N = {
     lbl_a_cobrar: 'Total a cobrar:',
     m_yape: 'YAPE',
     m_plin: 'PLIN',
-    m_tarjeta: 'TARJETA',
+    m_tarjeta: 'NFC · TARJETA',
     m_efectivo: 'EFECTIVO',
     btn_otro_metodo: '← Otro método',
 
@@ -324,7 +325,7 @@ const I18N = {
     row_galones: 'Galones cargados',
     row_precio: 'Precio por galón',
     row_subtotal: 'Subtotal',
-    row_descuento: 'Descuento membresía (5%)',
+    row_descuento: 'Descuento aplicado',
     row_total: 'TOTAL A PAGAR',
     row_modalidad: 'Modalidad',
     row_estado: 'Estado',
@@ -610,7 +611,7 @@ const I18N = {
     lbl_a_cobrar: 'Amount to pay:',
     m_yape: 'YAPE',
     m_plin: 'PLIN',
-    m_tarjeta: 'CARD',
+    m_tarjeta: 'NFC · CARD',
     m_efectivo: 'CASH',
     btn_otro_metodo: '← Other method',
 
@@ -666,7 +667,7 @@ const I18N = {
     row_galones: 'Gallons loaded',
     row_precio: 'Price per liter',
     row_subtotal: 'Subtotal',
-    row_descuento: 'Membership discount (5%)',
+    row_descuento: 'Discount applied',
     row_total: 'TOTAL TO PAY',
     row_modalidad: 'Mode',
     row_estado: 'Status',
@@ -946,7 +947,7 @@ const I18N = {
     lbl_a_cobrar: 'Huntan pagay:',
     m_yape: 'YAPE',
     m_plin: 'PLIN',
-    m_tarjeta: 'TARJETA',
+    m_tarjeta: 'NFC · TARJETA',
     m_efectivo: 'EFECTIVO',
     btn_otro_metodo: '← Huk pay',
 
@@ -1002,7 +1003,7 @@ const I18N = {
     row_galones: 'Cargaq galones',
     row_precio: 'Litruyuq price',
     row_subtotal: 'Subtotal',
-    row_descuento: 'Socio rebaja (5%)',
+    row_descuento: 'Rebaja aplicada',
     row_total: 'HUNTAN PAGAY',
     row_modalidad: 'Ushay',
     row_estado: 'Estadu',
@@ -1654,7 +1655,9 @@ async function procesarPago() {
     mostrarModal(t('modal_pago_t'), t('modal_pago_m'), '✅', simularDespacho);
   } catch (error) {
     state.pagoAutorizado = false;
-    mostrarModal('Pago no autorizado', error.message + ' Reintenta con la misma operación.', '⚠️', () => void procesarPago());
+    const pending = /pendiente|ambigu[oa]|no pudimos confirmar/i.test(error.message || '');
+    const title = pending ? 'Pago pendiente de confirmación' : 'No se pudo autorizar el despacho';
+    mostrarModal(title, error.message + ' No vuelvas a pagar ni iniciar otra operación; puedes reintentar esta misma venta.', '⚠️', () => void procesarPago());
   } finally { paymentInFlight = false; }
 }
 
@@ -2308,8 +2311,23 @@ async function reservarSaldoPostpago() {
     return await ejecutarReserva(monto);
   } catch (error) {
     if (['INSUFFICIENT_BALANCE', 'DEBT_LIMIT'].includes(error.details?.code)) {
-      const action = await insufficientBalance(error.details, allowDebt => ejecutarReserva(monto, allowDebt));
+      const retryAfterRecharge = createPrimeBalanceRetry({
+        refreshVehicle: catalogService.vehicle,
+        reserve: ejecutarReserva,
+        updateMembership: membership => applyVehicle({ plate: state.placa, membership }),
+      });
+      const action = await insufficientBalance(error.details, {
+        onRefresh: () => retryAfterRecharge({
+          plate: state.placa,
+          membershipNumber: state.codigoCliente,
+          amount: monto,
+        }),
+      });
       if (action === 'authorized') return true;
+      if (action === 'prepaid') {
+        cambiarAPrepago(monto);
+        return false;
+      }
       mostrarPantalla('pantalla-datos');
       return false;
     }
@@ -2341,6 +2359,37 @@ async function reservarSaldoPostpago() {
     });
     return false;
   }
+}
+
+function cambiarAPrepago(montoPostpago) {
+  const amountText = prepaidAmountFromPostpaid(montoPostpago, MONTO_MIN, MONTO_MAX);
+  const next = {
+    ...state,
+    modalidad: 'PREPAGO',
+    tanqueLleno: false,
+    montoPrepago: amountText ? Number(amountText) : 0,
+    montoTexto: amountText || '',
+    pagoAutorizado: false,
+    autorizacionId: null,
+    montoReservado: 0,
+    ultimoAvanceEnviado: 0,
+    galones: 0,
+    total: 0,
+    cobroIniciado: false,
+    estadoOperacion: 'PENDIENTE',
+    despachoTimer: null,
+  };
+  transactionsService.switchAuthorizationToPrepaid({ ...next, despachoTimer: null });
+  Object.assign(state, next);
+  elegirModalidad('PREPAGO');
+  $('prep-input-placa').value = state.placa;
+  $('prep-cam-plate').textContent = state.placa || '—';
+  document.querySelectorAll('#prepago-panel .chip').forEach(button => {
+    button.classList.toggle('selected', Boolean(amountText && button.dataset.monto === String(Number(amountText))));
+  });
+  actualizarMontoDisplay();
+  mostrarPantalla('pantalla-pago');
+  $('monto-error').classList.add('hidden');
 }
 
 /** Pide la reserva al backend y refleja el estado AUTORIZADO. */
@@ -2434,8 +2483,8 @@ async function confirmarPagoQR() {
   if(state.confirmingQR)return;state.confirmingQR=true;
   try { const order=await apiClient('/online-orders/'+state.onlineOrderId+'/demo-confirm',{method:'POST',body:{amount:Number(state.onlineOrderAmount).toFixed(2),currency:'PEN'}});
     if(order.status==='CAPTURED') { await procesarPago(); }
-    else $('qr-msg').textContent='Pago pendiente de confirmación del proveedor.';
-  } catch(error) { $('qr-msg').textContent=error.message; }finally{state.confirmingQR=false;}
+    else $('qr-msg').textContent='Pago pendiente de confirmación. Backend todavía no autorizó el despacho; consulta el mismo pago de nuevo.';
+  } catch(error) { $('qr-msg').textContent=error.message+' No generes otra compra; puedes reintentar esta misma orden.'; }finally{state.confirmingQR=false;}
 }
 
 // ---------- Tarjeta: contactless NFC ----------
