@@ -58,6 +58,12 @@ class ApprovalDto {
 class StatusDto {
   @IsString() @MinLength(3) @MaxLength(300) reason: string;
 }
+class CreateSupervisorDto {
+  @IsString() @MinLength(2) @MaxLength(80) name: string;
+  @IsEmail() @MaxLength(254) email: string;
+  @IsString() @MinLength(12) @MaxLength(72) password: string;
+  @IsArray() @IsUUID(undefined, { each: true }) stationIds: string[];
+}
 class IncidentStatusDto {
   @IsEnum(OperationalIncidentStatus) status: OperationalIncidentStatus;
   @IsString() @MinLength(3) @MaxLength(500) reason: string;
@@ -142,6 +148,12 @@ export class ControlController {
     @CurrentActor() actor: Actor,
   ) {
     return this.service.pending(actor as Extract<Actor, { kind: 'control' }>);
+  }
+  @Get('supervisors') @SetMetadata('access', 'control') supervisors(@CurrentActor() actor: Actor) {
+    return this.service.supervisors(actor as Extract<Actor, { kind: 'control' }>);
+  }
+  @Post('supervisors') @SetMetadata('access', 'control') createSupervisor(@CurrentActor() actor: Actor, @Body() dto: CreateSupervisorDto) {
+    return this.service.createSupervisor(actor as Extract<Actor, { kind: 'control' }>, dto);
   }
   @Post('accounts/:userId/approve') @SetMetadata('access', 'control') approve(
     @CurrentActor() actor: Actor,

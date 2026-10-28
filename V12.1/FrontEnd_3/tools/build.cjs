@@ -10,7 +10,7 @@ for (const file of fs.readdirSync(path.join(root, 'js')).filter((name) => name.e
 if (path.dirname(output) !== root) throw new Error('Invalid build directory');
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
-for (const file of ['index.html', 'styles', 'js']) fs.cpSync(path.join(root, file), path.join(output, file), { recursive: true });
+for (const file of ['index.html', 'styles', 'js', 'assets']) fs.cpSync(path.join(root, file), path.join(output, file), { recursive: true });
 const api = process.env.PRIMAX_CONTROL_API_URL || '/api/v1';
 if (process.env.NODE_ENV === 'production' && !api.startsWith('https://')) throw new Error('Primax Control production API must use HTTPS');
 fs.writeFileSync(path.join(output, 'js/config.js'), `export const API_BASE_URL = ${JSON.stringify(api.replace(/\/$/, ''))};\n`);

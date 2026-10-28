@@ -208,6 +208,24 @@ export class ControlService {
     if (!actor.global || actor.role !== 'SUPER_ADMIN')
       throw new ForbiddenException('Solo SUPER_ADMIN puede aprobar cuentas');
   }
+  async createSupervisor(actor: ControlActor, input: { name: string; email: string; password: string; stationIds: string[] }) {
+    await this.assertGlobal(actor);
+    const email = input.email.trim().toLowerCase();
+    const stationIds = [...new Set(input.stationIds)];
+    if (!stationIds.length) throw new BadRequestException('Asigna al menos una estación');
+    const stations = await this.db.station.findMany({ where: { id: { in: stationIds }, active: true }, select: { id: true } });
+    if (stations.length !== stationIds.length) throw new BadRequestException('Estación inválida');
+    if (await this.db.user.findUnique({ where: { email } })) throw new ConflictException('Ya existe una cuenta con ese correo');
+    return this.db.atomic(async tx => {
+      const user = await tx.user.create({ data: { name: input.name.trim(), email, passwordHash: await hash(input.password, 12) } });
+      for (const stationId of stationIds) await tx.supervisorStationAssignment.create({ data: { userId: user.id, stationId, grantedByUserId: actor.userId, reason: 'Alta de Supervisor desde Primax Control' } });
+      return { id: user.id, name: user.name, email: user.email, stationIds };
+    });
+  }
+  async supervisors(actor: ControlActor) {
+    await this.assertGlobal(actor);
+    return this.db.supervisorStationAssignment.findMany({ where: { endedAt: null }, include: { user: { select: { id: true, name: true, email: true, active: true } }, station: { select: { id: true, name: true, code: true } } }, orderBy: { assignedAt: 'desc' } });
+  }
   async pending(actor: ControlActor) {
     await this.assertGlobal(actor);
     const accounts = await this.db.adminControlAccount.findMany({

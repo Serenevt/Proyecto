@@ -45,6 +45,12 @@ El seed incluye cuentas DEMO descritas por `DEMO_PASSWORD`, `DEMO_CONTROL_ADMIN_
 
 ## Actores y flujo
 
+### Supervisor de estación
+
+En local, `DEMO_SUPERVISOR_EMAIL` y `DEMO_SUPERVISOR_PASSWORD` del `.env` ignorado por Git crean mediante `Backend/scripts/seed-local-operations.cjs` un usuario DEMO con contraseña bcrypt (coste 12) y asignación a PRIMAX-SUR. Abre `http://127.0.0.1:26081/#supervisor-access`, inicia sesión con su correo y contraseña, abre turno, habilita la terminal y pulsa **Emparejar terminal**. La sesión Kiosk interna se inicializa en el BFF con su JWT verificado y la asignación de estación; el navegador recibe únicamente cookies HttpOnly. Después usa **Volver a FuelFlow**. El JWT Supervisor permanece solo en memoria durante esta consola; las ventas usan identidad técnica.
+
+En staging, SUPER_ADMIN crea Supervisores desde **Primax Control → Personal y accesos**, define una contraseña temporal y asigna una o más estaciones. El esquema actual representa el permiso operacional mediante `SupervisorStationAssignment`; `UserPermissionGrant` contiene `SYSTEM_ADMIN` y no tiene una variante `SUPERVISOR`. Un usuario puede mantener otros permisos independientes. `KIOSK_OPERATOR_USER` pertenece al subsistema técnico BFF/Kiosk y nunca es una cuenta humana de Supervisor.
+
 - **FuelFlow** presenta la compra de autoservicio. Backend persiste la autorización, el pago DEMO, las reservas, los avances, los movimientos y el comprobante.
 - **Primax Prime** muestra membresía y saldo del backend; la simulación no acredita fondos por una acción local del navegador.
 - **Primax Control** consume endpoints administrativos reales con grants y alcance de estación; las cuentas DEMO son solo para esta instalación aislada.

@@ -197,6 +197,20 @@ export class KioskService {
       throw new UnauthorizedException();
     return this.create(true);
   }
+  async bootstrapSupervisor(req: Request, userId: string) {
+    this.verifyGateway(req);
+    const token = req.header('x-kiosk-session') || '';
+    await this.session(token, req.header('x-csrf-token') || '', false);
+    await this.limitTechnical(req);
+    const stationId = this.config.getOrThrow<string>('KIOSK_STATION_ID');
+    const assignment = await this.db.supervisorStationAssignment.findFirst({
+      where: { userId, stationId, endedAt: null, user: { active: true }, station: { active: true } },
+    });
+    if (!assignment) throw new ForbiddenException('Supervisor no asignado a esta estación');
+    if ((await this.store.command<number>('DEL', this.sessionKey(token))) !== 1)
+      throw new UnauthorizedException('Sesión técnica vencida');
+    return this.create(true);
+  }
   async logout(req: Request) {
     this.verifyGateway(req);
     const token = req.header('x-kiosk-session') || '';

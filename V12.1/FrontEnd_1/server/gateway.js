@@ -101,6 +101,15 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
         'POST /api/kiosk/session/logout': ['POST', sessionPath + '/logout'],
       };
       const sessionRoute = sessions[req.method + ' ' + url.pathname];
+      if (req.method === 'POST' && url.pathname === '/api/supervisor/bootstrap') {
+        if (!token || !csrf) fail(403, 'Sesión y CSRF requeridos');
+        const authorization = req.headers.authorization || '';
+        if (typeof authorization !== 'string' || !/^Bearer [A-Za-z0-9._-]+$/.test(authorization)) fail(401, 'Supervisor requerido');
+        const { value, status } = await call('POST', sessionPath + '/supervisor-bootstrap', body, { authorization });
+        if (!/^[A-Za-z0-9_-]{43}$/.test(value.token || '') || !Number.isInteger(value.ttl)) fail(502, 'Respuesta inválida');
+        res.setHeader('Set-Cookie', `${cookieName}=${value.token}; ${cookieAttributes}; Max-Age=${value.ttl}`);
+        res.statusCode = status; res.end(JSON.stringify({ authenticated: true, csrfToken: value.csrfToken, expiresAt: value.expiresAt, stationId: value.stationId })); return;
+      }
       if (sessionRoute) {
         if (req.method === 'POST' && (!token || !csrf)) fail(403, 'Sesión y CSRF requeridos');
         if (url.pathname.endsWith('/login') && (Object.keys(body).some(k => !['username', 'password'].includes(k)) || typeof body.username !== 'string' || typeof body.password !== 'string' || body.username.length > 80 || Buffer.byteLength(body.password) > 72)) fail(400, 'Credenciales inválidas');

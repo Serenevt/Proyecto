@@ -23,3 +23,4 @@ body{background:#f6f7fc}
 .eyebrow,.text-button,.public-links a,.public-links button{color:var(--blue)}
 .avatar{background:#eceeff;color:var(--blue)}
 .topbar{border-bottom-color:#e2e5f6}
+.brand-logo{width:48px;height:42px;object-fit:contain;background:#fff;border-radius:9px;padding:4px;flex:none}.login-card .brand-logo{width:62px;height:48px}.sidebar .brand-logo{background:#fff}

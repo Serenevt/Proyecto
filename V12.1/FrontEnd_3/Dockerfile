@@ -5,6 +5,7 @@ COPY tools/build.cjs ./tools/build.cjs
 COPY index.html ./index.html
 COPY styles ./styles
 COPY js ./js
+COPY assets ./assets
 RUN npm run build
 
 FROM nginx:alpine AS runtime
