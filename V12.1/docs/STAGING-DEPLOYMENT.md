@@ -1,5 +1,11 @@
 # V12.1 — despliegue de staging (fase 5B-1)
 
+## Fase 5C en curso — 29-10-2026
+
+Despliegue directo desde `feature/primax-v12-1-dkos` con Vercel CLI en `dkosx13`, sin GitHub App ni auto-deploy. Sitios estables: FuelFlow https://primax-v12-1-fuelflow-staging.vercel.app (`primax-v12-1-fuelflow-staging`), Prime https://primax-v12-1-prime-staging.vercel.app (`primax-v12-1-prime-staging`) y Control https://primax-v12-1-control-staging.vercel.app (`primax-v12-1-control-staging`). Los proyectos V12 antiguos no se modificaron.
+
+Backend Render: https://primax-v12-1-api-staging.onrender.com (health 200). OCR Render: https://primax-v12-1-ocr-staging.onrender.com. Neon `primax-v12-1-staging` y Upstash `primax-v12-1-redis-staging` siguen detrás del Backend. PrintAgent sigue local. Pendientes: secreto `KIOSK_GATEWAY_SECRET` en FuelFlow Vercel Production, CORS exacto en Render, redeploy Backend y validaciones HTTPS funcionales, financieras, cookies, OCR y cámara física. 5C aún no está completa.
+
 Estado al 29-10-2026: **staging backend activo**. Neon V12.1 dedicado en `aws-us-east-1`, base `primax_v12_1_staging`, 26 migraciones aplicadas y seed académico. Upstash Redis V12.1 TLS en `us-east-1`, comandos REST verificados. Backend y OCR son Web Services Render Free en Virginia. Health Backend, sesión Kiosk/Redis, OCR autenticado y rechazo 401 remoto validados. Frontends y PrintAgent cloud no desplegados. Neon V12 antigua intacta.
 
 ## Destino de esta fase

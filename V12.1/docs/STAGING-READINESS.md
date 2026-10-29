@@ -1,5 +1,7 @@
 # V12.1 — preparación para staging
 
+**5C en curso (29-10-2026):** FuelFlow, Prime y Control tienen alias HTTPS estables `primax-v12-1-{fuelflow,prime,control}-staging.vercel.app` desplegados por CLI. Faltan secreto HMAC de FuelFlow en Vercel Production, CORS exacto en Render y pruebas funcionales completas. No hay auto-deploy por push.
+
 Estado: fase 5B-1 activa y validada para Backend/OCR/Neon/Upstash. Evidencia y procedimiento en [STAGING-DEPLOYMENT.md](STAGING-DEPLOYMENT.md). Frontends, DBeaver humano y hardware local siguen para fases posteriores. La matriz técnica está en `STAGING-ARCHITECTURE.md`, sección 13.
 
 ## Componentes y alojamiento previsto

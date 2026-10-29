@@ -1,5 +1,7 @@
 # V12.1 — arquitectura de staging (fase 5A)
 
+**5C CLI (29-10-2026):** FuelFlow `/api/*` y `/supervisor-api/*` están en https://primax-v12-1-fuelflow-staging.vercel.app; Prime en https://primax-v12-1-prime-staging.vercel.app con Bearer directo al Backend; Control `/api/v1/control/*` en https://primax-v12-1-control-staging.vercel.app mediante Function same-origin. Backend: https://primax-v12-1-api-staging.onrender.com; OCR: https://primax-v12-1-ocr-staging.onrender.com. La Function Control usa `api/v1/control/[...path].js` para enrutar rutas concretas en Vercel. CORS exacto y secreto HMAC de FuelFlow pendientes de configuración remota.
+
 Auditoría inicial del estado local en `a74f8de`, actualizada en fase 5A.1 con límites de runtime preparados localmente. No se aprovisionó, desplegó ni migró recurso remoto. `V12/` permanece congelada. Las URL siguientes son marcadores conceptuales, no dominios reservados. Las decisiones y estados de 5A.1 al final de este documento sustituyen los pendientes originales de 5A cuando se refieren al mismo código.
 
 ## 1. Arquitectura objetivo y componentes
