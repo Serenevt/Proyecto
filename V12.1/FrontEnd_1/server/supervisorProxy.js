@@ -43,8 +43,10 @@ export function createSupervisorProxy({ env = process.env, fetcher = globalThis.
       const publicOrigin = origin(env.FUELFLOW_PUBLIC_ORIGIN);
       const backend = origin(env.BACKEND_ORIGIN);
       const url = new URL(req.url, publicOrigin);
-      const route = req.query?.route ?? (url.pathname.startsWith('/supervisor-api/') && !url.search ? url.pathname.slice('/supervisor-api/'.length) : null);
-      if (typeof route !== 'string' || !route || Object.keys(req.query || {}).some(key => key !== 'route') || [...url.searchParams.keys()].some(key => key !== 'route')) throw Object.assign(Error('Ruta no permitida'), { status: 403 });
+      const publicPath = url.pathname.startsWith('/supervisor-api/') ? url.pathname.slice('/supervisor-api/'.length) : null;
+      const route = publicPath ?? url.searchParams.get('route');
+      const keys = [...url.searchParams.keys()];
+      if (typeof route !== 'string' || !route || keys.some(key => key !== 'route' && !(publicPath !== null && key === 'path')) || url.searchParams.getAll('route').length > 1 || (publicPath !== null && url.searchParams.has('route') && url.searchParams.get('route') !== publicPath)) throw Object.assign(Error('Ruta no permitida'), { status: 403 });
       const allowed = req.method === 'GET' ? getRoutes : req.method === 'POST' ? postRoutes : [];
       if (!allowed.some(pattern => pattern.test(route))) throw Object.assign(Error('Operación no permitida'), { status: 403 });
       if (req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin') throw Object.assign(Error('Origen no autorizado'), { status: 403 });

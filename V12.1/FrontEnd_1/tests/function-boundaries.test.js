@@ -45,6 +45,29 @@ test('Supervisor Function maps only human routes and strips browser cookies', as
   assert.equal(enable.statusCode, 200);
   assert.equal(calls[2].url, 'https://backend.example.test/api/v1/supervisor/terminals/' + id + '/enable');
 });
+test('Supervisor rewrite permits login and shift/terminal actions despite runtime query metadata', async () => {
+  const calls = [];
+  const handler = createSupervisorProxy({ env, fetcher: async (url, options) => { calls.push([url, options.method]); return Response.json({ ok: true }); } });
+  for (const [path, method, body, expected] of [
+    ['login', 'POST', { identifier: 'supervisor@example.test', password: 'fixture' }, '/api/v1/auth/login'],
+    ['supervisor/shifts', 'POST', { stationId: id }, '/api/v1/supervisor/shifts'],
+    [`supervisor/terminals/${id}/enable`, 'POST', { shiftId: id }, `/api/v1/supervisor/terminals/${id}/enable`],
+  ]) {
+    const res = response();
+    await handler(request('/api/supervisor-proxy?route=' + path, method, body, { authorization: 'Bearer fixture.jwt' }, { route: path, path: path.split('/') }), res);
+    assert.equal(res.statusCode, 200, path);
+    assert.equal(calls.at(-1)[0], env.BACKEND_ORIGIN + expected);
+  }
+  const rewritten = response();
+  await handler(request('/supervisor-api/login?route=login&path=supervisor-proxy', 'POST', { identifier: 'supervisor@example.test', password: 'fixture' }, {}, { route: 'login', path: 'supervisor-proxy' }), rewritten);
+  assert.equal(rewritten.statusCode, 200);
+  assert.equal(calls.at(-1)[0], env.BACKEND_ORIGIN + '/api/v1/auth/login');
+  for (const [path, method] of [['login', 'GET'], ['admin/users', 'GET']]) {
+    const res = response();
+    await handler(request('/supervisor-api/' + path, method, undefined, {}, { path }), res);
+    assert.equal(res.statusCode, 403);
+  }
+});
 test('Supervisor Function rejects sales, pairing bypass, foreign origin, query and oversized body', async () => {
   let calls = 0;
   const handler = createSupervisorProxy({ env, fetcher: async () => { calls++; return Response.json({}); } });
@@ -56,7 +79,7 @@ test('Supervisor Function rejects sales, pairing bypass, foreign origin, query a
     ['supervisor/me/stations', 'GET', undefined, { authorization: 'Bearer fixture.jwt' }, { other: 'bad' }],
   ]) {
     const res = response();
-    await handler(request('/api/supervisor-proxy?route=' + route, method, body, headers, { route, ...query }), res);
+    await handler(request('/api/supervisor-proxy?route=' + route + (query ? '&other=bad' : ''), method, body, headers, { route, ...query }), res);
     assert([403, 413].includes(res.statusCode));
   }
   assert.equal(calls, 0);
