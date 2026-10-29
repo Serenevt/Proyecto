@@ -78,6 +78,10 @@ La prueba local de cámara, confirmación OCR y fallback manual es `node tools/o
 
 Los archivos `docs/v11_1_1`, `docs/V9-*` y documentación histórica identificada por versión conservan antecedentes de V12.1; no son instrucciones para levantar el Compose actual.
 
+## Spec-Driven Development (SDD)
+
+V12.1 aplica principios de Spec-Driven Development mediante [especificaciones versionadas](specs/00-system-overview.md) en `V12.1/specs/`. Se consolidaron desde el sistema ya implementado y vinculan requisito/especificación → implementación → validación en la [matriz de trazabilidad](specs/09-traceability.md). Las discrepancias conocidas se registran en [SDD-GAPS](specs/SDD-GAPS.md); esta formalización no cambió el comportamiento del MVP.
+
 ## Staging futuro
 
 El staging no está desplegado ni configurado. Sigue la lista de [preparación de staging](docs/STAGING-READINESS.md). La guía histórica `DEPLOYMENT-VERCEL.md` no describe este MVP y no autoriza ni prepara por sí sola un despliegue de V12.1.
