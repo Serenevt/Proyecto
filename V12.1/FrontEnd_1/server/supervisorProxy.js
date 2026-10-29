@@ -63,8 +63,14 @@ export function createSupervisorProxy({ env = process.env, fetcher = globalThis.
           ...(req.method === 'POST' ? { body: JSON.stringify(body) } : {}),
         });
       } catch { throw Object.assign(Error('Servicio temporalmente no disponible'), { status: 503 }); }
-      if (!/^application\/json\b/i.test(upstream.headers.get('content-type') || '')) throw Object.assign(Error('Respuesta inválida'), { status: 502 });
+      const contentType = upstream.headers.get('content-type') || '';
       const content = await upstream.text();
+      if (req.method === 'GET' && route === 'supervisor/shifts/current' && upstream.ok && !content && !contentType) {
+        res.statusCode = upstream.status;
+        res.end('null');
+        return;
+      }
+      if (!/^application\/json\b/i.test(contentType)) throw Object.assign(Error('Respuesta inválida'), { status: 502 });
       if (Buffer.byteLength(content) > 3000000) throw Object.assign(Error('Respuesta inválida'), { status: 502 });
       res.statusCode = upstream.status;
       res.end(content);

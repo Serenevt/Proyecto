@@ -68,6 +68,16 @@ test('Supervisor rewrite permits login and shift/terminal actions despite runtim
     assert.equal(res.statusCode, 403);
   }
 });
+test('Supervisor current shift maps the Backend empty 200 to JSON null only on that route', async () => {
+  const handler = createSupervisorProxy({ env, fetcher: async () => new Response(null, { status: 200 }) });
+  const res = response();
+  await handler(request('/supervisor-api/supervisor/shifts/current?route=supervisor/shifts/current&path=supervisor-proxy', 'GET', undefined, { authorization: 'Bearer fixture.jwt' }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body, 'null');
+  const denied = response();
+  await handler(request('/supervisor-api/supervisor/me/stations?route=supervisor/me/stations&path=supervisor-proxy', 'GET', undefined, { authorization: 'Bearer fixture.jwt' }), denied);
+  assert.equal(denied.statusCode, 502);
+});
 test('Supervisor Function rejects sales, pairing bypass, foreign origin, query and oversized body', async () => {
   let calls = 0;
   const handler = createSupervisorProxy({ env, fetcher: async () => { calls++; return Response.json({}); } });
