@@ -40,7 +40,7 @@ La matriz enlaza especificaciones **consolidadas ahora** con código y evidencia
 | OCR-001 | Fallo OCR permite placa manual | `FrontEnd_1/src/js/plateCamera.js`, `Backend/src/vehicles/recognition.service.ts` | `tools/ocr-fallback-ui.cjs`, `Backend/src/vehicles/recognition.service.spec.ts`; cámara física pendiente | PARCIAL: TEST; FÍSICO PENDIENTE |
 | OCR-002 | Resultado exige confirmación | `FrontEnd_1/src/js/plateCamera.js` | `tools/ocr-fallback-ui.cjs` | TEST EXISTENTE |
 | OCR-003 | Placa corregida se valida | `FrontEnd_1/src/js/plateCamera.js`, `Backend/src/vehicles/plate.dto.ts` | `tools/ocr-fallback-ui.cjs`, `Backend/src/vehicles/recognition.service.spec.ts` | TEST EXISTENTE |
-| OCR-004 | OCR privado, sin acceso browser directo | `compose.yaml`, `Backend/src/vehicles/recognition.service.ts` | `docker compose config`; frontera remota sin deploy | SIN COBERTURA EN STAGING |
+| OCR-004 | OCR autenticado, sin acceso browser directo | `compose.yaml`, `Backend/src/vehicles/recognition.service.ts`, `PlateRecognition/app.py` | `PlateRecognition/test_ocr.py`, `Backend/src/vehicles/recognition.service.spec.ts`; frontera remota pendiente | TEST LOCAL; REMOTO PENDIENTE |
 | SEC-001 | BFF HMAC y allowlist | `FrontEnd_1/server/gateway.js`, `server/policy.js` | `FrontEnd_1/tests/kiosk-gateway.test.js`, `function-boundaries.test.js` | TEST EXISTENTE |
 | SEC-002 | Redis, Origin y CSRF | `Backend/src/kiosk/`, `FrontEnd_1/server/gateway.js` | `Backend/src/kiosk/kiosk.spec.ts`, `FrontEnd_1/tests/kiosk-gateway.test.js` | TEST EXISTENTE |
 | SEC-003 | Credencial/operación vinculadas | `Backend/src/operations/`, `Backend/src/auth/access.guard.ts` | `Backend/test/phase1a.e2e-spec.ts`, `FrontEnd_1/tools/financial-e2e-local.mjs` | TEST EXISTENTE |
@@ -50,7 +50,7 @@ La matriz enlaza especificaciones **consolidadas ahora** con código y evidencia
 | SEC-007 | Rate limit y auditoría | `Backend/src/kiosk/`, `Backend/src/operations/`, `Backend/src/control/` | `Backend/src/kiosk/redis-store.spec.ts`, `Backend/test/control-operations.e2e-spec.ts` | TEST EXISTENTE |
 | DEP-001 | DB/Redis aislados y migración aprobada | `compose.yaml`, `Backend/prisma/`, `Backend/scripts/database-safety.cjs` | `Backend/scripts/database-safety.test.cjs`; remoto pendiente | PARCIAL: TEST LOCAL |
 | DEP-002 | HTTPS, BFF y proxies de staging | `FrontEnd_1/vercel.json`, `FrontEnd_3/vercel.json`, `Backend/src/setup-app.ts` | `FrontEnd_1/tests/function-boundaries.test.js`, `FrontEnd_3/tests/control-proxy.test.js`; host real pendiente | PARCIAL: TEST LOCAL |
-| DEP-003 | OCR protegido opcional en runtime | `compose.yaml`, `Backend/src/vehicles/recognition.service.ts` | `Backend/src/vehicles/recognition.service.spec.ts`; servicio remoto pendiente | PARCIAL: TEST LOCAL |
+| DEP-003 | OCR protegido opcional en runtime | `compose.yaml`, `Backend/src/vehicles/recognition.service.ts`, `PlateRecognition/app.py` | `PlateRecognition/test_ocr.py`, `Backend/src/vehicles/recognition.service.spec.ts`; servicio remoto pendiente | PARCIAL: TEST LOCAL |
 | DEP-004 | PrintAgent sólo local y fallback | `PrintAgent/`, `FrontEnd_1/src/js/printReceipt.js`, `FrontEnd_3/js/print-agent.js` | `PrintAgent/tests/`, `FrontEnd_3/tests/print-agent.test.js`; impresora física pendiente | PARCIAL: TEST; FÍSICO PENDIENTE |
 | DEP-005 | Sin Mailpit; SMTP futuro | `compose.yaml`, `Backend/src/auth/recovery-delivery.ts` | `Backend/src/auth/smtp-delivery.spec.ts`, `Backend/src/control/email-disabled.spec.ts` | TEST EXISTENTE |
 

@@ -234,6 +234,12 @@ export function validateEnvironment(env: Record<string, unknown>) {
       !ocrUrl.username && !ocrUrl.password && !ocrUrl.search && !ocrUrl.hash;
     if (ocrUrl.protocol !== 'https:' && !renderPrivateOcr)
       throw new Error('Academic OCR requires HTTPS or the dedicated Render private service');
+    if (String(env.OCR_SERVICE_SECRET ?? '').length < 32 ||
+        String(env.OCR_SERVICE_SECRET).includes('REPLACE_'))
+      throw new Error('OCR_SERVICE_SECRET must be a private random secret');
+    if (ocrUrl.protocol === 'https:' &&
+        (ocrUrl.username || ocrUrl.password || ocrUrl.search || ocrUrl.hash || ocrUrl.pathname !== '/'))
+      throw new Error('Academic OCR URL must be an HTTPS origin');
   }
   return {
     ...env,

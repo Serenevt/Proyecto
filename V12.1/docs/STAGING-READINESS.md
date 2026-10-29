@@ -32,7 +32,7 @@ Usar un gestor de secretos y variables independientes por entorno. Estos nombres
 - `PRIMAX_CONTROL_PUBLIC_URL`: origin público HTTPS de Control, usado para construir el enlace de verificación de correo; no dejar el fallback localhost en staging.
 - `PAYMENT_ENV=demo`, `DEMO_WALLET_ENABLED=true`; no configurar credenciales de proveedor real.
 - SMTP futuro `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, con TLS requerido.
-- OCR: `PLATE_RECOGNITION_ENABLED=true` cuando exista el Private Service Render protegido; `PLATE_RECOGNITION_URL` puede ser su dirección HTTP interna exacta `http://primax-v12-1-ocr-staging-<hash>:8000`, además de HTTPS. `PLATE_CONFIDENCE_THRESHOLD` controla la sugerencia. Si aún no está listo, `false` habilita el fallback manual sin bloquear el MVP.
+- OCR: `PLATE_RECOGNITION_ENABLED=true` cuando exista el Web Service Render Free protegido con `OCR_SERVICE_SECRET`; `PLATE_RECOGNITION_URL` es su origin HTTPS. Private Service sigue preferido para producción. `PLATE_CONFIDENCE_THRESHOLD` controla la sugerencia. Si aún no está listo, `false` habilita el fallback manual sin bloquear el MVP.
 - `SHOW_DEMO_ADMIN_CREDENTIALS=false`, Swagger deshabilitado, sin credenciales de demo sembradas en staging compartido.
 
 ### FuelFlow / gateway
@@ -94,7 +94,7 @@ La lista actual de migraciones se obtiene localmente con `find Backend/prisma/mi
 - [ ] Confirmar redis privado, TLS, lectura consistente, namespace dedicado y revocación probada.
 - [ ] Confirmar station, combustible, terminal, usuario Supervisor y cuenta SUPER_ADMIN de staging; no reutilizar credenciales DEMO por defecto.
 - [ ] Confirmar que la ausencia de SMTP no bloquea login ni operaciones; planificar proveedor real posteriormente.
-- [ ] Proteger OCR con red privada/autenticación de servicio y revisar privacidad de imágenes.
+- [ ] Proteger OCR con autenticación de servicio en staging Free y red privada en producción y revisar privacidad de imágenes.
 - [ ] Instalar PrintAgent únicamente en el PC de kiosco; validar loopback, origin exacto y fallback. No publicar su puerto.
 - [ ] Revisar logs, retención y redacción de PII; no registrar cookies, contraseñas, JWT, códigos de correo ni contenido sensible.
 - [ ] Definir monitoreo, alertas, backups, restore test, rollback, responsable y ventana.
@@ -108,7 +108,7 @@ La lista actual de migraciones se obtiene localmente con `find Backend/prisma/mi
 3. Revisar el flujo del gateway HMAC de FuelFlow en un host HTTPS real, sus cookies Secure y revocación Redis. Compose local usa proxy Nginx loopback, no pretende simular esta frontera pública.
 4. **RESUELTO localmente en 5A.1:** Control tiene `vercel.json` y proxy Function same-origin; Prime mantiene API HTTPS explícita/Bearer y CORS exacto. Probar ambos con origins HTTPS definitivos en 5B.
 5. Decidir el alojamiento/runtime de Backend y probar conexiones Prisma bajo sus límites. No asumir que la API NestJS puede ejecutarse sin ajustes como función serverless.
-6. **OCR del MVP:** desplegar como servicio separado protegido cuando esté listo; `PLATE_RECOGNITION_ENABLED=false` permite comenzar temporalmente con captura manual. Nunca exponer Flask directamente a Internet.
+6. **OCR del MVP:** desplegar como servicio separado protegido cuando esté listo; `PLATE_RECOGNITION_ENABLED=false` permite comenzar temporalmente con captura manual. Si usa Web Service HTTPS público, proteger `POST /recognize` con secreto exclusivo Backend → OCR; nunca enviar el secreto al navegador.
 7. En el PC Windows del kiosco, preparar impresora/driver y una configuración nueva de PrintAgent en `data-v12_1`; revisar cola y fallback allí. En Linux solo quedaron validados contratos y fallback navegador, sin impresión física.
 8. Instalar Chromium/Playwright en un entorno CI si se exige la pasada móvil de navegador. En esta VM faltan `@playwright/test` para FE2 y Chromium; las suites de lógica y API reales sí pasaron.
 9. Aprobar el checklist de Neon por separado y ejecutar luego la revisión de migraciones con el responsable; no usar el conteo local como evidencia del estado remoto.

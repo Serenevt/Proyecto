@@ -2,6 +2,8 @@
 import base64
 import csv
 import io
+import hmac
+import os
 import re
 import subprocess
 import tempfile
@@ -110,14 +112,22 @@ def recognize(raw, kind='plate'):
 
 @app.get('/health')
 def health():
-    return jsonify(status='ok', engine='Tesseract LSTM')
+    return jsonify(status='ok')
 
 
 @app.post('/recognize')
 def endpoint():
+    secret = os.environ.get('OCR_SERVICE_SECRET', '')
+    supplied = request.headers.get('Authorization', '')
+    if len(secret) < 32:
+        return jsonify(error='Service unavailable'), 503
+    if not hmac.compare_digest(supplied, 'Bearer ' + secret):
+        return jsonify(error='Unauthorized'), 401
+    if request.mimetype != 'application/json':
+        return jsonify(error='Invalid request'), 415
     try:
         data = request.get_json()
-        if not isinstance(data, dict) or not isinstance(data.get('image'), str):
+        if not isinstance(data, dict) or not isinstance(data.get('image'), str) or data.get('kind', 'plate') not in ('plate', 'membership'):
             raise ValueError('Missing image')
         return jsonify(recognize(base64.b64decode(data['image'], validate=True), data.get('kind', 'plate')))
     except (ValueError, OSError, Image.DecompressionBombError):

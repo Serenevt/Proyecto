@@ -9,8 +9,8 @@ Browser FuelFlow ─HTTPS─> origin FuelFlow ─/api/*─> BFF Node Function �
                        └─/supervisor-api/*─> proxy acotado ─HTTPS─> Backend
 Browser Prime ─HTTPS/CORS exacto/Bearer─> Backend
 Browser Control ─HTTPS─> origin Control ─/api/v1/control/*─> proxy ─HTTPS─> Backend
-Backend ─TLS─> PostgreSQL; ─HTTPS REST─> Redis; ─red privada─> OCR opcional
-Backend ─HTTPS privado/autenticado, si se habilita─> OCR Python/Tesseract
+Backend ─TLS─> PostgreSQL; ─HTTPS REST─> Redis; ─HTTPS autenticado─> OCR opcional
+Backend ─HTTPS autenticado, si se habilita─> OCR Python/Tesseract
 PC de estación ─loopback solamente─> PrintAgent (separado de los hosts públicos)
 ```
 
@@ -118,13 +118,13 @@ Variables: `KIOSK_REDIS_REST_URL`, `KIOSK_REDIS_REST_TOKEN`, `KIOSK_SESSION_NAME
 
 ## 7. OCR, impresión y correo
 
-OCR usa Flask/Gunicorn con 2 workers, OpenCV, NumPy, Pillow, binario y datos `tesseract-ocr-eng`; escribe imágenes solo en `TemporaryDirectory`, sin almacenamiento permanente. Cada candidato puede consumir hasta 4 s de subprocess y el Backend espera 12 s: hay riesgo de timeout con imágenes difíciles. `/recognize` no autentica y el Backend no envía token. Por ello **no** exponer OCR públicamente. Opción inicial: `PLATE_RECOGNITION_ENABLED` deshabilitado y entrada manual. Si OCR es requisito de demo, contenedor Python en red privada con HTTPS/identidad de servicio, límite de tamaño y prueba de latencia; si la red privada no es posible, añadir auth de servicio antes de habilitar. Vercel Function no es destino recomendado para este binario/modelos y tiempos.
+OCR usa Flask/Gunicorn con 2 workers, OpenCV, NumPy, Pillow, binario y datos `tesseract-ocr-eng`; escribe imágenes solo en `TemporaryDirectory`, sin almacenamiento permanente. Cada candidato puede consumir hasta 4 s de subprocess y el Backend espera 12 s: hay riesgo de timeout con imágenes difíciles. `/recognize` exige `OCR_SERVICE_SECRET` y Backend lo envía como Bearer; `/health` sólo devuelve `ok`. Staging Free usa Web Service HTTPS autenticado; la red privada sigue preferida para producción. Vercel Function no es destino recomendado para este binario/modelos y tiempos.
 
 PrintAgent queda en `127.0.0.1:25443`, transporte HTTP loopback, origin HTTP localhost explícito, CORS/preflight y marcador `X-FuelFlow-Print`; disco `data-v12_1` y driver Windows. No Internet ni Vercel. En HTTPS staging se prueba cierre sin impresión FuelFlow y botón de impresión navegador en Control. La impresión física posterior exige revisión de restricciones LNA/mixed content en navegadores objetivo y un origin HTTPS autorizado de forma segura; ningún cambio de runtime ahora.
 
 Mailpit eliminado del MVP. Proveedor de correo real pendiente de configuración posterior. `PASSWORD_RESET_DELIVERY=disabled` deja el login y la operación disponibles; recuperación y solicitud pública de acceso muestran indisponibilidad explícita, sin crear una solicitud que no puede verificarse. El alta supervisada de usuarios de Control sigue disponible. Al configurar SMTP posteriormente, verificar `PRIMAX_CONTROL_PUBLIC_URL`, token de un solo uso por hash y 30 min de caducidad. No registrar tokens.
 
-PlateRecognition forma parte del MVP y se desplegará como componente opcional en runtime. FuelFlow conserva fallback manual cuando OCR no está disponible. Backend llama por HTTP JSON `POST /recognize` con imagen base64; el servicio Python no autentica, por lo que debe permanecer en red privada o detrás de una identidad de servicio antes de habilitarlo en staging. Nunca publicar el puerto Python.
+PlateRecognition forma parte del MVP y se desplegará como componente opcional en runtime. FuelFlow conserva fallback manual cuando OCR no está disponible. Backend llama por HTTP JSON `POST /recognize` con imagen base64; el servicio Python autentica cada reconocimiento. En staging Free usa HTTPS público con secreto exclusivo de servicio; la red privada es preferida para producción. Nunca publicar el puerto Python.
 
 ## 8. URLs, cookies y CORS
 
@@ -173,7 +173,7 @@ Perfil académico esperado: `APP_MODE=academic`, `NODE_ENV=production` (runtime 
 
 Rama actual `feature/primax-v12-1-dkos`: no merge, PR ni push en 5A. Para 5B, crear rama `staging/v12.1` revisada desde commit aprobado y usar Preview Deployments protegidos para pruebas. Fijar alias de staging estable y promover deployments específicos manualmente; evitar auto deploy de la rama feature hacia un entorno compartido. Production Deployments comerciales quedan fuera de esta versión académica. Verificar que proyectos Vercel apunten a `V12.1/FrontEnd_1`, `FrontEnd_2`, `FrontEnd_3`; Backend se configura en host Node aparte. No crear proyectos ahora.
 
-Orden futuro, sujeto a aprobación de despliegue: elegir hosts y HTTPS; preparar PostgreSQL y Redis dedicados; migrar y cargar datos académicos autorizados; publicar Backend persistente, BFF, FuelFlow, Control y Prime; probar E2E y seguridad. PlateRecognition forma parte del MVP: alojarlo separado en red privada, sin puerto público, y medir latencia antes de habilitarlo; FuelFlow conserva ingreso manual temporal. Configurar SMTP genérico y verificar correo en una fase posterior.
+Staging Backend/OCR usa servicios separados; OCR en Web Service Free HTTPS autenticado, con red privada preferida para producción. Medir latencia antes de habilitarlo; FuelFlow conserva ingreso manual. BFF, FuelFlow, Control y Prime corresponden a una fase posterior. Configurar SMTP genérico y verificar correo en una fase posterior.
 
 Rollback: frontends a deployment anterior (incluyendo config de proxy); Backend y BFF a imagen/deployment anterior compatible con esquema; DB a restore point/branch probado, coordinado con pausa de escrituras y reconciliación de pagos/inventario; Redis con namespace/version nuevo para invalidar sesiones o restauración si el proveedor la soporta. No asumir que rollback de código revierte migraciones ni datos. Registrar corte y snapshot conjunto. Evitar reutilizar sesión técnica tras rollback incompatible.
 
@@ -211,7 +211,7 @@ Fuentes de compatibilidad de proveedor consultadas sin usar cuentas: [Vercel Nod
 | Proxy Control same-origin | **RESUELTO** | `FrontEnd_3/vercel.json` y `api/v1/[...path].js` llaman a `server/controlProxy.js`, limitado a `/api/v1/control/*`, GET/POST, Origin exacto, body JSON y cookie `primax_control`; mantiene `Set-Cookie` validada. Build de producción acepta `PRIMAX_CONTROL_API_URL` relativo `/api/v1`. |
 | Cookie Control `Secure` académico | **RESUELTO** | Backend emite y borra `primax_control` con `Secure` cuando `APP_MODE` no es `local`, conservando HttpOnly, Strict, Path y ocho horas. Test de modos local/academic/production; proxy HTTPS rechaza cookie upstream insegura. |
 | BFF Node Function | **RESUELTO para preparación local** | `api/[...path].js` reutiliza `createGateway()`; `server/local.js` es el único listener. Tests de request con body preparseado, Origin, query, HMAC, timeout mediante `AbortSignal`, status, dos `Set-Cookie`, prefijo `__Host-` y política de ruta. No hay socket/archivo/estado mutable de proceso en el BFF. La integración en un deployment HTTPS es validación de 5B. |
-| OCR primer staging | **PREPARADO, PENDIENTE DE RECURSO** | Fase 5B-1 prevé Render Private Service en Virginia, misma red que Backend, con `PLATE_RECOGNITION_URL` HTTP interna de nombre exacto `primax-v12-1-ocr-staging-<hash>:8000`. El Backend académico rechaza HTTP público. `RecognitionService` conserva fallback manual con `PLATE_RECOGNITION_ENABLED=false` o 503. Validar red y tiempos antes de habilitar OCR. |
+| OCR primer staging | **PREPARADO, PENDIENTE DE RECURSO** | Fase 5B-1 prevé Render Web Service Free HTTPS en Virginia con `OCR_SERVICE_SECRET` sólo en Backend y OCR. Private Service sigue preferido para producción. El Backend académico rechaza HTTP público. `RecognitionService` conserva fallback manual con `PLATE_RECOGNITION_ENABLED=false` o 503. Validar red y tiempos antes de habilitar OCR. |
 
 Variables de Function **solo servidor**: FuelFlow `BACKEND_ORIGIN`, `FUELFLOW_PUBLIC_ORIGIN`, `KIOSK_GATEWAY_SECRET`; Control `BACKEND_ORIGIN`, `PRIMAX_CONTROL_PUBLIC_URL`. No se añadieron nombres de variables. En FrontEnd_3, `PRIMAX_CONTROL_API_URL` es pública y debe ser `/api/v1`; Prime conserva `PRIME_API_BASE_URL` HTTPS explícita y Bearer. Backend académico usa `CORS_ORIGINS` con los origins HTTPS exactos definidos en 5B. Nunca `*` con credentials. Preview URL variable sin alias estable exigiría ajustar origins y cookies por deployment; fijar alias antes de pruebas compartidas.
 

@@ -30,7 +30,10 @@ export class RecognitionService {
         ) + '/recognize',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.config.getOrThrow<string>('OCR_SERVICE_SECRET')}`,
+          },
           body: JSON.stringify({ image, kind }),
           signal: AbortSignal.timeout(12000),
         },
