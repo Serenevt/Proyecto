@@ -5,6 +5,9 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { createGateway } from '../server/gateway.js';
+import startFunction from '../api/v1/terminal/operations.js';
+import operationFunction from '../api/v1/terminal/operations/[id].js';
+import closeFunction from '../api/v1/terminal/operations/[id]/close.js';
 import { kioskRoute } from '../server/policy.js';
 
 const env = { FUELFLOW_PUBLIC_ORIGIN: 'https://fuel.example', BACKEND_ORIGIN: 'https://backend.example', KIOSK_GATEWAY_SECRET: randomBytes(32).toString('hex') };
@@ -135,6 +138,29 @@ test('terminal writes require technical cookie and matching CSRF without supervi
   assert.equal(accepted.statusCode, 200);
   assert.equal(calls[0].options.headers['x-terminal-session'], technical);
   assert.equal(calls[0].options.headers.authorization, '');
+});
+test('INICIAR nested Vercel Functions use the signed BFF and preserve operationId', async () => {
+  assert.equal(typeof startFunction, 'function');
+  assert.equal(typeof operationFunction, 'function');
+  assert.equal(typeof closeFunction, 'function');
+  const id = '33333333-3333-4333-8333-333333333333';
+  const technical = 'b'.repeat(64), technicalCsrf = 't'.repeat(43);
+  const cookie = `__Host-primax-terminal=${technical}; __Host-primax-terminal-csrf=${technicalCsrf}`;
+  const calls = [];
+  const accepted = await invoke('/api/v1/terminal/operations', { method: 'POST', body: { operationId: id }, headers: { cookie, 'x-csrf-token': technicalCsrf }, fetcher: backend(calls, (path) => path === '/api/v1/terminal/operations' ? Response.json({ operationId: id, status: 'OPEN' }) : null) });
+  assert.equal(accepted.statusCode, 200);
+  assert.equal(accepted.body.operationId, id);
+  assert.equal(calls[0].path, '/api/v1/terminal/operations');
+  assert.equal(calls[0].body.operationId, id);
+  assert.equal(calls[0].options.headers['x-terminal-session'], technical);
+  const checked = await invoke(`/api/v1/terminal/operations/${id}?id=${id}`, { headers: { cookie }, fetcher: backend([], () => Response.json({ operationId: id, status: 'OPEN' })) });
+  assert.equal(checked.statusCode, 200);
+  const wrongMethod = await invoke('/api/v1/terminal/operations', { method: 'GET', headers: { cookie }, fetcher: async () => { throw Error('upstream must not run'); } });
+  assert.equal(wrongMethod.statusCode, 403);
+  const unknown = await invoke(`/api/v1/terminal/operations/${id}/unknown`, { method: 'POST', body: {}, headers: { cookie, 'x-csrf-token': technicalCsrf }, fetcher: async () => { throw Error('upstream must not run'); } });
+  assert.equal(unknown.statusCode, 403);
+  const mismatchedId = await invoke(`/api/v1/terminal/operations/${id}?id=other`, { headers: { cookie }, fetcher: async () => { throw Error('upstream must not run'); } });
+  assert.equal(mismatchedId.statusCode, 403);
 });
 test('local pairing consumes the credential into an HttpOnly cookie and exposes only CSRF state', async () => {
   const id = '33333333-3333-4333-8333-333333333333', technical = 'd'.repeat(64);

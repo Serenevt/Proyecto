@@ -69,8 +69,10 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       const url = new URL(req.url, publicOrigin);
       // No client-controlled destination, headers, cookies or query forwarding.
       const dynamicTerminal = url.pathname.match(/^\/api\/v1\/supervisor\/terminals\/([0-9a-fA-F-]{36})\/(pair|rotate|revoke-session)$/);
+      const dynamicOperation = url.pathname.match(/^\/api\/v1\/terminal\/operations\/([0-9a-fA-F-]{36})(?:\/close)?$/);
       const frameworkId = url.searchParams.getAll('id');
-      if ((!dynamicTerminal && url.search) || (dynamicTerminal && (frameworkId.length > 1 || [...url.searchParams.keys()].some(key => key !== 'id') || (frameworkId.length && frameworkId[0] !== dynamicTerminal[1]))) || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
+      const routeId = dynamicTerminal?.[1] || dynamicOperation?.[1];
+      if ((!routeId && url.search) || (routeId && (frameworkId.length > 1 || [...url.searchParams.keys()].some(key => key !== 'id') || (frameworkId.length && frameworkId[0] !== routeId))) || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
       const cookieName = local ? LOCAL_COOKIE : COOKIE;
       const cookieAttributes = `Path=/; HttpOnly; ${local ? '' : 'Secure; '}SameSite=Strict`;
       const token = cookieToken(req.headers.cookie, cookieName);
