@@ -9,23 +9,23 @@ Browser FuelFlow ─HTTPS─> origin FuelFlow ─/api/*─> BFF Node Function �
                        └─/supervisor-api/*─> proxy acotado ─HTTPS─> Backend
 Browser Prime ─HTTPS/CORS exacto/Bearer─> Backend
 Browser Control ─HTTPS─> origin Control ─/api/v1/control/*─> proxy ─HTTPS─> Backend
-Backend ─TLS─> Neon PostgreSQL; ─HTTPS REST─> Upstash Redis; ─TLS─> SMTP de pruebas
+Backend ─TLS─> PostgreSQL; ─HTTPS REST─> Redis; ─red privada─> OCR opcional
 Backend ─HTTPS privado/autenticado, si se habilita─> OCR Python/Tesseract
 PC de estación ─loopback solamente─> PrintAgent (separado de los hosts públicos)
 ```
 
 | Componente | Ruta repo | Runtime actual | Dependencias | Estado local | Persistencia | Público | Recomendación staging |
 |---|---|---|---|---|---|---|---|
-| Backend | `V12.1/Backend` | Nest/Express Node 22, listener | Prisma, PostgreSQL, Redis REST, SMTP, OCR opcional | funcional local | DB/Redis externos | API HTTPS, rutas protegidas | servicio Node/container persistente |
+| Backend | `V12.1/Backend` | Nest/Express Node 22, listener | Prisma, PostgreSQL, Redis REST; SMTP futuro y OCR opcional en runtime | funcional local | DB/Redis externos | API HTTPS, rutas protegidas | servicio Node/container persistente |
 | FuelFlow | `V12.1/FrontEnd_1` | Nginx, HTML/JS/CSS | BFF, supervisor API, PrintAgent opcional | funcional local | no, browser local | sí | estático Vercel con Function BFF en el mismo proyecto |
 | FuelFlow BFF | `V12.1/FrontEnd_1/server/gateway.js`, `api/[...path].js` | Node detrás de Nginx; adaptador Function ya existe | Backend HMAC, cookies | funcional local | Redis a través del Backend | solo `/api/*` bajo origin FuelFlow | Vercel Node Function; probar contrato de red antes de 5B |
 | Prime | `V12.1/FrontEnd_2` | HTML/JS estático/Capacitor | Backend | funcional local | browser y DB vía API | sí | Vercel estático; API HTTPS explícita |
-| Primax Control | `V12.1/FrontEnd_3` | HTML/JS estático, proxy local Node | Backend, SMTP para verificación | funcional local | cookie/browser y DB vía API | sí | Vercel estático con proxy `/api/v1/control/*` |
+| Primax Control | `V12.1/FrontEnd_3` | HTML/JS estático, proxy local Node | Backend; SMTP futuro para verificación | funcional local | cookie/browser y DB vía API | sí | Vercel estático con proxy `/api/v1/control/*` |
 | PostgreSQL | `V12.1/PostgreSQL`, `Backend/prisma` | contenedor local | Prisma | funcional local | sí | no | Neon rama/base dedicada |
 | Redis | `V12.1/compose.yaml`, `Backend/src/kiosk/redis-store.ts` | TCP local; REST en perfil académico | sesiones y límites Kiosk | funcional local | TTL de sesiones | no | Upstash Redis REST dedicado |
-| PlateRecognition | `V12.1/PlateRecognition` | Flask/Gunicorn/Tesseract en contenedor | OpenCV, modelos Tesseract, tempfiles | funcional local | temporal, sin retención | no | deshabilitar inicialmente; si es requisito E2E, contenedor privado autenticado |
+| PlateRecognition | `V12.1/PlateRecognition` | Flask/Gunicorn/Tesseract en contenedor | OpenCV, modelos Tesseract, tempfiles | funcional local | temporal, sin retención | no | contenedor privado protegido; fallback manual si no está disponible |
 | PrintAgent | `V12.1/PrintAgent` | Node/PowerShell/driver Windows | USB PeriPage, disco local | contrato local, hardware pendiente | cola local | no | solo PC de estación |
-| Mail/SMTP | `Backend/src/auth/recovery-delivery.ts` | Mailpit local | SMTP | funcional local | proveedor externo | no | SMTP de pruebas con TLS |
+| Mail/SMTP | `Backend/src/auth/recovery-delivery.ts` | entrega deshabilitada | SMTP genérico | pendiente | proveedor externo | no | configurar posteriormente |
 
 No se copia Docker Compose 1:1: DB, Redis, estáticos, Function, proceso Nest y periféricos tienen necesidades distintas.
 
@@ -122,7 +122,9 @@ OCR usa Flask/Gunicorn con 2 workers, OpenCV, NumPy, Pillow, binario y datos `te
 
 PrintAgent queda en `127.0.0.1:25443`, transporte HTTP loopback, origin HTTP localhost explícito, CORS/preflight y marcador `X-FuelFlow-Print`; disco `data-v12_1` y driver Windows. No Internet ni Vercel. En HTTPS staging se prueba cierre sin impresión FuelFlow y botón de impresión navegador en Control. La impresión física posterior exige revisión de restricciones LNA/mixed content en navegadores objetivo y un origin HTTPS autorizado de forma segura; ningún cambio de runtime ahora.
 
-Mailpit es local. Staging usa SMTP de pruebas con TLS requerido (`recovery-delivery.ts`: `requireTLS`), remitente aprobado y destinatarios de ensayo. `PASSWORD_RESET_DELIVERY` debe permitir envío `smtp` si se prueba recuperación/verificación Control; sin envío, Control request access crea registro pero falla la entrega. Verificar enlace real `PRIMAX_CONTROL_PUBLIC_URL`, token de un solo uso por hash y 30 min de caducidad. No registrar tokens ni enviar a usuarios reales.
+Mailpit eliminado del MVP. Proveedor de correo real pendiente de configuración posterior. `PASSWORD_RESET_DELIVERY=disabled` deja el login y la operación disponibles; recuperación y solicitud pública de acceso muestran indisponibilidad explícita, sin crear una solicitud que no puede verificarse. El alta supervisada de usuarios de Control sigue disponible. Al configurar SMTP posteriormente, verificar `PRIMAX_CONTROL_PUBLIC_URL`, token de un solo uso por hash y 30 min de caducidad. No registrar tokens.
+
+PlateRecognition forma parte del MVP y se desplegará como componente opcional en runtime. FuelFlow conserva fallback manual cuando OCR no está disponible. Backend llama por HTTP JSON `POST /recognize` con imagen base64; el servicio Python no autentica, por lo que debe permanecer en red privada o detrás de una identidad de servicio antes de habilitarlo en staging. Nunca publicar el puerto Python.
 
 ## 8. URLs, cookies y CORS
 
@@ -161,7 +163,7 @@ Las cookies `*-local` HTTP solo existen con `FUELFLOW_LOCAL_HTTP`; no usarlas en
 | Control | ninguno | proxy upstream servidor | `PRIMAX_CONTROL_API_URL` | `PRIMAX_CONTROL_BACKEND_URL` | `PRIMAX_CONTROL_API_URL` |
 | OCR | credencial de servicio por implementar si se expone | `PLATE_RECOGNITION_ENABLED`, `PLATE_RECOGNITION_URL` en Backend | ninguno | ninguno | solo si se habilita |
 | PrintAgent | configuración/cola local | puerto/origins de config local | ninguno | `config.http.local.json` y `data-v12_1` | ninguno |
-| SMTP | `SMTP_USER`, `SMTP_PASSWORD` | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM` | ninguno | Mailpit | SMTP de pruebas |
+| SMTP | `SMTP_USER`, `SMTP_PASSWORD` | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM` | ninguno | deshabilitado | proveedor pendiente |
 
 `PAYMENT_WEBHOOK_SECRET` y `CULQI_SECRET_KEY` pertenecen a integración comercial y no se configuran para demo académica; ningún secreto, URL con token, hash de contraseña, `DATABASE_URL`, `KIOSK_API_KEY`, `KIOSK_GATEWAY_SECRET`, Redis token ni credencial SMTP puede entrar en `dist/`/`www/` o variables públicas. La URL de Prime y Control sí aparece en JS. No usar `.env` local para staging.
 
@@ -171,7 +173,7 @@ Perfil académico esperado: `APP_MODE=academic`, `NODE_ENV=production` (runtime 
 
 Rama actual `feature/primax-v12-1-dkos`: no merge, PR ni push en 5A. Para 5B, crear rama `staging/v12.1` revisada desde commit aprobado y usar Preview Deployments protegidos para pruebas. Fijar alias de staging estable y promover deployments específicos manualmente; evitar auto deploy de la rama feature hacia un entorno compartido. Production Deployments comerciales quedan fuera de esta versión académica. Verificar que proyectos Vercel apunten a `V12.1/FrontEnd_1`, `FrontEnd_2`, `FrontEnd_3`; Backend se configura en host Node aparte. No crear proyectos ahora.
 
-Orden futuro exacto, tras resolver bloqueantes: (1) seleccionar hosts, HTTPS/aliases y política de acceso; (2) Neon dedicado + restore point; (3) Upstash Redis REST dedicado; (4) SMTP de pruebas y remitente; (5) revisar SQL y ejecutar migraciones en ventana con URL directa; (6) cargar solo datos académicos autorizados; (7) Backend persistente con Neon/Redis/SMTP, OCR deshabilitado; (8) BFF Function y proxy Supervisor bajo FuelFlow; (9) FuelFlow estático; (10) proxy Control y Control estático, verificar email; (11) Prime estático con API HTTPS/CORS; (12) E2E y seguridad; (13) OCR privado opcional solo tras resolver auth/red y timeout.
+Orden futuro, sujeto a aprobación de despliegue: elegir hosts y HTTPS; preparar PostgreSQL y Redis dedicados; migrar y cargar datos académicos autorizados; publicar Backend persistente, BFF, FuelFlow, Control y Prime; probar E2E y seguridad. PlateRecognition forma parte del MVP: alojarlo separado en red privada, sin puerto público, y medir latencia antes de habilitarlo; FuelFlow conserva ingreso manual temporal. Configurar SMTP genérico y verificar correo en una fase posterior.
 
 Rollback: frontends a deployment anterior (incluyendo config de proxy); Backend y BFF a imagen/deployment anterior compatible con esquema; DB a restore point/branch probado, coordinado con pausa de escrituras y reconciliación de pagos/inventario; Redis con namespace/version nuevo para invalidar sesiones o restauración si el proveedor la soporta. No asumir que rollback de código revierte migraciones ni datos. Registrar corte y snapshot conjunto. Evitar reutilizar sesión técnica tras rollback incompatible.
 
@@ -213,4 +215,4 @@ Fuentes de compatibilidad de proveedor consultadas sin usar cuentas: [Vercel Nod
 
 Variables de Function **solo servidor**: FuelFlow `BACKEND_ORIGIN`, `FUELFLOW_PUBLIC_ORIGIN`, `KIOSK_GATEWAY_SECRET`; Control `BACKEND_ORIGIN`, `PRIMAX_CONTROL_PUBLIC_URL`. No se añadieron nombres de variables. En FrontEnd_3, `PRIMAX_CONTROL_API_URL` es pública y debe ser `/api/v1`; Prime conserva `PRIME_API_BASE_URL` HTTPS explícita y Bearer. Backend académico usa `CORS_ORIGINS` con los origins HTTPS exactos definidos en 5B. Nunca `*` con credentials. Preview URL variable sin alias estable exigiría ajustar origins y cookies por deployment; fijar alias antes de pruebas compartidas.
 
-En 5B verificar routing Vercel real, límites del plan (body/duración), `Set-Cookie`/logout bajo HTTPS, SMTP de prueba, Redis/DB dedicados y E2E. Esta verificación depende de los recursos que 5A.1 prohíbe crear; no es un cambio de código pendiente. Ninguna Function de Control/Supervisor reemplaza la ruta de ventas BFF HMAC.
+En 5B verificar routing Vercel real, límites del plan (body/duración), `Set-Cookie`/logout bajo HTTPS, Redis/DB dedicados y E2E. Esta verificación depende de los recursos que 5A.1 prohíbe crear; no es un cambio de código pendiente. Ninguna Function de Control/Supervisor reemplaza la ruta de ventas BFF HMAC.

@@ -6,15 +6,15 @@ Estado: guía de preparación actualizada en fase 5A.1. No se creó ni consultó
 
 | Componente | Uso en staging | Consideraciones |
 |---|---|---|
-| Backend | Servicio Node/NestJS persistente | Debe alcanzar PostgreSQL, Redis y SMTP; OCR queda deshabilitado inicialmente. Health check `/api/v1/health`. |
+| Backend | Servicio Node/NestJS persistente | Debe alcanzar PostgreSQL y Redis; SMTP es posterior y OCR puede quedar deshabilitado temporalmente. Health check `/api/v1/health`. |
 | FrontEnd_1 | FuelFlow estático más BFF Node Function y proxy Supervisor | Handlers compartidos probados localmente; validar rutas y límites en HTTPS real durante 5B. |
 | FrontEnd_2 | Primax Prime estático | API HTTPS absoluta hacia Backend con Bearer y CORS exacto. |
 | FrontEnd_3 | Primax Control estático más Function `/api/v1/control/*` | API relativa y cookie HttpOnly del mismo origin; validar login, dashboard y refresh en HTTPS real. |
 | PostgreSQL | Base Neon dedicada exclusivamente a staging | No usar DB de producción, local ni compartida. |
 | Redis | Redis accesible por TLS con persistencia/HA apropiada | KioskStore necesita operaciones atómicas y lectura consistente desde el primario. |
-| PlateRecognition | Deshabilitado en el primer staging | Entrada manual disponible; solo habilitar luego de proveer red privada/autenticación. |
+| PlateRecognition | Parte del MVP, opcional en runtime | Entrada manual disponible; solo habilitar luego de proveer red privada/autenticación. |
 | PrintAgent | Agente local del kiosco/PC | Nunca desplegar como función serverless ni exponer a Internet; solo loopback. |
-| Mail | SMTP de staging | Dominio y destinatarios de prueba verificados; no usar credenciales reales en imágenes/logs. |
+| Correo | Proveedor real pendiente | `PASSWORD_RESET_DELIVERY=disabled` hasta configurar SMTP genérico. |
 
 ## Variables por componente
 
@@ -31,8 +31,8 @@ Usar un gestor de secretos y variables independientes por entorno. Estos nombres
 - `CORS_ORIGINS`: lista exacta de origins HTTPS finales, sin rutas, barra final ni comodín.
 - `PRIMAX_CONTROL_PUBLIC_URL`: origin público HTTPS de Control, usado para construir el enlace de verificación de correo; no dejar el fallback localhost en staging.
 - `PAYMENT_ENV=demo`, `DEMO_WALLET_ENABLED=true`; no configurar credenciales de proveedor real.
-- SMTP `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, con TLS requerido.
-- OCR inicial: `PLATE_RECOGNITION_ENABLED=false`; `PLATE_RECOGNITION_URL` privada y `PLATE_CONFIDENCE_THRESHOLD` solo si se habilita posteriormente.
+- SMTP futuro `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, con TLS requerido.
+- OCR: `PLATE_RECOGNITION_ENABLED=true` cuando exista un servicio protegido y alcanzable mediante `PLATE_RECOGNITION_URL` HTTPS; `PLATE_CONFIDENCE_THRESHOLD` controla la sugerencia. Si aún no está listo, `false` habilita el fallback manual sin bloquear el MVP.
 - `SHOW_DEMO_ADMIN_CREDENTIALS=false`, Swagger deshabilitado, sin credenciales de demo sembradas en staging compartido.
 
 ### FuelFlow / gateway
@@ -93,7 +93,7 @@ La lista actual de migraciones se obtiene localmente con `find Backend/prisma/mi
 - [ ] Crear secretos nuevos en el gestor del entorno; no reutilizar `.env` local.
 - [ ] Confirmar redis privado, TLS, lectura consistente, namespace dedicado y revocación probada.
 - [ ] Confirmar station, combustible, terminal, usuario Supervisor y cuenta SUPER_ADMIN de staging; no reutilizar credenciales DEMO por defecto.
-- [ ] Confirmar SMTP de pruebas, remitentes permitidos y Mailpit ausente del entorno público.
+- [ ] Confirmar que la ausencia de SMTP no bloquea login ni operaciones; planificar proveedor real posteriormente.
 - [ ] Proteger OCR con red privada/autenticación de servicio y revisar privacidad de imágenes.
 - [ ] Instalar PrintAgent únicamente en el PC de kiosco; validar loopback, origin exacto y fallback. No publicar su puerto.
 - [ ] Revisar logs, retención y redacción de PII; no registrar cookies, contraseñas, JWT, códigos de correo ni contenido sensible.
@@ -103,12 +103,12 @@ La lista actual de migraciones se obtiene localmente con `find Backend/prisma/mi
 ## Pendientes concretos antes de la primera revisión de staging
 
 0. **Bloqueante funcional de Terminal Binding RESUELTO en local (Fase 4D-3):** Compose ejecuta Nginx → BFF HMAC → Backend; pairing Supervisor entrega solo cookie técnica HttpOnly al navegador y FuelFlow inicia/recupera `TerminalOperation`. Las tres creaciones financieras Kiosk exigen credencial técnica vigente y operación activa; `KIOSK_API_KEY` directo recibe 403. El E2E HTTP sobre `127.0.0.1:26081` completó postpago y Yape DEMO, reintentos, progress, transacciones y cierres. PostgreSQL verificó vínculos técnicos y un movimiento `DISPENSE` por venta; intentos sin binding no dejaron autorización, reserva ni transacción. El Supervisor cerró turno durante una operación prepago: esa operación finalizó y una nueva fue rechazada. Phase 1A, inventario, incidentes, Control, gateway y FuelFlow pasaron localmente. En staging HTTPS, conservar `Secure` y `__Host-` para la cookie técnica; el modo HTTP está limitado a loopback local. Repetir la prueba de la frontera pública con dominios y Redis reales antes de desplegar.
-1. Elegir y aprobar dominios HTTPS y alojamiento para Backend persistente, Redis, OCR y SMTP. No se eligieron en esta fase.
+1. Elegir y aprobar dominios HTTPS y alojamiento para Backend persistente, Redis y OCR protegido. El proveedor SMTP se definirá después. No se eligieron en esta fase.
 2. Crear Neon y Redis dedicados, revisar aislamiento/backups/restore point y guardar secretos nuevos en un gestor. Ninguno se consultó ni se creó aquí.
 3. Revisar el flujo del gateway HMAC de FuelFlow en un host HTTPS real, sus cookies Secure y revocación Redis. Compose local usa proxy Nginx loopback, no pretende simular esta frontera pública.
 4. **RESUELTO localmente en 5A.1:** Control tiene `vercel.json` y proxy Function same-origin; Prime mantiene API HTTPS explícita/Bearer y CORS exacto. Probar ambos con origins HTTPS definitivos en 5B.
 5. Decidir el alojamiento/runtime de Backend y probar conexiones Prisma bajo sus límites. No asumir que la API NestJS puede ejecutarse sin ajustes como función serverless.
-6. **RESUELTO por política inicial OFF:** `PLATE_RECOGNITION_ENABLED=false` en primer staging; captura manual disponible y sin llamada Backend→OCR. Proteger con red privada/autenticación antes de habilitar OCR más adelante.
+6. **OCR del MVP:** desplegar como servicio separado protegido cuando esté listo; `PLATE_RECOGNITION_ENABLED=false` permite comenzar temporalmente con captura manual. Nunca exponer Flask directamente a Internet.
 7. En el PC Windows del kiosco, preparar impresora/driver y una configuración nueva de PrintAgent en `data-v12_1`; revisar cola y fallback allí. En Linux solo quedaron validados contratos y fallback navegador, sin impresión física.
 8. Instalar Chromium/Playwright en un entorno CI si se exige la pasada móvil de navegador. En esta VM faltan `@playwright/test` para FE2 y Chromium; las suites de lógica y API reales sí pasaron.
 9. Aprobar el checklist de Neon por separado y ejecutar luego la revisión de migraciones con el responsable; no usar el conteo local como evidencia del estado remoto.

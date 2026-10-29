@@ -115,7 +115,7 @@ export function validateEnvironment(env: Record<string, unknown>) {
       throw new Error(`${key} must be a random secret (32+ characters)`);
   }
   if (
-    !['disabled', 'smtp', 'mailpit'].includes(
+    !['disabled', 'smtp'].includes(
       String(env.PASSWORD_RESET_DELIVERY ?? 'disabled'),
     )
   )
@@ -123,7 +123,7 @@ export function validateEnvironment(env: Record<string, unknown>) {
   if (
     env.APP_MODE === 'production' &&
     (env.SHOW_DEMO_ADMIN_CREDENTIALS === 'true' ||
-      ['demo', 'mailpit'].includes(String(env.PASSWORD_RESET_DELIVERY)))
+      env.PASSWORD_RESET_DELIVERY === 'demo')
   )
     throw new Error('Production cannot enable local demo services');
   if (
@@ -167,8 +167,8 @@ export function validateEnvironment(env: Record<string, unknown>) {
       throw new Error('Production requires Culqi live configuration');
     if (String(env.PAYMENT_WEBHOOK_SECRET ?? '').length < 32)
       throw new Error('Production requires a webhook secret of 32+ characters');
-    if (['mailpit', 'localhost', '127.0.0.1'].includes(String(env.SMTP_HOST)))
-      throw new Error('Production SMTP cannot use local Mailpit');
+    if (['localhost', '127.0.0.1'].includes(String(env.SMTP_HOST)))
+      throw new Error('Production SMTP cannot use a loopback host');
     if (!env.CORS_ORIGINS)
       throw new Error('Explicit production origins required');
     if (!String(env.PLATE_RECOGNITION_URL ?? '').startsWith('https://'))

@@ -12,6 +12,6 @@
 
 ## Correo actual y adaptador heredado
 
-Compose ahora configura `PASSWORD_RESET_DELIVERY=mailpit`: envía SMTP real a un buzón local atrapado en http://localhost:10025. Para entrega externa, Nodemailer admite proveedor SMTP configurable. Consulta [SMTP-RECOVERY.md](SMTP-RECOVERY.md). No existe proveedor SMS. La caducidad y el límite de intentos son configurables; los valores anteriores siguen siendo los defaults.
+Compose configura `PASSWORD_RESET_DELIVERY=disabled`: la recuperación devuelve indisponibilidad explícita. El proveedor real queda pendiente; Nodemailer conserva SMTP genérico configurable. Consulta [SMTP-RECOVERY.md](SMTP-RECOVERY.md). No existe proveedor SMS. La caducidad y el límite de intentos son configurables; los valores anteriores siguen siendo los defaults.
 
 El adapter de bandeja demo fue retirado en V11. Para pruebas locales usar Mailpit; para produccion configurar SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD y SMTP_FROM. No existe lector de codigos desde una bandeja ficticia. Ver DEPLOYMENT-V11.md para configuracion y limites reales.
