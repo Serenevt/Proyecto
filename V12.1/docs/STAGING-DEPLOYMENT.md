@@ -1,15 +1,15 @@
 # V12.1 — despliegue de staging (fase 5B-1)
 
-Estado al 28-10-2026: **preparado localmente; infraestructura remota sin aprovisionar ni validar**. No se obtuvo sesión de Neon, Upstash ni Render. GitHub CLI sí tiene sesión; no se hizo push. No se consultaron inventarios de las tres plataformas, por lo que no se puede clasificar ningún recurso remoto previo como V12 o V12.1. No reutilizar recursos V12.
+Estado al 29-10-2026: **staging backend activo**. Neon V12.1 dedicado en `aws-us-east-1`, base `primax_v12_1_staging`, 26 migraciones aplicadas y seed académico. Upstash Redis V12.1 TLS en `us-east-1`, comandos REST verificados. Backend y OCR son Web Services Render Free en Virginia. Health Backend, sesión Kiosk/Redis, OCR autenticado y rechazo 401 remoto validados. Frontends y PrintAgent cloud no desplegados. Neon V12 antigua intacta.
 
 ## Destino de esta fase
 
 | Componente | Nombre previsto | Región | Acceso | Estado |
 |---|---|---|---|---|
-| PostgreSQL Neon | `primax-v12-1-staging` | AWS us-east-1 | TLS, pooled runtime y direct migración | Pendiente |
-| Upstash Redis | `primax-v12-1-redis-staging` | AWS us-east-1 | REST HTTPS Bearer según `KioskStore` actual | Pendiente |
-| Backend Render | `primax-v12-1-api-staging` | Virginia | Web Service público HTTPS; root `V12.1/Backend`, Dockerfile, `/api/v1/health` | Pendiente |
-| OCR Render | `primax-v12-1-ocr-staging` | Virginia, mismo workspace | Web Service Free HTTPS, `POST /recognize` autenticado, `/health` mínimo | Pendiente |
+| PostgreSQL Neon | `primax-v12-1-staging` | AWS us-east-1 | TLS, pooled runtime y direct migración | Activo y validado |
+| Upstash Redis | `primax-v12-1-redis-staging` | AWS us-east-1 | REST HTTPS Bearer según `KioskStore` actual | Activo y validado |
+| Backend Render | `primax-v12-1-api-staging` | Virginia | Web Service público HTTPS; root `V12.1/Backend`, Dockerfile, `/api/v1/health` | Activo y validado |
+| OCR Render | `primax-v12-1-ocr-staging` | Virginia, mismo workspace | Web Service Free HTTPS, `POST /recognize` autenticado, `/health` mínimo | Activo y validado |
 
 FuelFlow+BFF, Prime y Control quedan para la fase Vercel posterior. PrintAgent queda en la estación local. Mailpit fue eliminado. Correo real sigue pendiente y `PASSWORD_RESET_DELIVERY=disabled` deja los flujos centrales disponibles.
 
@@ -42,14 +42,14 @@ No configurar SMTP, Culqi real ni claves locales DEMO. `KIOSK_GATEWAY_SECRET` se
 
 Crear conexión **PostgreSQL**. En la consola Neon, seleccionar el proyecto/base V12.1 y obtener de la cadena **directa** Host, Port (normalmente 5432), Database y User; introducir la contraseña en DBeaver, no en este repositorio. En propiedades SSL usar SSL activado y `sslmode=require` (o el modo más estricto que Neon y el cliente permitan). Verificar identidad del proyecto y consultar en modo lectura `_prisma_migrations`, `Station`, `Pump`, `Terminal`, `Fuel`, `FuelInventory` y usuarios/grants; limitar acceso a quien participa en la demostración. No exportar dumps con datos personales al repositorio.
 
-## Controles de aceptación pendientes
+## Controles de aceptación
 
-- [ ] Inventario remoto V12/V12.1 y recursos dedicados creados.
-- [ ] Neon: TLS, 26 migraciones aplicadas y seed mínimo visible desde DBeaver.
-- [ ] Upstash: REST HTTPS, PING/SET/GET/EVAL/DEL verificados y key temporal eliminada.
-- [ ] Render: Backend HTTPS y health 200 con Prisma; URL pública registrada.
-- [ ] OCR: Web Service Free HTTPS: health mínimo, rechazo 401 sin credencial y reconocimiento desde Backend autenticado.
-- [ ] Backend ↔ Neon/Redis/OCR comprobados sin registrar secretos.
-- [ ] Correo deshabilitado; CORS exacto; Frontends aún sin desplegar.
+- [x] Inventario remoto V12/V12.1 y recursos dedicados creados.
+- [x] Neon: TLS, 26 migraciones aplicadas y seed académico verificado por Prisma; DBeaver pendiente de prueba humana.
+- [x] Upstash: REST HTTPS, PING/SET/GET/EVAL/DEL verificados y key temporal eliminada.
+- [x] Render: Backend HTTPS y health 200 con Prisma; URL pública registrada.
+- [x] OCR: Web Service Free HTTPS: health mínimo, rechazo 401 sin credencial y reconocimiento desde Backend autenticado.
+- [x] Backend ↔ Neon/Redis/OCR comprobados sin registrar secretos.
+- [x] Correo deshabilitado; CORS exacto al origin Backend mientras no hay frontend; Frontends aún sin desplegar.
 
-El commit local deberá llegar a GitHub antes de que Render construya esta versión desde la branch. El push requiere la siguiente acción del usuario y no forma parte de esta fase automática.
+El commit de código se publicó únicamente en `feature/primax-v12-1-dkos` para los builds de Render. No hubo push ni merge a `main`.

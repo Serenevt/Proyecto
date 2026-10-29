@@ -84,4 +84,4 @@ V12.1 aplica principios de Spec-Driven Development mediante [especificaciones ve
 
 ## Staging
 
-La fase 5B-1 está preparada localmente; Neon, Upstash y Render siguen pendientes de sesión y aprovisionamiento. Sigue el [procedimiento de despliegue](docs/STAGING-DEPLOYMENT.md) y la [lista de preparación](docs/STAGING-READINESS.md). La guía histórica `DEPLOYMENT-VERCEL.md` no describe este MVP.
+La fase 5B-1 tiene Neon, Upstash, Backend Render y OCR Render Free activos y validados; los frontends aún no están desplegados. Sigue el [procedimiento de despliegue](docs/STAGING-DEPLOYMENT.md) y la [lista de preparación](docs/STAGING-READINESS.md). La guía histórica `DEPLOYMENT-VERCEL.md` no describe este MVP.

@@ -1,6 +1,6 @@
 # V12.1 — preparación para staging
 
-Estado: fase 5B-1 iniciada. La preparación y el procedimiento actual están en [STAGING-DEPLOYMENT.md](STAGING-DEPLOYMENT.md). Sin sesión de Neon, Upstash ni Render, no se ha podido inventariar ni crear infraestructura remota; migraciones, seed y despliegue siguen pendientes. La matriz técnica está en `STAGING-ARCHITECTURE.md`, sección 13.
+Estado: fase 5B-1 activa y validada para Backend/OCR/Neon/Upstash. Evidencia y procedimiento en [STAGING-DEPLOYMENT.md](STAGING-DEPLOYMENT.md). Frontends, DBeaver humano y hardware local siguen para fases posteriores. La matriz técnica está en `STAGING-ARCHITECTURE.md`, sección 13.
 
 ## Componentes y alojamiento previsto
 
