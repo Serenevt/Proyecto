@@ -30,7 +30,7 @@ suite('Primax Control foundation on isolated PostgreSQL', () => {
   const incidentId = randomUUID();
   const accessRequestId = randomUUID();
   let accessRequestUserId: string | null = null;
-  const delivery = { sendAdminVerification: jest.fn(async () => undefined) };
+  const delivery = { mode: 'smtp', sendAdminVerification: jest.fn(async () => undefined) };
 
   async function auth(userId: string, cookie = false) {
     const token = await jwt.signAsync({ sub: userId, ver: 0 });

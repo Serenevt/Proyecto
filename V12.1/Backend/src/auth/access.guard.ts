@@ -265,11 +265,11 @@ export class AccessGuard implements CanActivate {
   }
 
   private newKioskSale(req: Request) {
-    return req.method === 'POST' && [
+    return req.method === 'POST' && ([
       '/api/v1/authorizations',
       '/api/v1/online-orders',
       '/api/v1/transactions',
-    ].includes(req.path);
+    ].includes(req.path) || /^\/api\/v1\/online-orders\/[0-9a-fA-F-]{36}\/reselect$/.test(req.path));
   }
 
   private async assertSaleBinding(req: Request, kioskStationId?: string) {

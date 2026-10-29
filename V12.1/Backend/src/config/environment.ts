@@ -115,7 +115,7 @@ export function validateEnvironment(env: Record<string, unknown>) {
       throw new Error(`${key} must be a random secret (32+ characters)`);
   }
   if (
-    !['disabled', 'smtp', 'mailpit'].includes(
+    !['disabled', 'smtp'].includes(
       String(env.PASSWORD_RESET_DELIVERY ?? 'disabled'),
     )
   )
@@ -123,7 +123,7 @@ export function validateEnvironment(env: Record<string, unknown>) {
   if (
     env.APP_MODE === 'production' &&
     (env.SHOW_DEMO_ADMIN_CREDENTIALS === 'true' ||
-      ['demo', 'mailpit'].includes(String(env.PASSWORD_RESET_DELIVERY)))
+      env.PASSWORD_RESET_DELIVERY === 'demo')
   )
     throw new Error('Production cannot enable local demo services');
   if (
@@ -167,8 +167,8 @@ export function validateEnvironment(env: Record<string, unknown>) {
       throw new Error('Production requires Culqi live configuration');
     if (String(env.PAYMENT_WEBHOOK_SECRET ?? '').length < 32)
       throw new Error('Production requires a webhook secret of 32+ characters');
-    if (['mailpit', 'localhost', '127.0.0.1'].includes(String(env.SMTP_HOST)))
-      throw new Error('Production SMTP cannot use local Mailpit');
+    if (['localhost', '127.0.0.1'].includes(String(env.SMTP_HOST)))
+      throw new Error('Production SMTP cannot use a loopback host');
     if (!env.CORS_ORIGINS)
       throw new Error('Explicit production origins required');
     if (!String(env.PLATE_RECOGNITION_URL ?? '').startsWith('https://'))
@@ -215,14 +215,32 @@ export function validateEnvironment(env: Record<string, unknown>) {
   const ocr = String(
     env.PLATE_RECOGNITION_URL ?? 'http://plate-recognition:8000',
   );
-  if (
-    env.APP_MODE === 'academic' &&
-    env.PLATE_RECOGNITION_ENABLED !== 'false' &&
-    !ocr.startsWith('https://')
-  )
-    throw new Error('Public OCR requires HTTPS or explicit disablement');
-  if (!['http:', 'https:'].includes(new URL(ocr).protocol))
+  let ocrUrl: URL;
+  try {
+    ocrUrl = new URL(ocr);
+  } catch {
     throw new Error('Invalid PLATE_RECOGNITION_URL');
+  }
+  if (!['http:', 'https:'].includes(ocrUrl.protocol))
+    throw new Error('Invalid PLATE_RECOGNITION_URL');
+  if (env.APP_MODE === 'academic' && env.PLATE_RECOGNITION_ENABLED !== 'false') {
+    // Render private services use a single-label internal hostname and HTTP.
+    // Only the dedicated staging OCR service may use that exception.
+    const renderPrivateOcr =
+      ocrUrl.protocol === 'http:' &&
+      /^primax-v12-1-ocr-staging-[a-z0-9]+$/.test(ocrUrl.hostname) &&
+      ocrUrl.port === '8000' &&
+      ocrUrl.pathname === '/' &&
+      !ocrUrl.username && !ocrUrl.password && !ocrUrl.search && !ocrUrl.hash;
+    if (ocrUrl.protocol !== 'https:' && !renderPrivateOcr)
+      throw new Error('Academic OCR requires HTTPS or the dedicated Render private service');
+    if (String(env.OCR_SERVICE_SECRET ?? '').length < 32 ||
+        String(env.OCR_SERVICE_SECRET).includes('REPLACE_'))
+      throw new Error('OCR_SERVICE_SECRET must be a private random secret');
+    if (ocrUrl.protocol === 'https:' &&
+        (ocrUrl.username || ocrUrl.password || ocrUrl.search || ocrUrl.hash || ocrUrl.pathname !== '/'))
+      throw new Error('Academic OCR URL must be an HTTPS origin');
+  }
   return {
     ...env,
     APP_MODE: String(env.APP_MODE ?? 'local'),

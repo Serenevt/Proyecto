@@ -3,7 +3,7 @@ const {randomUUID,randomInt}=require('node:crypto');
 require('./test-env.cjs');
 const prime='http://localhost:'+process.env.FRONTEND2_PORT;
 const api='http://localhost:'+(process.env.PORT||10000)+'/api/v1';
-test('real DNI login and foreign passport registration with SMTP local password recovery',async({browser,request})=>{
+test('real DNI login and foreign passport registration with disabled password recovery',async({browser,request})=>{
  const password='IdentityPassword123!',next='ChangedPassword456!';
  const dni=String(randomInt(60000000,69999999));
  const email=randomUUID()+'@example.test';
@@ -16,15 +16,7 @@ test('real DNI login and foreign passport registration with SMTP local password 
  const oldToken=await view.evaluate(()=>JSON.parse(localStorage.getItem('prime_session:v2')).token);
  const member=await (await request.get(api+'/memberships/me',{headers:{Authorization:'Bearer '+oldToken}})).json();expect(member.passport).toBe(passport);expect(member.dni).toBeNull();
  await foreign.close();
- const recovering=await browser.newContext({viewport:{width:390,height:844}});const resetPage=await recovering.newPage();await resetPage.goto(prime);await resetPage.getByRole('link',{name:'¿Olvidaste tu contraseña?'}).click();await resetPage.getByLabel('Correo',{exact:true}).fill(foreignEmail);await resetPage.getByRole('button',{name:'Solicitar código'}).click();await expect(resetPage.locator('#main')).toContainText('Correo local');
- const mailpit='http://localhost:'+(process.env.MAILPIT_PORT||10025);
- const messages=await (await request.get(mailpit+'/api/v1/messages')).json();
- const message=messages.messages.find(m=>m.To.some(t=>t.Address===foreignEmail));expect(message).toBeDefined();
- const content=await (await request.get(mailpit+'/api/v1/message/'+message.ID)).json();
- const mailbox={code:content.Text.match(/\b\d{8}\b/)[0]};
- await resetPage.getByLabel('Código de recuperación').fill(mailbox.code);await resetPage.getByRole('button',{name:'Verificar código'}).click();await resetPage.getByLabel('Nueva contraseña').fill(next);await resetPage.getByRole('button',{name:'Guardar contraseña'}).click();await expect(resetPage.locator('#main').getByRole('status')).toContainText('actualizada');
- expect((await request.get(api+'/memberships/me',{headers:{Authorization:'Bearer '+oldToken}})).status()).toBe(401);
- expect((await request.post(api+'/auth/login',{data:{email:foreignEmail,password}})).status()).toBe(401);
- await resetPage.getByRole('link',{name:'Volver a iniciar sesión'}).click();await resetPage.getByLabel('Correo o DNI',{exact:true}).fill(foreignEmail);await resetPage.getByLabel('Contraseña',{exact:true}).fill(next);await resetPage.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(resetPage.getByRole('heading',{name:'Hola, Foreign Test'})).toBeVisible();
- await recovering.close();
+ const recovery=await request.post(api+'/auth/forgot-password',{data:{email:foreignEmail}});
+ expect(recovery.status()).toBe(503);
+ expect((await recovery.json()).message).toContain('no está configurada');
 });

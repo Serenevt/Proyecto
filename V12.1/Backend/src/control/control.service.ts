@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -42,6 +43,8 @@ export class ControlService {
       throw new ForbiddenException(
         'SUPER_ADMIN se asigna mediante SYSTEM_ADMIN',
       );
+    if (this.delivery.mode !== 'smtp')
+      throw new ServiceUnavailableException('La solicitud por correo no está disponible. Solicita al administrador el alta supervisada.');
     const email = input.email.trim().toLowerCase();
     const existing = await this.db.user.findUnique({ where: { email } });
     if (existing)
@@ -103,6 +106,8 @@ export class ControlService {
   }
 
   async resendVerification(email: string) {
+    if (this.delivery.mode !== 'smtp')
+      throw new ServiceUnavailableException('La verificación por correo no está configurada. Contacta al administrador.');
     const user = await this.db.user.findUnique({
       where: { email: email.trim().toLowerCase() },
       include: { adminControlAccount: true },

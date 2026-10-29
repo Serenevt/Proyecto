@@ -46,7 +46,7 @@ export class CreateAuthorizationDto extends PlateDto {
 
   @ApiProperty({
     description: 'Código de membresía Prime capturado en el terminal.',
-    example: 'PRIME-0001',
+    example: 'PRIM-001',
   })
   @IsOptional()
   @IsString()

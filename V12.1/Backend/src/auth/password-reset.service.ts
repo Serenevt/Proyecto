@@ -36,6 +36,8 @@ export class PasswordResetService {
     );
   }
   async forgot(dto: ForgotPasswordDto) {
+    if (this.delivery.mode === 'disabled')
+      throw new ServiceUnavailableException('La recuperación por correo no está configurada. Contacta al administrador.');
     const response = {
       message:
         'Si la cuenta existe, recibirás instrucciones para recuperar tu contraseña.',
@@ -43,7 +45,6 @@ export class PasswordResetService {
     };
     const account = await this.db.user.findUnique({where:{email:dto.email.trim().toLowerCase()}});
     if (!account?.active) throw new BadRequestException('No existe una cuenta registrada con este correo.');
-    if (this.delivery.mode === 'disabled') throw new BadRequestException('El env?o de correo no est? configurado');
     const email = dto.email.trim().toLowerCase();
     const code = String(randomInt(100000000)).padStart(8, '0');
     const id = randomUUID();

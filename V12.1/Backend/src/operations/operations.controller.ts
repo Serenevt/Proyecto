@@ -128,6 +128,12 @@ export class SupervisorController {
   ) {
     return this.service.resolveOperation(userId(actor), id, dto.reason);
   }
+  @Post('operations/:id/cancel-unpaid') cancelUnpaidOperation(
+    @CurrentActor() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.service.cancelUnpaidOperation(userId(actor), id);
+  }
   @Post('terminals/:id/pair') async pair(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,

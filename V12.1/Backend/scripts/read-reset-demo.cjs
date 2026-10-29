@@ -1,1 +1,1 @@
-throw new Error('Bandeja demo retirada. Usa Mailpit local o SMTP configurado.');
+throw new Error('Bandeja demo retirada. La recuperación requiere SMTP configurado; solicita asistencia al administrador.');

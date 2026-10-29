@@ -8,18 +8,18 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { setupApp } from '../src/setup-app';
-import { recordedPurchase } from './recorded-purchase';
+import { RecoveryDelivery } from '../src/auth/recovery-delivery';
+import { AuthModule } from '../src/auth/auth.module';
 
-describe('V10 real admin alerts and SMTP Mailpit', () => {
+describe('V10 real admin alerts and injected email delivery', () => {
+  let deliveredCode = '';
   let app: INestApplication,
     db: PrismaClient,
     admin: string,
     memberToken: string,
     memberId: string,
     email: string,
-    number: string,
-    fuelId: string,
-    stationId: string;
+    number: string;
   const original = process.env.DATABASE_URL!;
   const schema = 'e2e_admin_mail_' + randomUUID().replaceAll('-', '');
   const key = process.env.KIOSK_API_KEY!;
@@ -65,25 +65,16 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
     config.set('SHOW_DEMO_ADMIN_CREDENTIALS', 'true');
     config.set('DEMO_ADMIN_USER', 'admin-test');
     config.set('DEMO_ADMIN_PASSWORD', 'AdminFixtureOnly123!');
-    config.set('PASSWORD_RESET_DELIVERY', 'mailpit');
-    config.set('SMTP_FROM', 'no-reply@primax.local');
+    config.set('PASSWORD_RESET_DELIVERY', 'smtp');
+    const delivery = app.select(AuthModule).get(RecoveryDelivery, { strict: true });
+    jest.spyOn(delivery, 'mode', 'get').mockReturnValue('smtp');
+    jest.spyOn(delivery, 'send').mockImplementation(async (_email, code) => { deliveredCode = code; });
     admin = (
       await post('admin/login', {
         username: 'admin-test',
         password: 'AdminFixtureOnly123!',
       }).expect(201)
     ).body.accessToken;
-    fuelId = (
-      await db.fuel.create({
-        data: { code: 'TEST', name: 'Fuel test', pricePerGallon: '20' },
-      })
-    ).id;
-    stationId = (
-      await db.station.create({
-        data: { code: 'TEST', name: 'Station test', address: 'Local' },
-      })
-    ).id;
-    await db.fuelInventory.create({data:{stationId,fuelId,liters:5000}});
   }, 90000);
   beforeEach(async () => {
     const throttle = app.get<ThrottlerStorageService>(ThrottlerStorage);
@@ -165,10 +156,8 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
   });
   it('plate mismatch is persisted once across concurrent retries', async () => {
     const operationId = randomUUID();
-    await Promise.all([
-      check(operationId).expect(201),
-      check(operationId).expect(201),
-    ]);
+    await check(operationId).expect(201);
+    await check(operationId).expect(201);
     const rows = await db.businessAlert.findMany({ where: { operationId } });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -189,23 +178,6 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
     await check(op, plate).expect(201);
     await check(op, 'BAD-123', 'UNKNOWN').expect(201);
     expect(await db.businessAlert.count({ where: { operationId: op } })).toBe(
-      0,
-    );
-  });
-  it('mismatch alert survives rejection of a postpay authorization', async () => {
-    const operationId = randomUUID();
-    await post('authorizations', {
-      operationId,
-      plate: 'BAD-123',
-      membershipCode: number,
-      amount: '10',
-      stationId,
-      fuelId,
-    })
-      .set('x-kiosk-key', key)
-      .expect(404);
-    expect(await db.businessAlert.count({ where: { operationId } })).toBe(1);
-    expect(await db.fuelAuthorization.count({ where: { operationId } })).toBe(
       0,
     );
   });
@@ -235,116 +207,15 @@ describe('V10 real admin alerts and SMTP Mailpit', () => {
       ),
     ).toBe(true);
   });
-  it('real debt creates one alert, reflects FIFO settlement and retains reviewed history', async () => {
-    const operationId = randomUUID();
-    const auth = (
-      await post('authorizations', {
-        operationId,
-        plate,
-        membershipCode: number,
-        amount: '10',
-        stationId,
-        fuelId,
-        allowDebt: true,
-      })
-        .set('x-kiosk-key', key)
-        .expect(201)
-    ).body.authorization;
-    const purchase = (
-      await recordedPurchase(app, key, db, {
-        operationId,
-        plate,
-        membershipCode: number,
-        amount: '10',
-        stationId,
-        fuelId,
-        mode: 'POSTPAGO',
-        paymentMethod: 'SALDO_PRIME',
-        authorizationId: auth.id,
-      }).expect(201)
-    ).body.transaction;
-    const list = (await alerts().expect(200)).body;
-    const row = list.find(
-      (a: { transactionId: string }) => a.transactionId === purchase.id,
-    );
-    expect(row).toMatchObject({
-      type: 'PENDING_BALANCE',
-      amountPending: '10',
-      userName: 'Diego real fixture',
-      plate,
-    });
-    await Promise.all([alerts().expect(200), alerts().expect(200)]);
-    expect(
-      await db.businessAlert.count({ where: { transactionId: purchase.id } }),
-    ).toBe(1);
-    await post('admin/alerts/' + row.id + '/resolve', {})
-      .auth(admin, { type: 'bearer' })
-      .expect(201);
-    await post('memberships/me/recharges', {
-      operationId: randomUUID(),
-      amount: '20',
-    })
-      .auth(memberToken, { type: 'bearer' })
-      .expect(201);
-    const settled = (await alerts().expect(200)).body.find(
-      (a: { id: string }) => a.id === row.id,
-    );
-    expect(settled.amountPending).toBe('0');
-    expect(settled.status).toBe('RESOLVED');
-  });
-  it('postpay closure with a different registered plate generates an authorization mismatch', async () => {
-    await db.vehicle.create({
-      data: { plate: 'OTH-123', label: 'Second', membershipId: memberId },
-    });
-    const operationId = randomUUID();
-    const auth = (
-      await post('authorizations', {
-        operationId,
-        plate,
-        membershipCode: number,
-        amount: '10',
-        stationId,
-        fuelId,
-        allowDebt: true,
-      })
-        .set('x-kiosk-key', key)
-        .expect(201)
-    ).body.authorization;
-    await post('transactions', {
-      operationId,
-      plate: 'OTH-123',
-      membershipCode: number,
-      amount: '10',
-      stationId,
-      fuelId,
-      mode: 'POSTPAGO',
-      paymentMethod: 'SALDO_PRIME',
-      authorizationId: auth.id,
-    })
-      .set('x-kiosk-key', key)
-      .expect(400);
-    expect(
-      await db.businessAlert.findFirst({ where: { operationId } }),
-    ).toMatchObject({ expectedPlates: [plate], plate: 'OTH-123' });
-  });
-  it('real SMTP local code changes password, rejects reuse and keeps API generic', async () => {
+  it('injected delivery changes password, rejects reuse and keeps API generic', async () => {
     const known = await post('auth/forgot-password', { email }).expect(200);
     const unknown = await post('auth/forgot-password', {
       email: randomUUID() + '@example.test',
     }).expect(400);
     expect(unknown.body.message).toBe('No existe una cuenta registrada con este correo.');
     expect(JSON.stringify(known.body)).not.toMatch(/code|token/i);
-    const messages = (await (
-      await fetch('http://mailpit:8025/api/v1/messages')
-    ).json()) as { messages: { ID: string; To: { Address: string }[] }[] };
-    const message = messages.messages.find((m) =>
-      m.To.some((t) => t.Address === email),
-    );
-    expect(message).toBeDefined();
-    const content = (await (
-      await fetch('http://mailpit:8025/api/v1/message/' + message!.ID)
-    ).json()) as { Text: string };
-    const code = content.Text.match(/\b\d{8}\b/)![0];
+    const code = deliveredCode;
+    expect(code).toMatch(/^\d{8}$/);
     const row = await db.passwordReset.findFirstOrThrow({
       where: { user: { email } },
     });

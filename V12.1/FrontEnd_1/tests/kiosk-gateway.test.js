@@ -5,6 +5,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { createGateway } from '../server/gateway.js';
+import gatewayFunction from '../api/gateway.js';
 import { kioskRoute } from '../server/policy.js';
 
 const env = { FUELFLOW_PUBLIC_ORIGIN: 'https://fuel.example', BACKEND_ORIGIN: 'https://backend.example', KIOSK_GATEWAY_SECRET: randomBytes(32).toString('hex') };
@@ -58,7 +59,7 @@ test('rejects a client-selected station and never executes a denied resource ope
   assert.equal(result.statusCode, 403); assert.equal(denied.length, 1);
 });
 test('never forwards a new financial sale without a technical cookie', async () => {
-  for (const path of ['/api/v1/authorizations', '/api/v1/online-orders', '/api/v1/transactions']) {
+  for (const path of ['/api/v1/authorizations', '/api/v1/online-orders', '/api/v1/transactions', '/api/v1/online-orders/33333333-3333-4333-8333-333333333333/reselect']) {
     let calls = 0;
     const result = await invoke(path, { method: 'POST', body: { stationId, operationId: '33333333-3333-4333-8333-333333333333' }, fetcher: async () => { calls++; return Response.json({}); } });
     assert.equal(result.statusCode, 401);
@@ -96,7 +97,7 @@ test('logout clears the cookie only after shared revocation succeeds', async () 
   assert.equal(failure.statusCode, 503); assert.equal(failure.headers['set-cookie'], undefined);
 });
 test('proxy fails closed on backend/storage errors and expired sessions', async () => {
-  const res = await invoke('/api/v1/fuels', { fetcher: backend([], () => Response.json({ message: 'Sesión vencida' }, { status: 401 })) });
+  const res = await invoke('/api/v1/vehicles/ABC-123', { fetcher: backend([], () => Response.json({ message: 'Sesión vencida' }, { status: 401 })) });
   assert.equal(res.statusCode, 401);
 });
 test('route policy is identical in the independent backend and gateway packages', () => {
@@ -135,6 +136,49 @@ test('terminal writes require technical cookie and matching CSRF without supervi
   assert.equal(accepted.statusCode, 200);
   assert.equal(calls[0].options.headers['x-terminal-session'], technical);
   assert.equal(calls[0].options.headers.authorization, '');
+});
+test('reselect sends JSON through the strict gateway and unknown methods stay blocked', async () => {
+  const id = '33333333-3333-4333-8333-333333333333';
+  const calls=[];
+  const body={operationId:id,method:'PLIN',authorization:{operationId:id,paymentMethod:'PLIN',stationId}};
+  const ok=await invoke(`/api/v1/online-orders/${id}/reselect`,{method:'POST',body,headers:{cookie:'__Host-primax-kiosk='+token+'; __Host-primax-terminal='+'b'.repeat(64)},fetcher:backend(calls)});
+  assert.equal(ok.statusCode,200);
+  assert.deepEqual(calls.map(row=>row.path),['/api/v1/kiosk/session/authorize',`/api/v1/online-orders/${id}/reselect`]);
+  assert.deepEqual(calls.at(-1).body,body);
+  const denied=await invoke(`/api/v1/online-orders/${id}/reselect`,{method:'GET',fetcher:async()=>{throw Error('must not call backend');}});
+  assert.equal(denied.statusCode,403);
+});
+test('terminal/me restores a fresh same-origin CSRF cookie only after a valid technical session', async () => {
+  const technical='b'.repeat(64);
+  const calls=[];
+  const me=await invoke('/api/v1/terminal/me',{headers:{cookie:`__Host-primax-terminal=${technical}`},fetcher:backend(calls, path=>path==='/api/v1/terminal/me'?Response.json({canStart:true,operationalStatus:'DISPONIBLE'}):null)});
+  assert.equal(me.statusCode,200);
+  assert.match(me.headers['set-cookie'],/^__Host-primax-terminal-csrf=/);
+  assert.match(me.headers['set-cookie'],/Secure; SameSite=Strict/);
+  assert(!me.headers['set-cookie'].includes('HttpOnly'));
+  const rejected=await invoke('/api/v1/terminal/me',{headers:{cookie:''},fetcher:async()=>{throw Error('must not call backend');}});
+  assert.equal(rejected.statusCode,401);
+});
+test('INICIAR nested Vercel Functions use the signed BFF and preserve operationId', async () => {
+  assert.equal(typeof gatewayFunction, 'function');
+  const id = '33333333-3333-4333-8333-333333333333';
+  const technical = 'b'.repeat(64), technicalCsrf = 't'.repeat(43);
+  const cookie = `__Host-primax-terminal=${technical}; __Host-primax-terminal-csrf=${technicalCsrf}`;
+  const calls = [];
+  const accepted = await invoke('/api/v1/terminal/operations', { method: 'POST', body: { operationId: id }, headers: { cookie, 'x-csrf-token': technicalCsrf }, fetcher: backend(calls, (path) => path === '/api/v1/terminal/operations' ? Response.json({ operationId: id, status: 'OPEN' }) : null) });
+  assert.equal(accepted.statusCode, 200);
+  assert.equal(accepted.body.operationId, id);
+  assert.equal(calls[0].path, '/api/v1/terminal/operations');
+  assert.equal(calls[0].body.operationId, id);
+  assert.equal(calls[0].options.headers['x-terminal-session'], technical);
+  const checked = await invoke(`/api/v1/terminal/operations/${id}?id=${id}`, { headers: { cookie }, fetcher: backend([], () => Response.json({ operationId: id, status: 'OPEN' })) });
+  assert.equal(checked.statusCode, 200);
+  const wrongMethod = await invoke('/api/v1/terminal/operations', { method: 'GET', headers: { cookie }, fetcher: async () => { throw Error('upstream must not run'); } });
+  assert.equal(wrongMethod.statusCode, 403);
+  const unknown = await invoke(`/api/v1/terminal/operations/${id}/unknown`, { method: 'POST', body: {}, headers: { cookie, 'x-csrf-token': technicalCsrf }, fetcher: async () => { throw Error('upstream must not run'); } });
+  assert.equal(unknown.statusCode, 403);
+  const mismatchedId = await invoke(`/api/v1/terminal/operations/${id}?id=other`, { headers: { cookie }, fetcher: async () => { throw Error('upstream must not run'); } });
+  assert.equal(mismatchedId.statusCode, 403);
 });
 test('local pairing consumes the credential into an HttpOnly cookie and exposes only CSRF state', async () => {
   const id = '33333333-3333-4333-8333-333333333333', technical = 'd'.repeat(64);

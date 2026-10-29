@@ -7,7 +7,7 @@ describe('OCR gateway', () => {
   const vehicles = { findByPlate: jest.fn() };
   const service = new RecognitionService(
     vehicles as unknown as VehiclesService,
-    new ConfigService({ PLATE_CONFIDENCE_THRESHOLD: '0.75' }),
+    new ConfigService({ PLATE_CONFIDENCE_THRESHOLD: '0.75', OCR_SERVICE_SECRET: 'test-ocr-service-secret-with-32-characters' }),
   );
   const original = global.fetch;
   afterEach(() => {
@@ -29,6 +29,9 @@ describe('OCR gateway', () => {
     const result = await service.recognize('a'.repeat(16));
     expect(result.recognized).toBe(true);
     expect(result.vehicle?.membership?.number).toBe('PRIME-0001');
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/recognize'), expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer test-ocr-service-secret-with-32-characters' }),
+    }));
   });
   it('baja confianza no identifica una membresía', async () => {
     output('ABC-123', 0.5);

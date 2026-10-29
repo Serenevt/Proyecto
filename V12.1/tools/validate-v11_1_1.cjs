@@ -10,7 +10,6 @@ function run(name,args,cwd=root){
 function unit(folder,ext){const cwd=path.join(root,folder);run(folder.toLowerCase()+'-tests',['--test',...fs.readdirSync(path.join(cwd,'tests')).filter(f=>f.endsWith(ext)).map(f=>path.join('tests',f))],cwd);}
 try{
  unit('FrontEnd_1','.test.js');unit('FrontEnd_2','.test.js');unit('PrintAgent','.test.mjs');
- run('startup-isolation',['--test','tools/start-v11_1_1.test.cjs']);
  run('backend-unit-tests',['node_modules/jest/bin/jest.js','--runInBand','--config','jest.config.cjs'],path.join(root,'Backend'));
  run('backend-lint',['node_modules/eslint/bin/eslint.js','.'],path.join(root,'Backend'));
  run('backend-build',['node_modules/typescript/bin/tsc','-p','tsconfig.build.json'],path.join(root,'Backend'));

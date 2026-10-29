@@ -8,7 +8,11 @@ export async function ensureTerminalOperation({ terminal = terminalService, tran
   const operationId = transactions.begin().operationId;
   try {
     const existing = await terminal.operation(operationId);
-    if (existing.operationId !== operationId || existing.closedAt) throw Error('La operación requiere asistencia.');
+    if (existing.operationId !== operationId) throw Error('La operación requiere asistencia.');
+    if (existing.closedAt || ['CLOSED','CANCELLED','FAILED','EXPIRED'].includes(existing.status)) {
+      transactions.discard();
+      return ensureTerminalOperation({terminal,transactions});
+    }
     return existing;
   } catch (error) {
     if (error.status !== 404) throw error;

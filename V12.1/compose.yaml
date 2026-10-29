@@ -17,15 +17,11 @@ x-backend-env: &backend-env
   KIOSK_SESSION_NAMESPACE: local-v12-1
   PRIME_DEBT_LIMIT: ${PRIME_DEBT_LIMIT:-200}
   PLATE_CONFIDENCE_THRESHOLD: ${PLATE_CONFIDENCE_THRESHOLD:-0.75}
-  PLATE_RECOGNITION_URL: http://plate-recognition:8000
-  PLATE_RECOGNITION_ENABLED: "true"
-  PASSWORD_RESET_DELIVERY: mailpit
+  PLATE_RECOGNITION_URL: ${PLATE_RECOGNITION_URL:-http://plate-recognition:8000}
+  PLATE_RECOGNITION_ENABLED: ${PLATE_RECOGNITION_ENABLED:-true}
+  PASSWORD_RESET_DELIVERY: disabled
   PASSWORD_RESET_TTL_MINUTES: 10
   PASSWORD_RESET_MAX_ATTEMPTS: 5
-  SMTP_HOST: mailpit
-  SMTP_PORT: 1025
-  SMTP_SECURE: "false"
-  SMTP_FROM: Primax Prime <no-reply@primax.local>
   PRIMAX_CONTROL_PUBLIC_URL: ${PRIMAX_CONTROL_PUBLIC_URL:-http://localhost:${FRONTEND3_PORT:-26083}}
   PAYMENT_ENV: demo
   DEMO_WALLET_ENABLED: "true"
@@ -68,19 +64,6 @@ services:
     networks: [data]
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping 2>/dev/null | grep -q PONG"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    restart: unless-stopped
-    security_opt: [no-new-privileges:true]
-
-  mailpit:
-    image: axllent/mailpit:v1.27.4
-    networks: [data]
-    ports:
-      - "127.0.0.1:${MAILPIT_PORT:-26025}:8025"
-    healthcheck:
-      test: ["CMD", "/mailpit", "readyz"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -156,8 +139,6 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-      mailpit: { condition: service_healthy }
-      plate-recognition: { condition: service_healthy }
       seed-control-admin: { condition: service_completed_successfully }
       seed-operations: { condition: service_completed_successfully }
     healthcheck:

@@ -1,5 +1,7 @@
 # V11_1.1 — ejecución local e impresión PeriPage A6
 
+> Archivo histórico de V11_1_1. El iniciador `tools/start-v11_1_1.cjs` fue retirado de V12.1 porque apuntaba a un proyecto, una base y puertos antiguos. Para el arranque vigente usar `V12.1/README.md` y `V12.1/compose.yaml`; los comandos siguientes documentan únicamente la ejecución pasada.
+
 Proyecto completo creado desde `C:\Users\HP\Desktop\Prueba\V11_1`. Todos los cambios pertenecen a `C:\Users\HP\Desktop\V11_1.1`. La copia inicial de 466 archivos se verificó por SHA-256. Se conservan Backend, FrontEnd_1, FrontEnd_2, PlateRecognition, PostgreSQL y PrintAgent.
 
 ## Iniciar Backend y ambas interfaces

@@ -2467,6 +2467,10 @@ async function ejecutarReserva(monto, allowDebt = false) {
 }
 
 // ---------- Pantalla de método de pago ----------
+function ordenAuthorization(method) {
+  const pending=transactionsService.begin();
+  return {mode:'PREPAGO',paymentMethod:method,unitPrice:state.combustible.precio.toFixed(2),allowDebt:false,plate:state.placa,amount:state.montoPrepago.toFixed(2),...(state.codigoCliente?{membershipCode:state.codigoCliente}:{}),stationId:catalog.station.id,fuelId:state.combustible.id,receiptType:state.tipoComprobante||'BOLETA',operationId:pending.operationId};
+}
 function irAMetodoPago() {
   // El postpago nunca pasa por aquí: su saldo se reservó antes de abastecer.
   if (state.modalidad === 'POSTPAGO') { mostrarResumen(); return; }
@@ -2482,11 +2486,11 @@ function irAMetodoPago() {
 }
 
 async function elegirMetodoPago(metodo) {
-  if(state.creatingOrder||state.changingMethod)return;
+  if(state.creatingOrder||state.changingMethod||state.confirmingQR||paymentInFlight||state.pagoAutorizado)return;
   if(state.onlineOrderId){
     if(state.metodoPago===metodo)return;
     state.changingMethod=true;
-    try{await apiClient('/online-orders/'+state.onlineOrderId+'/cancel',{method:'POST'});await cerrarYDescartar();state.onlineOrderId=null;state.onlineOrderAmount=null;}
+    try{const authorization=ordenAuthorization(metodo);await apiClient('/online-orders/'+state.onlineOrderId+'/reselect',{method:'POST',body:{operationId:authorization.operationId,method:metodo,authorization}});}
     catch(error){mostrarModal('Orden conservada',error.message,'⚠️');return;}
     finally{state.changingMethod=false;}
   }
@@ -2519,7 +2523,6 @@ async function elegirMetodoPago(metodo) {
 /** Vuelve a la lista de métodos dejando el panel abierto cerrado. */
 async function volverAMetodos() {
   if(state.creatingOrder||state.confirmingQR)return;
-  if(state.onlineOrderId){try{await apiClient('/online-orders/'+state.onlineOrderId+'/cancel',{method:'POST'});await cerrarYDescartar();state.onlineOrderId=null;state.onlineOrderAmount=null;}catch(error){mostrarModal('Orden conservada',error.message,'⚠️');return;}}
   state.metodoPago = null;
   ['panel-qr', 'panel-nfc', 'panel-efectivo'].forEach((id) => $(id).classList.add('hidden'));
   $('btn-nfc-tap').disabled = false;
@@ -3005,10 +3008,9 @@ async function crearOrdenQR(method) {
  $('qr-code').replaceChildren();$('btn-qr-pagado').disabled=true;$('btn-qr-pagado').textContent='Simular confirmación del pago';
  try {
   await ensureTerminalOperation();
-  const pending=transactionsService.begin();
-  const authorization={mode:'PREPAGO',paymentMethod:method,unitPrice:state.combustible.precio.toFixed(2),allowDebt:false,plate:state.placa,amount:state.montoPrepago.toFixed(2),...(state.codigoCliente?{membershipCode:state.codigoCliente}:{}),stationId:catalog.station.id,fuelId:state.combustible.id,receiptType:state.tipoComprobante||'BOLETA',operationId:pending.operationId};
+  const authorization=ordenAuthorization(method);
 
-  let order=await apiClient('/online-orders',{method:'POST',body:{operationId:pending.operationId,method,authorization}});
+  let order=await apiClient('/online-orders',{method:'POST',body:{operationId:authorization.operationId,method,authorization}});
   if(order.status==='CREATING')order=await apiClient('/online-orders/'+order.id);
   state.onlineOrderId=order.id;state.onlineOrderAmount=order.amount;
   if(!order.providerId?.startsWith('demo:'))throw Error('Esta interfaz requiere billetera DEMO local.');

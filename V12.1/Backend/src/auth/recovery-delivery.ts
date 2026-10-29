@@ -8,15 +8,14 @@ export class RecoveryDelivery {
     return this.config.get<string>('PASSWORD_RESET_DELIVERY') ?? 'disabled';
   }
   async send(email: string, code: string, expiresAt: Date) {
-    if (this.mode === 'smtp' || this.mode === 'mailpit') {
-      const local = this.mode === 'mailpit';
+    if (this.mode === 'smtp') {
       const user = this.config.get<string>('SMTP_USER');
       const transport = createTransport({
-        host: local ? 'mailpit' : this.config.getOrThrow<string>('SMTP_HOST'),
-        port: local ? 1025 : Number(this.config.get('SMTP_PORT') ?? 587),
-        secure: !local && String(this.config.get('SMTP_SECURE')) === 'true',
-        requireTLS: !local,
-        ...(local || !user
+        host: this.config.getOrThrow<string>('SMTP_HOST'),
+        port: Number(this.config.get('SMTP_PORT') ?? 587),
+        secure: String(this.config.get('SMTP_SECURE')) === 'true',
+        requireTLS: true,
+        ...(!user
           ? {}
           : {
               auth: {
@@ -39,20 +38,19 @@ export class RecoveryDelivery {
       return;
     }
     if (this.mode !== 'disabled')
-      throw new Error('Use SMTP or Mailpit; fake mailboxes are disabled');
+      throw new Error('Use SMTP; fake mailboxes are disabled');
   }
 
   async sendAdminVerification(email: string, token: string, expiresAt: Date) {
-    if (this.mode !== 'smtp' && this.mode !== 'mailpit')
-      throw new Error('Email verification requires SMTP or Mailpit delivery');
-    const local = this.mode === 'mailpit';
+    if (this.mode !== 'smtp')
+      throw new Error('Email verification requires configured SMTP delivery');
     const user = this.config.get<string>('SMTP_USER');
     const transport = createTransport({
-      host: local ? 'mailpit' : this.config.getOrThrow<string>('SMTP_HOST'),
-      port: local ? 1025 : Number(this.config.get('SMTP_PORT') ?? 587),
-      secure: !local && String(this.config.get('SMTP_SECURE')) === 'true',
-      requireTLS: !local,
-      ...(local || !user
+      host: this.config.getOrThrow<string>('SMTP_HOST'),
+      port: Number(this.config.get('SMTP_PORT') ?? 587),
+      secure: String(this.config.get('SMTP_SECURE')) === 'true',
+      requireTLS: true,
+      ...(!user
         ? {}
         : {
             auth: {

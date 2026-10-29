@@ -5,7 +5,7 @@ export class VehicleResponseDto {
   @ApiProperty({ example: 'Mi auto' }) label: string;
   @ApiPropertyOptional({
     nullable: true,
-    example: { id: 'uuid', number: 'PRIME-0001', status: 'ACTIVE' },
+    example: { id: 'uuid', number: 'PRIM-001', status: 'ACTIVE' },
   })
   membership?: object | null;
 }
@@ -34,7 +34,7 @@ export class BenefitResponseDto {
 }
 export class MembershipResponseDto {
   @ApiProperty({ format: 'uuid' }) id: string;
-  @ApiProperty({ example: 'PRIME-0001' }) number: string;
+  @ApiProperty({ example: 'PRIM-001' }) number: string;
   @ApiProperty({ enum: ['ACTIVE', 'SUSPENDED'] }) status: string;
   @ApiProperty({ example: { name: 'Diego', email: 'demo@primaxprime.pe' } })
   user: object;
@@ -93,7 +93,7 @@ export class TransactionViewDto {
   @ApiProperty({ type: StationResponseDto }) station: StationResponseDto;
   @ApiProperty({
     nullable: true,
-    example: { id: 'uuid', number: 'PRIME-0001', name: 'Diego' },
+    example: { id: 'uuid', number: 'PRIM-001', name: 'Diego' },
   })
   membership: object | null;
   @ApiProperty({

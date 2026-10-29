@@ -46,28 +46,6 @@ describe('SMTP configuration and local credential boundary', () => {
       }),
     );
   });
-  it('Mailpit is local and does not use external SMTP credentials', async () => {
-    (createTransport as jest.Mock).mockReturnValue({ sendMail: jest.fn() });
-    await new RecoveryDelivery(
-      new ConfigService({
-        PASSWORD_RESET_DELIVERY: 'mailpit',
-        SMTP_FROM: 'no-reply@primax.local',
-        SMTP_USER: 'must-not-send',
-        SMTP_PASSWORD: 'must-not-send',
-      }),
-    ).send('test@example.test', '12345678', new Date());
-    expect(createTransport).toHaveBeenCalledWith(
-      expect.objectContaining({
-        host: 'mailpit',
-        port: 1025,
-        secure: false,
-        requireTLS: false,
-      }),
-    );
-    expect((createTransport as jest.Mock).mock.calls[0][0]).not.toHaveProperty(
-      'auth',
-    );
-  });
   it.each(['SMTP_HOST', 'SMTP_FROM'])('SMTP rejects missing %s', (key) => {
     const env: Record<string, unknown> = {
       ...base,
@@ -100,7 +78,7 @@ describe('SMTP configuration and local credential boundary', () => {
       ),
     ).toBe(true);
   });
-  it('production rejects demo credentials and Mailpit', () => {
+  it('production rejects demo credentials and unsupported delivery modes', () => {
     expect(() =>
       validateEnvironment({
         ...base,
@@ -112,7 +90,7 @@ describe('SMTP configuration and local credential boundary', () => {
       validateEnvironment({
         ...base,
         APP_MODE: 'production',
-        PASSWORD_RESET_DELIVERY: 'mailpit',
+        PASSWORD_RESET_DELIVERY: 'unsupported',
       }),
     ).toThrow();
   });

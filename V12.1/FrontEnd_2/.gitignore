@@ -9,3 +9,5 @@ build/
 local.properties
 *.apk
 *.aab
+.vercel
+.env*

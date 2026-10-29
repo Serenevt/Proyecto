@@ -30,6 +30,19 @@ export function expireKioskSession() {
   current = null;
   void ensureKioskSession();
 }
+export async function refreshKioskSession() {
+  if (!kioskAuthEnabled()) return;
+  const refreshed = await sessionRequest('');
+  current = refreshed;
+  if (!refreshed.authenticated) {
+    supervisorRecovery();
+    throw Error('La sesión técnica venció. Solicita asistencia al Supervisor.');
+  }
+}
+export function supervisorRecovery() {
+  location.hash = '#supervisor-access';
+  void ensureKioskSession();
+}
 export function ensureKioskSession() {
   if (!kioskAuthEnabled()) return Promise.resolve();
   const adminButton = document.getElementById('btn-admin-open');
@@ -79,7 +92,7 @@ export function ensureKioskSession() {
       async function render(message = '') {
         const [shift, terminals] = await Promise.all([request('shifts/current'), request('stations/' + stationId + '/terminals')]);
         const active = shift && shift.stationId === stationId;
-        dialog.innerHTML = `<div class="terminal-access-card supervisor-card"><div class="terminal-access-brand">PRIMAX <span>Supervisor de estación</span></div><h1>Preparar FuelFlow</h1><label>Estación<select id="supervisor-station">${stations.map(row => `<option value="${escape(row.stationId)}" ${row.stationId === stationId ? 'selected' : ''}>${escape(row.station.name)} · ${escape(row.station.code)}</option>`).join('')}</select></label><div class="supervisor-state"><strong>Turno</strong><span>${active ? escape(shift.status) : 'CERRADO'}</span></div><div class="supervisor-actions">${!active ? '<button data-action="open">Abrir turno</button>' : shift.status === 'ABIERTO' ? '<button data-action="suspend">Suspender turno</button><button data-action="close" class="secondary">Cerrar turno</button>' : '<button data-action="resume">Reanudar turno</button><button data-action="close" class="secondary">Cerrar turno</button>'}</div><div class="supervisor-terminals">${terminals.map(row => `<section class="supervisor-terminal"><strong>${escape(row.code)}</strong><p>Surtidor: ${escape(row.assignments?.[0]?.pump?.code || 'Sin asignar')}</p><p>Estado: ${escape(row.operationalStatus)}</p>${active && shift.status === 'ABIERTO' && !row.enablements?.length ? `<button data-action="enable" data-terminal="${escape(row.id)}">Habilitar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && row.enablements?.length ? `<button data-action="pair" data-terminal="${escape(row.id)}">Emparejar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && rotateTerminalId === row.id ? `<button data-action="rotate" data-terminal="${escape(row.id)}" class="secondary">Reemparejar en este navegador</button>` : ''}</section>`).join('')}</div><p class="terminal-access-error" role="alert">${escape(message)}</p><button data-action="back" class="secondary">Volver a FuelFlow</button></div>`;
+        dialog.innerHTML = `<div class="terminal-access-card supervisor-card"><div class="terminal-access-brand">PRIMAX <span>Supervisor de estación</span></div><h1>Preparar FuelFlow</h1><label>Estación<select id="supervisor-station">${stations.map(row => `<option value="${escape(row.stationId)}" ${row.stationId === stationId ? 'selected' : ''}>${escape(row.station.name)} · ${escape(row.station.code)}</option>`).join('')}</select></label><div class="supervisor-state"><strong>Turno</strong><span>${active ? escape(shift.status) : 'CERRADO'}</span></div><div class="supervisor-actions">${!active ? '<button data-action="open">Abrir turno</button>' : shift.status === 'ABIERTO' ? '<button data-action="suspend">Suspender turno</button><button data-action="close" class="secondary">Cerrar turno</button>' : shift.status === 'SUSPENDIDO' ? '<button data-action="resume">Reanudar turno</button><button data-action="close" class="secondary">Cerrar turno</button>' : '<p>El turno cerrará al terminar o cancelar la operación activa.</p>'}</div><div class="supervisor-terminals">${terminals.map(row => `<section class="supervisor-terminal"><strong>${escape(row.code)}</strong><p>Surtidor: ${escape(row.assignments?.[0]?.pump?.code || 'Sin asignar')}</p><p>Estado: ${escape(row.operationalStatus)}</p>${row.operations?.filter(op => op.canCancelWithoutSale).map(op => `<button data-action="cancel-unpaid" data-operation="${escape(op.operationId)}" class="secondary">Cancelar operación sin venta</button>`).join('') || ''}${active && shift.status === 'ABIERTO' && !row.enablements?.length ? `<button data-action="enable" data-terminal="${escape(row.id)}">Habilitar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && row.enablements?.length ? `<button data-action="pair" data-terminal="${escape(row.id)}">Emparejar terminal</button>` : ''}${active && shift.status === 'ABIERTO' && rotateTerminalId === row.id ? `<button data-action="rotate" data-terminal="${escape(row.id)}" class="secondary">Reemparejar en este navegador</button>` : ''}</section>`).join('')}</div><p class="terminal-access-error" role="alert">${escape(message)}</p><button data-action="back" class="secondary">Volver a FuelFlow</button></div>`;
         dialog.querySelector('#supervisor-station').addEventListener('change', event => { stationId = event.target.value; void render(); });
         dialog.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', async () => {
           const action = button.dataset.action;
@@ -91,6 +104,7 @@ export function ensureKioskSession() {
             }
             if (action === 'open') await request('shifts', 'POST', { stationId });
             if (['suspend','resume','close'].includes(action)) await request('shifts/' + shift.id + '/' + action, 'POST', {});
+            if (action === 'cancel-unpaid') await request('operations/' + button.dataset.operation + '/cancel-unpaid', 'POST', {});
             if (action === 'enable') await request('terminals/' + button.dataset.terminal + '/enable', 'POST', { shiftId: shift.id });
             if (action === 'pair' || action === 'rotate') {
               if (!current?.authenticated) {

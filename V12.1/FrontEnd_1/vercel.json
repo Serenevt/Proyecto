@@ -4,8 +4,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "redirects": [{ "source": "/", "destination": "/src/index.html", "permanent": false }],
-  "rewrites": [{ "source": "/supervisor-api/:path*", "destination": "/api/supervisor-proxy?route=:path*" }],
-  "functions": { "api/[...path].js": { "maxDuration": 60 }, "api/supervisor-proxy.js": { "maxDuration": 60 } },
+  "rewrites": [
+    { "source": "/supervisor-api/:path*", "destination": "/api/supervisor-proxy?route=:path*" },
+    { "source": "/api/v1/:route*", "destination": "/api/gateway?route=:route*" }
+  ],
+  "functions": { "api/gateway.js": { "maxDuration": 60 }, "api/supervisor-proxy.js": { "maxDuration": 60 } },
   "headers": [{ "source": "/(.*)", "headers": [
     { "key": "X-Content-Type-Options", "value": "nosniff" },
     { "key": "Referrer-Policy", "value": "same-origin" },
