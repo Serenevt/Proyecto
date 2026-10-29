@@ -101,3 +101,11 @@ test('BFF Function accepts parsed JSON, preserves two technical cookies and reje
   await handler(request('/api/v1/fuels?target=elsewhere', 'GET', undefined, { 'x-fuelflow-request': '1' }), denied);
   assert.equal(denied.statusCode, 403);
 });
+test('BFF permits only matching Vercel terminal route metadata', async () => {
+  const handler = createGateway({ env });
+  for (const [suffix, expected] of [[`?id=${id}`, 401], ['?id=other', 403], ['?target=elsewhere', 403]]) {
+    const res = response();
+    await handler(request(`/api/v1/supervisor/terminals/${id}/pair${suffix}`, 'POST', {}, { 'x-fuelflow-request': '1' }), res);
+    assert.equal(res.statusCode, expected);
+  }
+});

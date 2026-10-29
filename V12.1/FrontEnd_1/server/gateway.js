@@ -68,7 +68,9 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       if (req.headers.origin && req.headers.origin !== publicOrigin || req.method !== 'GET' && req.headers.origin !== publicOrigin) fail(403, 'Origen no autorizado');
       const url = new URL(req.url, publicOrigin);
       // No client-controlled destination, headers, cookies or query forwarding.
-      if (url.search || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
+      const dynamicTerminal = url.pathname.match(/^\/api\/v1\/supervisor\/terminals\/([0-9a-fA-F-]{36})\/(pair|rotate|revoke-session)$/);
+      const frameworkId = url.searchParams.getAll('id');
+      if ((!dynamicTerminal && url.search) || (dynamicTerminal && (frameworkId.length > 1 || [...url.searchParams.keys()].some(key => key !== 'id') || (frameworkId.length && frameworkId[0] !== dynamicTerminal[1]))) || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
       const cookieName = local ? LOCAL_COOKIE : COOKIE;
       const cookieAttributes = `Path=/; HttpOnly; ${local ? '' : 'Secure; '}SameSite=Strict`;
       const token = cookieToken(req.headers.cookie, cookieName);
