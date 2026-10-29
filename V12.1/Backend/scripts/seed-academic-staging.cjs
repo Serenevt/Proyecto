@@ -82,7 +82,8 @@ async function main() {
       const prime = await tx.user.create({ data: {
         email: process.env.STAGING_PRIME_EMAIL.toLowerCase(), name: 'Cliente académico', passwordHash: passwords[2],
       } });
-      const membership = await tx.membership.create({ data: { number: 'PRIME-0001', userId: prime.id, dni: '12345678' } });
+      const membership = await tx.membership.create({ data: { number: 'PRIM-001', userId: prime.id, dni: '12345678' } });
+      await tx.$executeRaw`UPDATE "MembershipNumberCounter" SET "value" = GREATEST("value", 1) WHERE "id" = 1`;
       await tx.vehicle.create({ data: { plate: 'ABC-123', label: 'Vehículo académico', membershipId: membership.id } });
     });
     console.log('Academic staging bootstrap complete: one station, pump, terminal, three fuels and users.');

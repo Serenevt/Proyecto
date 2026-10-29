@@ -70,7 +70,7 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       // No client-controlled destination, headers, cookies or query forwarding.
       const dynamicTerminal = url.pathname.match(/^\/api\/v1\/supervisor\/terminals\/([0-9a-fA-F-]{36})\/(pair|rotate|revoke-session)$/);
       const dynamicOperation = url.pathname.match(/^\/api\/v1\/terminal\/operations\/([0-9a-fA-F-]{36})(?:\/close)?$/);
-      const dynamicBusiness = url.pathname.match(/^\/api\/v1\/(?:authorizations|online-orders|transactions)\/([0-9a-fA-F-]{36})(?:\/(?:progress|release|intervention|demo-confirm|cancel))?$/);
+      const dynamicBusiness = url.pathname.match(/^\/api\/v1\/(?:authorizations|online-orders|transactions)\/([0-9a-fA-F-]{36})(?:\/(?:progress|release|intervention|demo-confirm|cancel|reselect))?$/);
       const dynamicVehicle = url.pathname.match(/^\/api\/v1\/vehicles\/([A-Z0-9]{3}-[0-9]{3})$/);
       const routeId = dynamicTerminal?.[1] || dynamicOperation?.[1] || dynamicBusiness?.[1] || dynamicVehicle?.[1];
       const routeParam = dynamicVehicle ? 'plate' : 'id';
@@ -168,6 +168,10 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
         if (!technical) fail(401, 'Sesión técnica requerida');
         if (req.method === 'POST' && (!terminalCsrf || !csrf || !equal(terminalCsrf, csrf))) fail(403, 'CSRF inválido');
         const { value, status } = await call(req.method, url.pathname, body, { terminal: technical });
+        if (url.pathname === '/api/v1/terminal/me') {
+          const csrfName = local ? 'primax-terminal-csrf-local' : TERMINAL_CSRF;
+          res.setHeader('Set-Cookie', `${csrfName}=${randomBytes(32).toString('base64url')}; Path=/; ${local ? '' : 'Secure; '}SameSite=Strict; Max-Age=28800`);
+        }
         const safe = url.pathname === '/api/v1/terminal/me'
           ? { prepared: true, canStart: value.canStart === true, operationalStatus: value.operationalStatus }
           : { operationId: value.operationId, status: value.status, closedAt: value.closedAt };
@@ -175,7 +179,7 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       }
       if (!kioskRoute(req.method, url.pathname)) fail(403, 'Operación de terminal no permitida');
       if (!token || !csrf) fail(401, 'Inicia sesión de operador');
-      const saleCreate = req.method === 'POST' && ['/api/v1/authorizations', '/api/v1/online-orders', '/api/v1/transactions'].includes(url.pathname);
+      const saleCreate = req.method === 'POST' && (['/api/v1/authorizations', '/api/v1/online-orders', '/api/v1/transactions'].includes(url.pathname) || new RegExp(`^/api/v1/online-orders/${uuid}/reselect$`).test(url.pathname));
       if (saleCreate && !technical) fail(401, 'Esta terminal no está disponible en este momento');
       const { value: session } = await call('POST', sessionPath + '/authorize', { method: req.method, path: url.pathname, ...(body ? { body } : {}) });
       if (!session.allowed || typeof session.stationId !== 'string') fail(401, 'Inicia sesión de operador');

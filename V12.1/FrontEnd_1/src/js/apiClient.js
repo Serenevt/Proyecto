@@ -1,15 +1,22 @@
-import { kioskHeaders, expireKioskSession, kioskAuthEnabled } from './kioskSession.js';
+import { kioskHeaders, expireKioskSession, kioskAuthEnabled, refreshKioskSession, supervisorRecovery } from './kioskSession.js';
 export const API_BASE_URL = globalThis.FUELFLOW_API_BASE_URL || '/api/v1';
 function terminalCsrf() {
   const name = location.protocol === 'https:' ? '__Host-primax-terminal-csrf' : 'primax-terminal-csrf-local';
   return document.cookie.split(';').map(part => part.trim()).find(part => part.startsWith(name + '='))?.slice(name.length + 1) || '';
 }
-export async function apiClient(path, {method='GET',body,token}={}) {
+export async function apiClient(path, {method='GET',body,token}={}, retried=false) {
   let response;
   try { response=await fetch(API_BASE_URL+path,{method,headers:{...kioskHeaders(),...(path.startsWith('/terminal/')&&method==='POST'?{'X-CSRF-Token':terminalCsrf()}:{}),...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(kioskAuthEnabled()?45000:15000),cache:'no-store'}); }
   catch (error) { throw Object.assign(Error('No pudimos conectar. Reintenta para confirmar tu compra.'), {kind: ['TimeoutError','AbortError'].includes(error.name) ? 'timeout' : 'network'}); }
   const result=await response.json().catch(()=>null);
+  const message=Array.isArray(result?.message)?result.message.join('. '):result?.message||'';
+  if(response.status===403 && /CSRF/i.test(message) && !retried){
+    await refreshKioskSession();
+    if(path.startsWith('/terminal/') && method==='POST') await apiClient('/terminal/me');
+    return apiClient(path,{method,body,token},true);
+  }
   if(response.status===401&&!path.startsWith('/terminal/'))expireKioskSession();
+  if(response.status===401&&path.startsWith('/terminal/'))supervisorRecovery();
   if(!response.ok)throw Object.assign(Error(response.status>=500?'No pudimos confirmar la compra. Puedes reintentar.':(Array.isArray(result?.message)?result.message.join('. '):result?.message)||'No pudimos completar la operación.'),{status:response.status,details:result});
   return result;
 }

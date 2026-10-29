@@ -227,7 +227,7 @@ export class OperationsService {
 
   async terminals(userId: string, stationId: string) {
     await this.assigned(this.db, userId, stationId);
-    return this.db.terminal.findMany({
+    const terminals = await this.db.terminal.findMany({
       where: { stationId },
       include: {
         assignments: { where: { endedAt: null }, include: { pump: true } },
@@ -236,6 +236,28 @@ export class OperationsService {
       },
       orderBy: { code: 'asc' },
     });
+    return Promise.all(terminals.map(async terminal => ({
+      ...terminal,
+      operations: await Promise.all(terminal.operations.map(async operation => ({
+        ...operation,
+        canCancelWithoutSale: !(await this.db.fuelAuthorization.findFirst({where:{operationId:operation.operationId}})) &&
+          !(await this.db.transaction.findFirst({where:{operationId:operation.operationId}})) &&
+          !(await this.db.inventoryReservation.findFirst({where:{operationId:operation.operationId,status:{in:['PENDING_PAYMENT','ACTIVE','REVIEW']}}})) &&
+          !(await this.db.onlineOrder.findFirst({where:{operationId:operation.operationId,status:{in:['CREATING','PENDING','CAPTURED','REFUNDING']}}})),
+      }))),
+    })));
+  }
+
+  async cancelUnpaidOperation(userId: string, operationId: string) {
+    const operation = await this.db.terminalOperation.findUnique({where:{operationId}});
+    if (!operation) throw new NotFoundException('Operación no encontrada');
+    await this.assigned(this.db, userId, operation.stationId);
+    if (await this.db.fuelAuthorization.findFirst({where:{operationId}}) ||
+        await this.db.transaction.findFirst({where:{operationId}}) ||
+        await this.db.inventoryReservation.findFirst({where:{operationId,status:{in:['PENDING_PAYMENT','ACTIVE','REVIEW']}}}) ||
+        await this.db.onlineOrder.findFirst({where:{operationId,status:{in:['CREATING','PENDING','CAPTURED','REFUNDING']}}}))
+      throw new ConflictException('Hay una venta o pago activo; requiere conciliación');
+    return this.closeOperation(operation.terminalId, operationId, userId);
   }
 
   async enable(userId: string, terminalId: string, shiftId: string) {
@@ -554,7 +576,7 @@ export class OperationsService {
     return operation;
   }
 
-  async closeOperation(terminalId: string, operationId: string) {
+  async closeOperation(terminalId: string, operationId: string, actorUserId?: string) {
     return this.operationalAtomic(async (tx) => {
       const operation = await tx.terminalOperation.findUnique({
         where: { operationId },
@@ -692,12 +714,12 @@ export class OperationsService {
       await this.audit(
         tx,
         'OPERATION_CLOSED',
-        null,
+        actorUserId ?? null,
         operation.stationId,
         terminalId,
         operation.id,
         operation.enablement.shiftId,
-        'TERMINAL',
+        actorUserId ? 'USER' : 'TERMINAL',
       );
       return updated;
     });

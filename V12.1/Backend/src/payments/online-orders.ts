@@ -30,6 +30,11 @@ class OrderDto {
  @IsOptional() @ValidateNested() @Type(()=>CreateAuthorizationDto) authorization?: CreateAuthorizationDto;
  @IsOptional() @ValidateNested() @Type(()=>CustomerDto) customer?: CustomerDto;
 }
+class ReselectDto {
+ @IsUUID('4') operationId: string;
+ @IsIn(['YAPE','PLIN','TARJETA','EFECTIVO']) method: 'YAPE'|'PLIN'|'TARJETA'|'EFECTIVO';
+ @ValidateNested() @Type(()=>CreateAuthorizationDto) authorization: CreateAuthorizationDto;
+}
 class DemoConfirmationDto {
  @IsString() @Matches(/^\d{1,4}\.\d{2}$/) amount:string;
  @IsIn(['PEN']) currency:'PEN';
@@ -37,6 +42,40 @@ class DemoConfirmationDto {
 @Injectable()
 export class OnlineOrdersService {
  constructor(private readonly db:PrismaService,@Inject(PAYMENT_PROVIDER) private readonly provider:PaymentProvider){}
+ async reselect(id:string,dto:ReselectDto,actor:Actor){
+  if(actor.kind!=='kiosk')throw new UnauthorizedException();
+  if(!(this.provider instanceof DemoWalletProvider))throw new ConflictException('Cambio de método disponible solo para órdenes DEMO pendientes');
+  return this.db.atomic(async tx=>{
+   await tx.$queryRaw`SELECT id FROM "OnlineOrder" WHERE id=${id}::uuid FOR UPDATE`;
+   const order=await tx.onlineOrder.findUnique({where:{id}});
+   if(!order)throw new NotFoundException();
+   this.owns(order,actor);
+   if(order.status!=='PENDING'||!order.providerId?.startsWith('demo:')||!order.paymentId||order.transactionId)
+    throw new ConflictException('La orden ya no admite cambio de método');
+   const a=dto.authorization;
+   if(a.mode!=='PREPAGO'||dto.operationId!==order.operationId||a.operationId!==order.operationId||a.paymentMethod!==dto.method)
+    throw new BadRequestException('Compra incompatible');
+   const previous={operationId:order.operationId,method:order.method,authorization:{...a,paymentMethod:order.method}};
+   if(createHash('sha256').update(JSON.stringify(previous)).digest('hex')!==order.requestHash.trim())
+    throw new ConflictException('Los datos de la orden cambiaron; requiere revisión');
+   const payment=await tx.payment.findUniqueOrThrow({where:{id:order.paymentId}});
+   const reservation=await tx.inventoryReservation.findUnique({where:{operationId:order.operationId}});
+   if(payment.status!=='PENDING'||payment.operationId!==order.operationId||!reservation||reservation.status!=='PENDING_PAYMENT'||
+      await tx.fuelAuthorization.findFirst({where:{operationId:order.operationId}})||
+      await tx.transaction.findFirst({where:{operationId:order.operationId}})||
+      await tx.paymentEvent.findFirst({where:{orderId:id,OR:[{eventKey:{in:['demo-confirm:'+id,'demo-terminal:'+id]}},{kind:{in:['CAPTURED','CANCELLED','FAILED','REFUNDED']}}]}}))
+    throw new ConflictException('La orden tiene un pago o reserva pendiente de conciliación');
+   const oldAuth={...a,paymentMethod:order.method};
+   const oldHash=createHash('sha256').update(JSON.stringify({...oldAuth,plate:normalizePlate(a.plate),amount:new Prisma.Decimal(a.amount).toFixed(2)})).digest('hex');
+   if(payment.requestHash?.trim()!==oldHash||reservation.requestHash.trim()!==oldHash)
+    throw new ConflictException('La reserva de la orden no coincide');
+   const newHash=createHash('sha256').update(JSON.stringify({...a,plate:normalizePlate(a.plate),amount:new Prisma.Decimal(a.amount).toFixed(2)})).digest('hex');
+   const requestHash=createHash('sha256').update(JSON.stringify({operationId:order.operationId,method:dto.method,authorization:a})).digest('hex');
+   await tx.payment.update({where:{id:payment.id},data:{method:dto.method,requestHash:newHash}});
+   await tx.inventoryReservation.update({where:{id:reservation.id},data:{requestHash:newHash}});
+   return tx.onlineOrder.update({where:{id},data:{method:dto.method,requestHash}});
+  });
+ }
  async create(dto:OrderDto,actor:Actor){
   const demo=this.provider instanceof DemoWalletProvider;
   if(!demo&&!dto.customer)throw new BadRequestException('Datos del cliente requeridos');
@@ -240,7 +279,7 @@ export class OnlineOrdersService {
  private owns(order:{userId:string|null},actor:Actor){if(actor.kind==='member'&&order.userId!==actor.userId)throw new NotFoundException();if(actor.kind==='kiosk'&&order.userId)throw new NotFoundException();}
  async status(id:string,actor?:Actor):Promise<OnlineOrder>{
   const order=await this.db.onlineOrder.findUnique({where:{id}});if(!order)throw new NotFoundException();if(actor)this.owns(order,actor);
-  if(['CAPTURED','REFUNDING','FAILED','CANCELLED','REFUNDED'].includes(order.status))return order;
+  if(['CAPTURED','REFUNDING','FAILED','CANCELLED','REFUNDED','CONVERTED'].includes(order.status))return order;
   if(!order.providerId){
    if(!this.provider.findByReference)throw new ServiceUnavailableException('Reconciliacion por referencia pendiente de adapter comercial');
    let recovered:ProviderOrder|null;
@@ -325,6 +364,7 @@ export class OnlineOrdersController {
  @Post() @MemberOrKiosk() create(@Body()dto:OrderDto,@CurrentActor()actor:Actor){return this.service.create(dto,actor);}
  @Post(':id/demo-confirm') @MemberOrKiosk() confirmDemo(@Param('id',new ParseUUIDPipe())id:string,@Body()dto:DemoConfirmationDto,@CurrentActor()actor:Actor){return this.service.confirmDemo(id,dto,actor);}
  @Post(':id/cancel') @MemberOrKiosk() cancel(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.cancel(id,actor);}
+ @Post(':id/reselect') @MemberOrKiosk() reselect(@Param('id',new ParseUUIDPipe())id:string,@Body()dto:ReselectDto,@CurrentActor()actor:Actor){return this.service.reselect(id,dto,actor);}
  @Post(':id/refund') @MemberOrKiosk() refund(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.refund(id,actor);}
  @Get(':id') @MemberOrKiosk() status(@Param('id',new ParseUUIDPipe())id:string,@CurrentActor()actor:Actor){return this.service.status(id,actor);}
  @Post(':id/notify') @Public() notify(@Param('id',new ParseUUIDPipe())id:string,@Headers('x-webhook-secret')secret:string){

@@ -19,7 +19,7 @@ export function kioskRoute(method: string, path: string): boolean {
       new RegExp(
         `^/api/v1/authorizations/${id}/(progress|release|intervention)$`,
       ),
-      new RegExp(`^/api/v1/online-orders/${id}/(demo-confirm|cancel|refund)$`),
+      new RegExp(`^/api/v1/online-orders/${id}/(demo-confirm|cancel|refund|reselect)$`),
       new RegExp(`^/api/v1/payments/${id}/refund$`),
     ].some((pattern) => pattern.test(path))
   );

@@ -9,7 +9,7 @@ export function formatMembershipNumber(value: bigint): string {
     suffix = String.fromCharCode(65 + Number(group % 26n)) + suffix;
     group /= 26n;
   }
-  return `PRIM${String(((value - 1n) % 999n) + 1n).padStart(3, '0')}${suffix}`;
+  return `PRIM-${String(((value - 1n) % 999n) + 1n).padStart(3, '0')}${suffix}`;
 }
 
 // The counter row is locked until User + Membership commit. Failed registration

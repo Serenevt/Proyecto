@@ -736,6 +736,10 @@ export class AuthorizationsService {
           !payment.unitPrice?.eq(fuel.pricePerGallon)
         )
           throw new ConflictException('operationId ya usado con otros datos');
+        if (method !== 'YAPE' && method !== 'PLIN' && payment.status === 'PENDING' && payment.provider === 'DEMO') {
+          const order = await tx.onlineOrder.findUnique({ where: { paymentId: payment.id } });
+          authorizeDemo = Boolean(order?.status === 'PENDING' && order.method === method);
+        }
       } else {
         if (method === 'YAPE' || method === 'PLIN')
           throw new ConflictException('Crea primero la orden de pago');
@@ -797,6 +801,11 @@ export class AuthorizationsService {
             data: { status: approved.status, provider: approved.provider },
           }),
         );
+        if (payment.status === 'CAPTURED' && method !== 'YAPE' && method !== 'PLIN') {
+          await this.repo.atomic(async tx => {
+            await tx.onlineOrder.updateMany({ where: { paymentId: payment!.id, status: 'PENDING' }, data: { status: 'CONVERTED' } });
+          });
+        }
       } catch (error) {
         if (error instanceof BadRequestException) {
           await this.repo.atomic(async (tx) => {

@@ -9,6 +9,7 @@ const postRoutes = [
   /^supervisor\/shifts$/,
   new RegExp(`^supervisor/shifts/${uuid}/(suspend|resume|close)$`),
   new RegExp(`^supervisor/terminals/${uuid}/enable$`),
+  new RegExp(`^supervisor/operations/${uuid}/cancel-unpaid$`),
 ];
 
 function origin(value) {
