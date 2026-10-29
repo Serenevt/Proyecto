@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { randomBytes } from 'node:crypto';
-import gatewayHandler from '../api/[...path].js';
+import gatewayHandler from '../api/gateway.js';
 import supervisorHandler from '../api/supervisor-proxy.js';
 import { createGateway } from '../server/gateway.js';
 import { createSupervisorProxy } from '../server/supervisorProxy.js';

@@ -70,9 +70,12 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
       // No client-controlled destination, headers, cookies or query forwarding.
       const dynamicTerminal = url.pathname.match(/^\/api\/v1\/supervisor\/terminals\/([0-9a-fA-F-]{36})\/(pair|rotate|revoke-session)$/);
       const dynamicOperation = url.pathname.match(/^\/api\/v1\/terminal\/operations\/([0-9a-fA-F-]{36})(?:\/close)?$/);
-      const frameworkId = url.searchParams.getAll('id');
-      const routeId = dynamicTerminal?.[1] || dynamicOperation?.[1];
-      if ((!routeId && url.search) || (routeId && (frameworkId.length > 1 || [...url.searchParams.keys()].some(key => key !== 'id') || (frameworkId.length && frameworkId[0] !== routeId))) || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
+      const dynamicBusiness = url.pathname.match(/^\/api\/v1\/(?:authorizations|online-orders|transactions)\/([0-9a-fA-F-]{36})(?:\/(?:progress|release|intervention|demo-confirm|cancel))?$/);
+      const dynamicVehicle = url.pathname.match(/^\/api\/v1\/vehicles\/([A-Z0-9]{3}-[0-9]{3})$/);
+      const routeId = dynamicTerminal?.[1] || dynamicOperation?.[1] || dynamicBusiness?.[1] || dynamicVehicle?.[1];
+      const routeParam = dynamicVehicle ? 'plate' : 'id';
+      const frameworkValues = url.searchParams.getAll(routeParam);
+      if ((!routeId && url.search) || (routeId && (frameworkValues.length > 1 || [...url.searchParams.keys()].some(key => key !== routeParam) || (frameworkValues.length && frameworkValues[0] !== routeId))) || !['GET', 'POST'].includes(req.method)) fail(403, 'Operación no permitida');
       const cookieName = local ? LOCAL_COOKIE : COOKIE;
       const cookieAttributes = `Path=/; HttpOnly; ${local ? '' : 'Secure; '}SameSite=Strict`;
       const token = cookieToken(req.headers.cookie, cookieName);
@@ -129,6 +132,15 @@ export function createGateway({ env = process.env, fetcher = globalThis.fetch } 
         res.statusCode = status; res.end(JSON.stringify(safe)); return;
       }
       const uuid = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+      if (req.method === 'GET' && ['/api/v1/fuels', '/api/v1/stations', '/api/v1/fuels/inventory'].includes(url.pathname)) {
+        let upstream;
+        try { upstream = await fetcher(backend + url.pathname, { method: 'GET', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(18000), headers: { Accept: 'application/json' } }); }
+        catch { fail(503, 'Servicio temporalmente no disponible'); }
+        if (!/^application\/json\b/i.test(upstream.headers.get('content-type') || '')) fail(502, 'Respuesta inválida');
+        const content = await upstream.text();
+        if (Buffer.byteLength(content) > 3000000) fail(502, 'Respuesta inválida');
+        res.statusCode = upstream.status; res.end(content); return;
+      }
       const pair = new RegExp(`^/api/v1/supervisor/terminals/${uuid}/(pair|rotate|revoke-session)$`);
       if (req.method === 'POST' && pair.test(url.pathname)) {
         if (!token || !csrf) fail(401, 'Sesión y CSRF requeridos');

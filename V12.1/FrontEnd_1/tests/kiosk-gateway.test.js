@@ -5,9 +5,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { createGateway } from '../server/gateway.js';
-import startFunction from '../api/v1/terminal/operations.js';
-import operationFunction from '../api/v1/terminal/operations/[id].js';
-import closeFunction from '../api/v1/terminal/operations/[id]/close.js';
+import gatewayFunction from '../api/gateway.js';
 import { kioskRoute } from '../server/policy.js';
 
 const env = { FUELFLOW_PUBLIC_ORIGIN: 'https://fuel.example', BACKEND_ORIGIN: 'https://backend.example', KIOSK_GATEWAY_SECRET: randomBytes(32).toString('hex') };
@@ -99,7 +97,7 @@ test('logout clears the cookie only after shared revocation succeeds', async () 
   assert.equal(failure.statusCode, 503); assert.equal(failure.headers['set-cookie'], undefined);
 });
 test('proxy fails closed on backend/storage errors and expired sessions', async () => {
-  const res = await invoke('/api/v1/fuels', { fetcher: backend([], () => Response.json({ message: 'Sesión vencida' }, { status: 401 })) });
+  const res = await invoke('/api/v1/vehicles/ABC-123', { fetcher: backend([], () => Response.json({ message: 'Sesión vencida' }, { status: 401 })) });
   assert.equal(res.statusCode, 401);
 });
 test('route policy is identical in the independent backend and gateway packages', () => {
@@ -140,9 +138,7 @@ test('terminal writes require technical cookie and matching CSRF without supervi
   assert.equal(calls[0].options.headers.authorization, '');
 });
 test('INICIAR nested Vercel Functions use the signed BFF and preserve operationId', async () => {
-  assert.equal(typeof startFunction, 'function');
-  assert.equal(typeof operationFunction, 'function');
-  assert.equal(typeof closeFunction, 'function');
+  assert.equal(typeof gatewayFunction, 'function');
   const id = '33333333-3333-4333-8333-333333333333';
   const technical = 'b'.repeat(64), technicalCsrf = 't'.repeat(43);
   const cookie = `__Host-primax-terminal=${technical}; __Host-primax-terminal-csrf=${technicalCsrf}`;
