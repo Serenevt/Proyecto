@@ -215,14 +215,26 @@ export function validateEnvironment(env: Record<string, unknown>) {
   const ocr = String(
     env.PLATE_RECOGNITION_URL ?? 'http://plate-recognition:8000',
   );
-  if (
-    env.APP_MODE === 'academic' &&
-    env.PLATE_RECOGNITION_ENABLED !== 'false' &&
-    !ocr.startsWith('https://')
-  )
-    throw new Error('Public OCR requires HTTPS or explicit disablement');
-  if (!['http:', 'https:'].includes(new URL(ocr).protocol))
+  let ocrUrl: URL;
+  try {
+    ocrUrl = new URL(ocr);
+  } catch {
     throw new Error('Invalid PLATE_RECOGNITION_URL');
+  }
+  if (!['http:', 'https:'].includes(ocrUrl.protocol))
+    throw new Error('Invalid PLATE_RECOGNITION_URL');
+  if (env.APP_MODE === 'academic' && env.PLATE_RECOGNITION_ENABLED !== 'false') {
+    // Render private services use a single-label internal hostname and HTTP.
+    // Only the dedicated staging OCR service may use that exception.
+    const renderPrivateOcr =
+      ocrUrl.protocol === 'http:' &&
+      /^primax-v12-1-ocr-staging-[a-z0-9]+$/.test(ocrUrl.hostname) &&
+      ocrUrl.port === '8000' &&
+      ocrUrl.pathname === '/' &&
+      !ocrUrl.username && !ocrUrl.password && !ocrUrl.search && !ocrUrl.hash;
+    if (ocrUrl.protocol !== 'https:' && !renderPrivateOcr)
+      throw new Error('Academic OCR requires HTTPS or the dedicated Render private service');
+  }
   return {
     ...env,
     APP_MODE: String(env.APP_MODE ?? 'local'),

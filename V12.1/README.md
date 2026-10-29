@@ -82,6 +82,6 @@ Los archivos `docs/v11_1_1`, `docs/V9-*` y documentación histórica identificad
 
 V12.1 aplica principios de Spec-Driven Development mediante [especificaciones versionadas](specs/00-system-overview.md) en `V12.1/specs/`. Se consolidaron desde el sistema ya implementado y vinculan requisito/especificación → implementación → validación en la [matriz de trazabilidad](specs/09-traceability.md). Las discrepancias conocidas se registran en [SDD-GAPS](specs/SDD-GAPS.md); esta formalización no cambió el comportamiento del MVP.
 
-## Staging futuro
+## Staging
 
-El staging no está desplegado ni configurado. Sigue la lista de [preparación de staging](docs/STAGING-READINESS.md). La guía histórica `DEPLOYMENT-VERCEL.md` no describe este MVP y no autoriza ni prepara por sí sola un despliegue de V12.1.
+La fase 5B-1 está preparada localmente; Neon, Upstash y Render siguen pendientes de sesión y aprovisionamiento. Sigue el [procedimiento de despliegue](docs/STAGING-DEPLOYMENT.md) y la [lista de preparación](docs/STAGING-READINESS.md). La guía histórica `DEPLOYMENT-VERCEL.md` no describe este MVP.

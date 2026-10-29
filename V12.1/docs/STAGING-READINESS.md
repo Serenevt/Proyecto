@@ -1,6 +1,6 @@
 # V12.1 — preparación para staging
 
-Estado: guía de preparación actualizada en fase 5A.1. No se creó ni consultó ningún recurso de infraestructura remoto. No ejecutar migraciones, seeds ni despliegues hasta la fase autorizada y una revisión de este checklist. La matriz de resolución técnica está en `STAGING-ARCHITECTURE.md`, sección 13.
+Estado: fase 5B-1 iniciada. La preparación y el procedimiento actual están en [STAGING-DEPLOYMENT.md](STAGING-DEPLOYMENT.md). Sin sesión de Neon, Upstash ni Render, no se ha podido inventariar ni crear infraestructura remota; migraciones, seed y despliegue siguen pendientes. La matriz técnica está en `STAGING-ARCHITECTURE.md`, sección 13.
 
 ## Componentes y alojamiento previsto
 
@@ -32,7 +32,7 @@ Usar un gestor de secretos y variables independientes por entorno. Estos nombres
 - `PRIMAX_CONTROL_PUBLIC_URL`: origin público HTTPS de Control, usado para construir el enlace de verificación de correo; no dejar el fallback localhost en staging.
 - `PAYMENT_ENV=demo`, `DEMO_WALLET_ENABLED=true`; no configurar credenciales de proveedor real.
 - SMTP futuro `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, con TLS requerido.
-- OCR: `PLATE_RECOGNITION_ENABLED=true` cuando exista un servicio protegido y alcanzable mediante `PLATE_RECOGNITION_URL` HTTPS; `PLATE_CONFIDENCE_THRESHOLD` controla la sugerencia. Si aún no está listo, `false` habilita el fallback manual sin bloquear el MVP.
+- OCR: `PLATE_RECOGNITION_ENABLED=true` cuando exista el Private Service Render protegido; `PLATE_RECOGNITION_URL` puede ser su dirección HTTP interna exacta `http://primax-v12-1-ocr-staging-<hash>:8000`, además de HTTPS. `PLATE_CONFIDENCE_THRESHOLD` controla la sugerencia. Si aún no está listo, `false` habilita el fallback manual sin bloquear el MVP.
 - `SHOW_DEMO_ADMIN_CREDENTIALS=false`, Swagger deshabilitado, sin credenciales de demo sembradas en staging compartido.
 
 ### FuelFlow / gateway
@@ -73,15 +73,15 @@ Builds locales existentes:
 
 No definir previews públicamente accesibles con credenciales compartidas sin protección. Establecer roots, output directories, rutas de `/api`, headers de seguridad y dominios antes de crear los proyectos. El BFF y cookies no deben apuntar al Backend con credenciales en el cliente. La configuración local de Functions y rewrites está preparada; falta verificarla en el hosting real durante 5B.
 
-## Neon: checklist de migraciones (NO ejecutar aquí)
+## Neon: checklist de migraciones
 
-Orden solo después de aprobación explícita:
+Orden para la fase 5B-1 autorizada, tras crear y verificar inequívocamente la DB V12.1:
 
 1. Confirmar una rama Neon nueva, privada y dedicada a staging; registrar responsable, región, política de datos y límites de conexiones.
 2. Crear y ensayar un backup/restore point, incluyendo prueba de restauración aislada; decidir ventana y rollback.
 3. Comparar el historial de `Backend/prisma/migrations` en orden lexicográfico con `prisma migrate status` en la rama autorizada. No corregir historial publicado ni editar migraciones históricas.
 4. Verificar que el usuario de migración usa `DATABASE_URL_UNPOOLED` directo; mantener runtime en `DATABASE_URL` pooled. Confirmar TLS y `DATABASE_PURPOSE` antes de cualquier comando.
-5. Revisar SQL, índices, constraints, triggers, locks, duración esperada y compatibilidad hacia atrás. Preparar `prisma migrate deploy` como paso manual revisado; nunca `db push`, `migrate reset` ni seed de demo en staging con datos existentes.
+5. Revisar SQL, índices, constraints, triggers, locks, duración esperada y compatibilidad hacia atrás. Ejecutar `prisma migrate deploy` en la DB dedicada, nueva y verificada; nunca `db push`, `migrate reset` ni seed de demo en staging con datos existentes.
 6. Aplicar en ventana acordada, capturar salida y revisar `prisma migrate status`; probar health/read-only checks y flujos demo en staging.
 7. Si falla, detener release y usar restore point/rollback acordado. No borrar migraciones ni modificar datos a ciegas.
 

@@ -27,6 +27,25 @@ describe('public academic configuration fails closed', () => {
   it('accepts isolated simulated configuration without Culqi, SMTP or OCR', () => {
     expect(validateEnvironment(env).PORT).toBe(3000);
   });
+  it('accepts only the dedicated Render private OCR address over HTTP in academic mode', () => {
+    expect(() => validateEnvironment({
+      ...env,
+      PLATE_RECOGNITION_ENABLED: 'true',
+      PLATE_RECOGNITION_URL: 'http://primax-v12-1-ocr-staging-ab12:8000',
+    })).not.toThrow();
+    for (const url of [
+      'http://ocr.example.com:8000',
+      'http://primax-v12-1-ocr-staging-ab12.example.com:8000',
+      'http://primax-v12-1-ocr-staging-ab12:8000/other',
+      'http://primax-v12-1-ocr-staging-ab12:8080',
+    ]) {
+      expect(() => validateEnvironment({
+        ...env,
+        PLATE_RECOGNITION_ENABLED: 'true',
+        PLATE_RECOGNITION_URL: url,
+      })).toThrow('Academic OCR requires HTTPS or the dedicated Render private service');
+    }
+  });
   it('accepts authenticated Redis only for the local profile', () => {
     const validated = validateEnvironment({
       ...env,
