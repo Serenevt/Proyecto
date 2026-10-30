@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import functionHandler from '../api/v1/[...path].js';
-import { createControlProxy } from '../server/controlProxy.js';
+import { createControlProxy, createControlAdapter } from '../server/controlProxy.js';
 
 const env = { PRIMAX_CONTROL_PUBLIC_URL: 'https://control.example.test', BACKEND_ORIGIN: 'https://backend.example.test' };
 function request(url, method = 'GET', body, headers = {}) {
@@ -59,4 +59,48 @@ test('Control proxy rejects an insecure upstream auth cookie before exposing it 
   await handler(request('/api/v1/control/login', 'POST', { email: 'admin@example.test', password: 'fixture' }), res);
   assert.equal(res.statusCode, 502);
   assert.equal(res.headers['set-cookie'], undefined);
+});
+
+test('Control proxy strips Vercel routing metadata and preserves functional filters across sections', async () => {
+  const calls = [];
+  const handler = createControlProxy({ env, fetcher: async (url) => {
+    calls.push(url);
+    return Response.json({});
+  } });
+  const cases = [
+    ['/operations?path=operations&route=control&stationId=s1&status=open&mode=manual', '/operations?stationId=s1&status=open&mode=manual'],
+    ['/clients?path=clients&q=ana&status=active', '/clients?q=ana&status=active'],
+    ['/memberships?route=memberships&actorUserId=u1&kind=staff', '/memberships?actorUserId=u1&kind=staff'],
+    ['/vehicles?path=vehicles&stationId=s1&status=active', '/vehicles?stationId=s1&status=active'],
+    ['/transactions?route=transactions&from=2026-01-01&to=2026-01-31&fuelId=f1', '/transactions?from=2026-01-01&to=2026-01-31&fuelId=f1'],
+    ['/terminals?path=terminals&stationId=s1&status=online', '/terminals?stationId=s1&status=online'],
+    ['/inventory?route=inventory&stationId=s1&fuelId=f1', '/inventory?stationId=s1&fuelId=f1'],
+    ['/movements?path=movements&stationId=s1&kind=adjustment', '/movements?stationId=s1&kind=adjustment'],
+    ['/incidents?route=incidents&status=open&stationId=s1', '/incidents?status=open&stationId=s1'],
+    ['/audit?path=audit&actorUserId=u1&action=login&method=GET', '/audit?actorUserId=u1&action=login&method=GET'],
+  ];
+  for (const [input, expected] of cases) {
+    const res = response();
+    await handler(request(`/api/v1/control${input}&path=again`, 'GET'), res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(calls.at(-1), `https://backend.example.test/api/v1/control${expected}`);
+  }
+});
+
+test('Vercel adapter removes catch-all metadata from req.url and req.query', async () => {
+  const calls = [];
+  const handler = createControlAdapter({ env, fetcher: async (url) => { calls.push(url); return Response.json({}); } });
+  for (const [path, query, expected] of [
+    ['/customers?%2E%2E%2Epath=customers', { '...path': ['customers'] }, '/customers'],
+    ['/operations?%2E%2E%2Epath=operations&status=CLOSED&mode=PREPAGO', { path: ['control', 'operations'], status: 'CLOSED', mode: 'PREPAGO' }, '/operations?status=CLOSED&mode=PREPAGO'],
+    ['/inventory/movements?%2E%2E%2Epath=inventory%2Fmovements&kind=adjustment', { '...path': ['inventory', 'movements'], kind: 'adjustment' }, '/inventory/movements?kind=adjustment'],
+  ]) {
+    const req = request(`/api/v1/control${path}`);
+    req.query = query;
+    const res = response();
+    await handler(req, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(calls.at(-1), `https://backend.example.test/api/v1/control${expected}`);
+    assert.deepEqual(Object.keys(req.query), Object.keys(query).filter(key => !/^(?:\.\.\.)?(?:path|route)$/i.test(key)));
+  }
 });

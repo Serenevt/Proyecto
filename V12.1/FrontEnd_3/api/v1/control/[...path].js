@@ -1,3 +1,3 @@
-import { createControlProxy } from '../../../server/controlProxy.js';
+import { createControlAdapter } from '../../../server/controlProxy.js';
 
-export default createControlProxy();
+export default createControlAdapter();

@@ -30,6 +30,33 @@ function controlCookie(value = '') {
   return token ? `primax_control=${token}` : '';
 }
 
+function routingMetadata(key) {
+  return /^(?:\.\.\.)?(?:path|route)$/i.test(key);
+}
+
+export function createControlAdapter(options) {
+  const proxy = createControlProxy(options);
+  return function controlHandler(req, res) {
+    const url = new URL(req.url, 'https://localhost');
+    for (const key of [...url.searchParams.keys()]) {
+      if (routingMetadata(key)) url.searchParams.delete(key);
+    }
+    req.url = url.pathname + url.search;
+    if (req.query) req.query = Object.fromEntries(Object.entries(req.query).filter(([key]) => !routingMetadata(key)));
+    return proxy(req, res);
+  };
+}
+
+function functionalSearch(searchParams) {
+  const filtered = new URLSearchParams();
+  for (const [key, value] of searchParams) {
+    if (routingMetadata(key)) continue;
+    filtered.append(key, value);
+  }
+  const query = filtered.toString();
+  return query ? `?${query}` : '';
+}
+
 export function createControlProxy({ env = process.env, fetcher = globalThis.fetch } = {}) {
   return async function controlProxy(req, res) {
     res.setHeader('Cache-Control', 'no-store');
@@ -47,7 +74,7 @@ export function createControlProxy({ env = process.env, fetcher = globalThis.fet
       const cookie = controlCookie(req.headers.cookie);
       let upstream;
       try {
-        upstream = await fetcher(backend + url.pathname + url.search, {
+        upstream = await fetcher(backend + url.pathname + functionalSearch(url.searchParams), {
           method: req.method, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(22000),
           headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
           ...(req.method === 'POST' && body !== null ? { body: JSON.stringify(body) } : {}),
